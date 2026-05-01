@@ -299,10 +299,10 @@ class ArbitrationEngine:
 
         # 1. 信号汇总
         chain.append(
-            f"📊 信号汇总：共{len(signals_summary.get('total', 0))}个信号，"
-            f"看多{len(signals_summary.get('bullish', 0))}个，"
-            f"看空{len(signals_summary.get('bearish', 0))}个，"
-            f"中性{len(signals_summary.get('neutral', 0))}个"
+            f"📊 信号汇总：共{signals_summary.get('total', 0)}个信号，"
+            f"看多{signals_summary.get('bullish', 0)}个，"
+            f"看空{signals_summary.get('bearish', 0)}个，"
+            f"中性{signals_summary.get('neutral', 0)}个"
         )
 
         # 2. 方向判定
