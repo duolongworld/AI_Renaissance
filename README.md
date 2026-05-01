@@ -179,10 +179,30 @@ AIRenaissance/
 
 ## 团队协作
 
-- **框架维护**：由核心开发者（@monsignorc）负责
-- **Agent开发**：团队成员认领 `docs/AGENT_MATRIX.md` 中的Agent，在 `agents/` 下实现
-- **提交流程**：Fork → 开发 → PR → Code Review → 合并
-- **小白友好**：参考 `docs/AGENT_GUIDE.md`，只需实现 `analyze()` 方法
+### 组职责矩阵
+
+| 组 | 定位 | 核心职责 | 负责模块 |
+|---|---|---|---|
+| 开发1组（架构） | 地基 | 核心框架维护、BaseAgent/Signal 规范、Agent 注册机制、Git 工作流、CI/CD | `agents/base.py` · `agents/signal.py` · `debug_ui/` · `docs/` |
+| 开发2组（功能） | 功能实现 | 仲裁层逻辑、认知层推理链、主入口 `main.py`、多 Agent 调度 | `arbitration/` · `agents/cognition/` · `main.py` |
+| 开发3组（数据） | 数据管道 | 统一数据接入层、API 封装、本地缓存、数据质量校验 | `data/` · 各 Agent 的 `_fetch_*` 方法 |
+| 专家1组（财务） | 财报质量 | 七步验证链、利润现金比、合同负债、产能扩张、资本开支、财务费用侵蚀 | `agents/research/financial_report/` · `skills/financial_report_analysis/` |
+| 专家2组（指标） | 技术信号 | 量价指标计算、趋势识别、背离检测、信号打分 | `agents/research/technical/` |
+| 专家3组（资金） | 资金流向 | 主力资金追踪、北向/南向资金、机构持仓变化、大单异动 | `agents/research/fund_flow/` |
+| 专家4组（宏观） | 宏观环境 | 利率/汇率/通胀信号、PMI/GDP 数据解读、大类资产配置建议 | `agents/research/macro/` |
+| 专家5组（行业） | 产业链 | 行业景气度、供应链追踪、上下游价格传导、产业政策解读 | `agents/research/industry/` |
+| 专家6组（舆情） | 情绪信号 | 社交情绪指数、新闻情感分析、极端情绪预警、事件冲击评估 | `agents/perception/sentiment/` |
+| 专家7组（风控） | 风险底线 | 尾部风险识别、杠杆约束、仓位上限、黑天鹅对冲逻辑 | `agents/risk/` · 仲裁层风险预算模块 |
+| 综合组（PMO） | 协调 | 任务拆解与分配、进度跟踪、PR Review 排班、版本发布节奏 | `docs/AI_Renaissance_WBS.md` · Issue/PR 管理 |
+| 气氛组（用户体验） | 产品感 | 调试 UI 迭代、Signal 可视化、文档可读性、新手友好度 | `debug_ui/templates/` · `docs/AGENT_GUIDE.md` · README |
+
+### 协作规则
+
+- **框架维护**：由开发1组（@monsignorc）负责，其他组不可直接修改 `base.py` / `signal.py`
+- **Agent 开发**：各专家组分头认领 `docs/AGENT_MATRIX.md` 中的 Agent，在自己的分支开发
+- **Skill 共建**：分析逻辑沉淀到 `skills/` 目录，与 Agent 代码分离，可被多个 Agent 复用
+- **提交流程**：Fork → 自己的分支 → PR → Code Review → 合并
+- **小白友好**：每个 Agent 只需实现 `analyze()` 方法，参考 `docs/AGENT_GUIDE.md`
 
 ---
 
