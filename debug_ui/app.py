@@ -25,11 +25,11 @@ sys.path.insert(0, PROJECT_ROOT)
 # ── Agent 注册表（小白只需在这里添加自己的 Agent）────────────────
 # 格式：{"显示名称": {"module": "模块路径", "class": "类名"}}
 AVAILABLE_AGENTS = {
-    "现金流验证Agent": {
-        "module": "agents.research.financial.cash_flow.agent",
-        "class": "CashFlowAgent",
+    "财务专家Agent": {
+        "module": "agents.research.financial_report.agent",
+        "class": "FinancialReportAgent",
         "owner": "duolong",
-        "description": "经营现金流/净利润比率，判断利润质量",
+        "description": "调用七步验证链（Skills），深度财报质量分析",
     },
     # ↓ 小白在这里添加你自己的 Agent ↓
     # "你的Agent名": {
