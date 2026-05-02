@@ -156,6 +156,7 @@ python main.py --stock 000001
 ### 3. Agent 实现
 
 面向开发2组或负责 Agent 实现的成员，参考 `docs/AGENT_GUIDE.md`。
+主流程会自动扫描 `agents/**/agent.py`，支持在配置里用短名（如 `cash_flow`）或完整路径（如 `research.financial.cash_flow`）启用 Agent。
 
 ### 4. Skill 编写
 

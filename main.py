@@ -13,6 +13,7 @@ from pathlib import Path
 # 添加项目根目录到路径
 sys.path.insert(0, str(Path(__file__).parent))
 
+from agents import load_agents
 from agents.signal import SignalBundle
 from arbitration.engine import ArbitrationEngine
 from loguru import logger
@@ -76,33 +77,25 @@ def load_config(config_path: str) -> dict:
 
 
 def collect_signals(stock_code: str, config: dict) -> SignalBundle:
-    """
-    收集所有Agent的信号
-
-    TODO: 动态加载agents/目录下所有Agent
-    目前是示例，手动添加
-    """
+    """Collect signals from all enabled agents."""
     from agents.signal import SignalBundle
 
     bundle = SignalBundle(stock_code=stock_code)
+    enabled_agents = config.get("agents")
 
-    # ===== 示例：加载现金流Agent =====
-    # TODO: 实际应该从配置文件动态加载
     try:
-        from agents.research.financial.cash_flow.agent import CashFlowAgent
-
-        agent = CashFlowAgent(config={})
-        signal = agent.analyze(stock_code)
-        bundle.add(signal)
-        logger.info(f"[{signal.source}] 信号已收集：{signal.direction} ({signal.confidence:.1%})")
+        agents = load_agents(enabled_agents=enabled_agents)
     except Exception as e:
-        logger.error(f"加载现金流Agent失败：{e}")
+        logger.error(f"加载Agent列表失败：{e}")
+        return bundle
 
-    # ===== 在这里添加更多Agent =====
-    # from agents.research.trend.ma_trend.agent import MATrendAgent
-    # agent = MATrendAgent(config={})
-    # signal = agent.analyze(stock_code)
-    # bundle.add(signal)
+    for agent in agents:
+        try:
+            signal = agent.analyze(stock_code)
+            bundle.add(signal)
+            logger.info(f"[{signal.source}] 信号已收集：{signal.direction} ({signal.confidence:.1%})")
+        except Exception as e:
+            logger.error(f"[{agent.name}] 信号收集失败：{e}")
 
     return bundle
 
