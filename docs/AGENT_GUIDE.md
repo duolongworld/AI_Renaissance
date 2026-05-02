@@ -1,12 +1,12 @@
-# Agent开发指南 - 5分钟上手
+# Agent 开发指南
 
-> 你只需要关心一件事：**实现 `analyze()` 方法**
+> 面向开发2组或负责 Agent 实现的成员。核心任务是实现 `analyze()` 方法，并返回标准 `Signal`。
 
 ---
 
 ## 一、目录结构
 
-每个Agent都有自己的文件夹，按分类放置：
+每个 Agent 都有自己的文件夹，按分类放置：
 
 ```
 agents/
@@ -26,72 +26,86 @@ agents/
 
 ---
 
-## 二、最简Agent模板
+## 二、Agent 与 Skill 的关系
 
-**复制粘贴这个模板，改一改就能用！**
+当前协作方式里，专家组把专业分析规则写入：
+
+```text
+skills/{domain}/{skill_name}/SKILL.md
+```
+
+开发2组或负责 Agent 实现的成员，在 `agents/` 中实现调用逻辑：
+
+1. 读取对应的 `SKILL.md`。
+2. 获取或接收数据输入。
+3. 调用模型、规则逻辑或本地计算。
+4. 把结果封装成标准 `Signal`。
+
+这样专家组可以专注专业判断规则，Agent 实现可以专注数据流、调用方式和工程稳定性。
+
+---
+
+## 三、最简 Agent 模板
+
+可以从下面这个模板起步，根据实际 Skill、数据源和业务逻辑调整。
 
 ```python
 # agents/research/你的分类/你的Agent名/agent.py
 
+from pathlib import Path
+
 from agents.base import BaseAgent
-from agents.signal import Signal, bullish_signal, bearish_signal, neutral_signal
+from agents.signal import Signal, neutral_signal
 
 
 class YourAgent(BaseAgent):
-    """你的Agent描述"""
+    """你的 Agent 描述"""
 
     def __init__(self, config: dict):
         super().__init__(name="你的Agent名", config=config)
-        # 在这里定义你的参数
-        self.my_param = config.get("my_param", 默认值)
+        repo_root = self._find_repo_root()
+        self.skill_path = (
+            repo_root
+            / "skills" / "你的domain" / "你的skill_name" / "SKILL.md"
+        )
 
     def analyze(self, stock_code: str) -> Signal:
         """
-        核心分析逻辑（你写这里）
-
-        Args:
-            stock_code: 股票代码，如 "000001"
-
-        Returns:
-            Signal对象（标准化信号）
+        Agent 的职责：
+        1. 读取专家组维护的 SKILL.md
+        2. 获取或接收开发3组封装的数据
+        3. 调用模型、规则逻辑或本地计算
+        4. 把结果封装成标准 Signal
         """
-        # ===== 1. 获取数据（示例） =====
-        # data = get_data(stock_code)
-        data = {"示例": "数据"}  # 实际这里获取真实数据
+        skill_content = self._load_skill()
+        data = self._fetch_data(stock_code)
+        result = self._call_skill(skill_content, data)
+        return self._to_signal(result, stock_code)
 
-        # ===== 2. 你的分析逻辑 =====
-        # 计算指标、判断方向...
+    def _load_skill(self) -> str:
+        return self.skill_path.read_text(encoding="utf-8")
 
-        # 示例：简单判断
-        score = 0.8  # 你的分析结果
+    def _find_repo_root(self) -> Path:
+        for parent in Path(__file__).resolve().parents:
+            if (parent / "skills").exists() and (parent / "agents").exists():
+                return parent
+        raise RuntimeError("找不到项目根目录")
 
-        # ===== 3. 返回标准化信号 =====
-        if score > 0.6:
-            # 看多信号
-            return bullish_signal(
-                confidence=score,                              # 置信度 0~1
-                reasoning="你的判断理由，例如：XXX指标显示向好",  # 为什么
-                signals=["具体信号1", "具体信号2"],              # 检测到的信号
-                source=self.name,                              # Agent名称
-                stock_code=stock_code,                        # 股票代码
-                signal_type="financial",                       # 信号类型
-                meta={"score": score}                          # 额外数据
-            )
-        elif score < 0.4:
-            # 看空信号
-            return bearish_signal(
-                confidence=1.0 - score,
-                reasoning="你的判断理由",
-                signals=["风险信号1", "风险信号2"],
-                source=self.name,
-                stock_code=stock_code,
-                signal_type="financial",
-            )
-        else:
-            # 中性信号
+    def _fetch_data(self, stock_code: str) -> dict:
+        """从开发3组封装的数据接口获取输入。"""
+        return self.config["data_provider"].get_financial_data(stock_code)
+
+    def _call_skill(self, skill_content: str, data: dict) -> dict:
+        """按 Skill 规则调用 LLM 或本地规则逻辑，返回标准 JSON 字典。"""
+        return self.config["llm_client"].analyze(skill_content, data)
+
+    def _to_signal(self, result: dict, stock_code: str) -> Signal:
+        try:
+            return Signal.from_dict({**result, "stock_code": stock_code})
+        except Exception as exc:
             return neutral_signal(
-                confidence=0.5,
-                reasoning="多空力量均衡，暂无明显信号",
+                confidence=0.1,
+                reasoning=f"Skill 输出无法解析为 Signal：{exc}",
                 source=self.name,
                 stock_code=stock_code,
             )
@@ -103,7 +117,7 @@ class YourAgent(BaseAgent):
 
 ---
 
-## 三、配置文件模板
+## 四、配置文件模板
 
 ```python
 # agents/research/你的分类/你的Agent名/config.py
@@ -128,7 +142,7 @@ CONFIG = {
 
 ---
 
-## 四、__init__.py 模板
+## 五、__init__.py 模板
 
 ```python
 # agents/research/你的分类/你的Agent名/__init__.py
@@ -140,19 +154,19 @@ __all__ = ["YourAgent"]
 
 ---
 
-## 五、Signal对象详解
+## 六、Signal 对象详解
 
-你**必须**返回 `Signal` 对象，格式如下：
+Agent 需要返回 `Signal` 对象，格式如下：
 
 ```python
 from agents.signal import Signal
 
 signal = Signal(
-    direction="bullish",       # 必须："bullish" | "bearish" | "neutral"
-    confidence=0.85,          # 必须：0.0 ~ 1.0（浮点数）
-    reasoning="为什么看多",    # 必须：文字说明
+    direction="bullish",       # 需要是 "bullish" | "bearish" | "neutral"
+    confidence=0.85,          # 需要在 0.0 ~ 1.0 之间
+    reasoning="为什么看多",    # 需要写文字说明
     signals=["信号1", "信号2"],  # 可选：检测到的具体信号列表
-    source="你的Agent名",      # 必须：Agent名称
+    source="你的Agent名",      # 需要写 Agent 名称
     signal_type="financial",   # 可选：信号类型
     stock_code="000001",      # 可选：股票代码
     weight=1.0,              # 可选：权重（仲裁层用）
@@ -183,7 +197,7 @@ signal = neutral_signal(...)
 
 ---
 
-## 六、常见数据类型与计算
+## 七、常见数据类型与计算
 
 ### 6.1 涨跌幅计算
 
@@ -219,7 +233,7 @@ def calculate_ma(prices: list, window: int) -> float:
 
 ---
 
-## 七、如何测试你的Agent
+## 八、如何测试你的 Agent
 
 ### 方法1：直接运行
 
@@ -264,22 +278,18 @@ bundle.add(signal)
 
 ---
 
-## 八、常见问题
+## 九、常见问题
 
-### Q1: 我不会Python怎么办？
+### Q1: 我不会 Python 怎么办？
 
-**A**: 先学基础（2小时），然后：
-1. 复制模板
-2. 改一改参数
-3. 用AI帮你写分析逻辑
-4. 问我！
+**A**: 可以先从已有 Agent 示例读起，再让 Coding 工具辅助解释代码。负责 Agent 实现的成员重点理解三件事：读取输入、调用 Skill 或规则逻辑、返回 `Signal`。
 
 ### Q2: 数据从哪里来？
 
 **A**: 项目会提供统一的数据接口，你可以：
 - 调用 `perception/` 下的数据Agent
-- 直接请求API（东方财富、腾讯自选股）
-- 先用假数据测试逻辑
+- 使用开发3组封装的数据源
+- 在联调早期用示例数据测试逻辑
 
 ### Q3: 置信度怎么定？
 
@@ -322,7 +332,7 @@ def analyze(self, stock_code: str) -> Signal:
 
 ---
 
-## 九、任务认领流程
+## 十、任务认领流程
 
 1. **在群里说**：「我要做 [某类] Agent」
 2. **创建Issue**：在GitHub上创建Issue，格式：
@@ -338,68 +348,53 @@ def analyze(self, stock_code: str) -> Signal:
    ```
 3. **开发**：按本文档指引开发
 4. **提交**：Fork → 开发 → PR
-5. **集成**：我来把你的Agent加入主程序
+5. **集成**：由开发2组或项目维护者把 Agent 接入主流程
 
 ---
 
-## 十、完整示例：现金流验证Agent
+## 十一、完整示例：现金流验证 Agent
 
 ```python
 # agents/research/financial/cash_flow/agent.py
 
+from pathlib import Path
+
 from agents.base import BaseAgent
-from agents.signal import Signal, bullish_signal, bearish_signal
+from agents.signal import Signal, neutral_signal
 
 
 class CashFlowAgent(BaseAgent):
-    """现金流验证Agent"""
+    """现金流验证 Agent：调用现金流质量 Skill，封装 Signal。"""
 
     def __init__(self, config: dict):
         super().__init__(name="现金流验证Agent", config=config)
+        repo_root = self._find_repo_root()
+        self.skill_path = (
+            repo_root
+            / "skills" / "financial" / "cash_flow_quality_check" / "SKILL.md"
+        )
 
     def analyze(self, stock_code: str) -> Signal:
-        # 1. 获取数据（示例）
-        financial_data = self._get_data(stock_code)
+        skill_content = self.skill_path.read_text(encoding="utf-8")
+        financial_data = self.config["data_provider"].get_financial_data(stock_code)
+        result = self.config["llm_client"].analyze(skill_content, financial_data)
 
-        # 2. 计算现金流比率
-        ratio = financial_data["cash_flow"] / financial_data["net_profit"]
-
-        # 3. 判断
-        if ratio > 1.2:
-            return bullish_signal(
-                confidence=min(ratio / 2.0, 0.95),
-                reasoning=f"经营现金流/净利润 = {ratio:.2f}，利润质量优秀",
-                signals=[f"现金流比率{ratio:.2f}"],
-                source=self.name,
-                stock_code=stock_code,
-                signal_type="financial",
-            )
-        elif ratio < 0.8:
-            return bearish_signal(
-                confidence=min((1.0 - ratio) / 0.5, 0.9),
-                reasoning=f"经营现金流/净利润 = {ratio:.2f}，利润质量存疑",
-                signals=[f"现金流比率{ratio:.2f}"],
-                source=self.name,
-                stock_code=stock_code,
-                signal_type="financial",
-            )
-        else:
-            from agents.signal import neutral_signal
+        try:
+            return Signal.from_dict({**result, "stock_code": stock_code})
+        except Exception as exc:
             return neutral_signal(
-                confidence=0.5,
-                reasoning=f"现金流比率{ratio:.2f}，处于合理区间",
+                confidence=0.1,
+                reasoning=f"现金流 Skill 输出无法解析为 Signal：{exc}",
                 source=self.name,
                 stock_code=stock_code,
                 signal_type="financial",
             )
 
-    def _get_data(self, stock_code: str) -> dict:
-        """获取数据（待实现API对接）"""
-        # TODO: 对接东方财富API
-        return {
-            "cash_flow": 150000000,  # 经营现金流
-            "net_profit": 100000000,  # 净利润
-        }
+    def _find_repo_root(self) -> Path:
+        for parent in Path(__file__).resolve().parents:
+            if (parent / "skills").exists() and (parent / "agents").exists():
+                return parent
+        raise RuntimeError("找不到项目根目录")
 ```
 
 ---

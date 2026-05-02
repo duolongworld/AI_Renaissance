@@ -77,6 +77,10 @@ cd $HOME\Documents
 
 小白推荐使用 HTTPS，不需要先配置 SSH key。
 
+### 情况A：你有主仓库写权限
+
+如果你是项目团队成员，并且维护者已经给你仓库权限，可以直接克隆主仓库：
+
 ```powershell
 git clone https://github.com/duolongworld/AI_Renaissance.git
 cd AI_Renaissance
@@ -88,6 +92,17 @@ cd AI_Renaissance
 git checkout develop
 git pull origin develop
 ```
+
+### 情况B：你没有主仓库写权限
+
+如果你是外部贡献者，或者 push 时提示没有权限，先在 GitHub 页面 Fork 本仓库，再克隆你自己的 Fork。
+
+```powershell
+git clone https://github.com/你的GitHub用户名/AI_Renaissance.git
+cd AI_Renaissance
+```
+
+后续仍然从 `develop` 新建分支，最后在 GitHub 上发 PR 到主仓库的 `develop`。
 
 ---
 
@@ -167,8 +182,8 @@ git commit -m "feat: 添加现金流验证 Agent"
 ### 例子3：提交 Skill
 
 ```powershell
-git add skills/financial_report_analysis/
-git commit -m "feat: 完善财报分析 Skill"
+git add skills/financial/cash_flow_quality_check/SKILL.md
+git commit -m "feat: 添加现金流质量检查 Skill"
 ```
 
 提交信息建议格式：
@@ -251,6 +266,14 @@ Docs / Agent / Skill / Fix / Feature
 - [ ] 我只提交了和本任务相关的文件
 - [ ] 我没有提交 .env、密钥、日志、大型数据文件
 - [ ] 我已经运行或人工检查过结果
+
+## 如果这次提交的是 Skill
+
+- [ ] Skill 路径符合 `skills/{domain}/{skill_name}/SKILL.md`
+- [ ] 只修改了本次任务相关的 Skill 或文档
+- [ ] 没有修改 `agents/signal.py`、`agents/base.py` 或仲裁层代码
+- [ ] 写清楚了必填输入、可选输入和缺失处理
+- [ ] 写清楚了证据规则和人工复核条件
 ```
 
 ---
@@ -345,6 +368,26 @@ gh auth login
 
 把错误信息复制到群里，让熟悉 Git 的人帮你看。
 
+### Q6：`git checkout develop` 提示找不到分支
+
+先查看远端分支：
+
+```powershell
+git branch -a
+```
+
+如果看不到 `origin/develop`，先确认是否 clone 到了正确仓库，或者在群里问维护者当前集成分支名称。
+
+### Q7：Windows 终端里中文显示乱码
+
+项目 Markdown 文档使用 UTF-8 编码。阅读文档建议直接用 VS Code、Trae、CodeBuddy 或 GitHub 页面。
+
+如果在 PowerShell 里查看文件乱码，可以用：
+
+```powershell
+Get-Content docs\SKILL_TEMPLATE.md -Encoding UTF8
+```
+
 ---
 
 ## 十四、最小完整流程
@@ -373,4 +416,33 @@ git push origin docs/your-name-task
 
 ---
 
-*最后更新：2026-05-01*
+## 十五、Skill 专家版最小流程
+
+如果你只是在提交一个专家 Skill，可以按这个最小流程走：
+
+```powershell
+git checkout develop
+git pull origin develop
+git checkout -b skill/your-name-skill-name
+```
+
+通常只需要新增或修改相关 Skill 文件，例如：
+
+```text
+skills/financial/cash_flow_quality_check/SKILL.md
+```
+
+提交时只添加相关文件：
+
+```powershell
+git status
+git add skills/financial/cash_flow_quality_check/SKILL.md
+git commit -m "feat: 添加现金流质量检查 Skill"
+git push origin skill/your-name-skill-name
+```
+
+最后在 GitHub 上创建 PR，目标分支选择 `develop`。
+
+---
+
+*最后更新：2026-05-02*
