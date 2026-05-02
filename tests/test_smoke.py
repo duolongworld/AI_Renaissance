@@ -18,6 +18,8 @@ def test_arbitration_engine_handles_single_signal_bundle():
     bundle.add(signal)
 
     result = ArbitrationEngine().arbitrate(bundle)
+    expected_summary = "📊 信号汇总：共1个信号，看多1个，看空0个，中性0个"
 
     assert result.signals_summary["total"] == 1
+    assert result.reasoning_chain[0] == expected_summary
     assert result.decision in {"buy", "hold", "sell", "wait"}

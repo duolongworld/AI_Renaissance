@@ -159,11 +159,11 @@ python -m pytest -q
 python main.py --stock 000001
 ```
 
-### 3. Agent 实现
+### 4. Agent 实现
 
 面向开发2组或负责 Agent 实现的成员，参考 `docs/AGENT_GUIDE.md`。
 
-### 4. Skill 编写
+### 5. Skill 编写
 
 专家组交付专业 Skill 内容；Agent 如何调用 Skill、如何接入数据、如何汇总信号，由开发2组在系统流程中实现。开发1组负责 Skill 模板、输出规范、目录规范和联调标准。
 

@@ -13,6 +13,9 @@ python-dotenv>=1.0.0
 pyyaml>=6.0
 loguru>=0.7.0
 
+# Testing
+pytest>=8.0.0
+
 # Web UI (本地调试工具)
 flask>=2.3.0
 
