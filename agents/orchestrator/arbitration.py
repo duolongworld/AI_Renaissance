@@ -1,5 +1,13 @@
 """
-仲裁层引擎 - 多Agent信号聚合与决策
+仲裁引擎 - 从 arbitration/engine.py 迁移
+
+Orchestrator Agent 的核心组件，职责：
+  1. 信号筛选（置信度阈值）
+  2. 加权聚合
+  3. 方向判定
+  4. 仓位建议
+  5. 风险检查
+  6. 推理链生成
 """
 
 from typing import List, Dict, Any, Optional
@@ -18,20 +26,15 @@ class ArbitrationResult:
     reasoning: str                 # 决策推理
     signals_summary: Dict[str, int] # 信号汇总
     risks: List[str]               # 风险提示
-    reasoning_chain: List[str]      # 推理链（认知层输出）
+    reasoning_chain: List[str]      # 推理链
 
 
 class ArbitrationEngine:
     """
-    仲裁层引擎
+    仲裁引擎
 
-    职责：
-    1. 收集所有Agent的信号
-    2. 信号筛选（置信度阈值）
-    3. 加权聚合
-    4. 方向判定
-    5. 仓位建议
-    6. 风险检查
+    Orchestrator Agent 的核心仲裁逻辑。
+    收集7个专家Agent的信号，执行10步仲裁流程。
     """
 
     def __init__(
@@ -39,15 +42,8 @@ class ArbitrationEngine:
         confidence_threshold: float = 0.6,
         bullish_weight: float = 1.0,
         bearish_weight: float = 1.0,
-        risk_coefficient: float = 0.2,  # 风险折扣系数
+        risk_coefficient: float = 0.2,
     ):
-        """
-        Args:
-            confidence_threshold: 置信度阈值，低于此值信号被过滤
-            bullish_weight: 看多信号权重
-            bearish_weight: 看空信号权重
-            risk_coefficient: 风险折扣系数
-        """
         self.confidence_threshold = confidence_threshold
         self.bullish_weight = bullish_weight
         self.bearish_weight = bearish_weight
@@ -64,16 +60,7 @@ class ArbitrationEngine:
         signal_bundle: SignalBundle,
         trend_direction: Optional[str] = None,
     ) -> ArbitrationResult:
-        """
-        执行仲裁
-
-        Args:
-            signal_bundle: 所有Agent的信号集合
-            trend_direction: 当前趋势方向（可选，用于趋势一致性检查）
-
-        Returns:
-            ArbitrationResult: 仲裁结果
-        """
+        """执行仲裁"""
         logger.info(f"[仲裁引擎] 开始仲裁，共{len(signal_bundle.signals)}个信号")
 
         # Step 1: 信号筛选
@@ -95,13 +82,11 @@ class ArbitrationEngine:
         # Step 5: 趋势一致性检查
         if trend_direction and direction != trend_direction:
             logger.warning(
-                f"[仲裁引擎] 信号方向({direction})与趋势({trend_direction})不一致，"
-                f"需要更高置信度"
+                f"[仲裁引擎] 信号方向({direction})与趋势({trend_direction})不一致"
             )
-            # 与趋势相反的信号需要更高置信度才能通过
             if direction == "bearish" and trend_direction == "bullish":
                 if max(s.confidence for s in filtered_signals) < 0.8:
-                    direction = "neutral"  # 强制中性
+                    direction = "neutral"
 
         # Step 6: 综合置信度
         confidence = self._calculate_confidence(
@@ -174,7 +159,6 @@ class ArbitrationEngine:
 
     def _determine_direction(self, bullish_score: float, bearish_score: float) -> str:
         """判定方向"""
-        # 计算相对强度
         total = bullish_score + bearish_score
         if total == 0:
             return "neutral"
@@ -182,7 +166,6 @@ class ArbitrationEngine:
         bullish_ratio = bullish_score / total
         bearish_ratio = bearish_score / total
 
-        # 阈值判断
         if bullish_ratio > 0.6:
             return "bullish"
         elif bearish_ratio > 0.6:
@@ -198,25 +181,20 @@ class ArbitrationEngine:
         bearish_score: float
     ) -> float:
         """计算综合置信度"""
-        # 信号数量加成
-        count_bonus = min(len(signals) * 0.02, 0.2)  # 最多+20%
+        count_bonus = min(len(signals) * 0.02, 0.2)
 
-        # 方向一致性加成
         if direction == "bullish":
             base_confidence = bullish_score / (bullish_score + bearish_score + 0.01)
         elif direction == "bearish":
             base_confidence = bearish_score / (bullish_score + bearish_score + 0.01)
         else:
-            # 中性时，看多和看空得分接近
             if bullish_score + bearish_score > 0:
                 ratio = abs(bullish_score - bearish_score) / (bullish_score + bearish_score)
                 base_confidence = ratio * 0.5
             else:
                 base_confidence = 0.3
 
-        # 信号数量加成
         confidence = min(base_confidence + count_bonus, 0.95)
-
         return confidence
 
     def _calculate_position(self, confidence: float, direction: str) -> float:
@@ -224,13 +202,9 @@ class ArbitrationEngine:
         if direction == "neutral":
             return 0.0
 
-        # 基础仓位 = 置信度 * 0.5
         position = confidence * 0.5
+        position = min(position, 0.3)
 
-        # 最高仓位限制
-        position = min(position, 0.3)  # 单次最高30%
-
-        # 中性方向仓位为0
         if direction == "neutral":
             position = 0.0
 
@@ -240,17 +214,14 @@ class ArbitrationEngine:
         """风险检查"""
         risks = []
 
-        # 检查是否有高权重风险类信号
         risk_signals = [s for s in signals if s.signal_type == "risk"]
         for s in risk_signals:
             if s.confidence > 0.7:
                 risks.append(f"⚠️ {s.reasoning}")
 
-        # 检查信号数量过少
         if len(signals) < 3:
             risks.append("⚠️ 信号数量较少，建议谨慎")
 
-        # 检查方向一致性低
         summary = self._summarize_signals(signals)
         if summary["total"] > 0:
             dominant_ratio = max(
@@ -270,7 +241,6 @@ class ArbitrationEngine:
         risks: List[str]
     ) -> str:
         """做出最终决策"""
-        # 高风险信号
         high_risk = any("⚠️" in r for r in risks)
 
         if high_risk and direction != "neutral":
@@ -297,29 +267,24 @@ class ArbitrationEngine:
         """生成推理链"""
         chain = []
 
-        # 1. 信号汇总
         chain.append(
-            f"📊 信号汇总：共{len(signals_summary.get('total', 0))}个信号，"
-            f"看多{len(signals_summary.get('bullish', 0))}个，"
-            f"看空{len(signals_summary.get('bearish', 0))}个，"
-            f"中性{len(signals_summary.get('neutral', 0))}个"
+            f"📊 信号汇总：共{signals_summary.get('total', 0)}个信号，"
+            f"看多{signals_summary.get('bullish', 0)}个，"
+            f"看空{signals_summary.get('bearish', 0)}个，"
+            f"中性{signals_summary.get('neutral', 0)}个"
         )
 
-        # 2. 方向判定
         direction_text = {"bullish": "看多", "bearish": "看空", "neutral": "中性"}
         chain.append(f"🎯 方向判定：{direction_text.get(direction, '未知')}")
 
-        # 3. 置信度
         confidence_level = "高" if confidence > 0.7 else "中" if confidence > 0.5 else "低"
         chain.append(f"📈 置信度：{confidence:.1%}（{confidence_level}）")
 
-        # 4. 仓位建议
         if position_ratio > 0:
             chain.append(f"💼 仓位建议：{position_ratio:.0%}")
         else:
             chain.append("💼 仓位建议：观望")
 
-        # 5. 风险提示
         if risks:
             chain.append("⚠️ 风险提示：")
             chain.extend(risks)
