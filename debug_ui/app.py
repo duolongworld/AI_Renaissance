@@ -37,6 +37,12 @@ AVAILABLE_AGENTS = {
         "owner": "jerryyu",
         "description": "抓取东方财富股吧帖子，通过关键词分析市场情绪",
     },
+    "行情数据Agent": {
+        "module": "agents.perception.market_data.agent",
+        "class": "MarketDataAgent",
+        "owner": "jerryyu",
+        "description": "从腾讯自选股获取K线、MA/BOLL/RSI指标、筹码分布",
+    },
     # ↓ 小白在这里添加你自己的 Agent ↓
     # "你的Agent名": {
     #     "module": "agents.research.你的路径.agent",

@@ -425,6 +425,150 @@
   }
   .step-score-bull { color: #7de8a8; font-weight: 600; }
   .step-score-bear { color: #f88; font-weight: 600; }
+
+  /* ===== 行情数据展示 ===== */
+  .market-section {
+    margin-top: 20px;
+    border-top: 1px solid var(--gray-2);
+    padding-top: 16px;
+  }
+  .market-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gray-3);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 12px;
+  }
+  .stock-header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    padding: 12px 18px;
+    background: var(--gray-1);
+    border-radius: 6px;
+    margin-bottom: 16px;
+  }
+  .stock-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--navy);
+  }
+  .stock-price {
+    font-size: 24px;
+    font-weight: 700;
+  }
+  .stock-change {
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .stock-price.up, .stock-change.up { color: var(--red); }
+  .stock-price.down, .stock-change.down { color: var(--green); }
+  .stock-meta-item {
+    font-size: 12px;
+    color: var(--gray-4);
+  }
+  .stock-meta-item span { font-weight: 500; color: var(--gray-5); }
+
+  /* K线表格 */
+  .kline-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-family: "SFMono-Regular", Consolas, monospace;
+  }
+  .kline-table th {
+    text-align: right;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--gray-2);
+    color: var(--gray-3);
+    font-weight: 500;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .kline-table th:first-child { text-align: left; }
+  .kline-table td {
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--gray-2);
+    text-align: right;
+    color: var(--gray-5);
+  }
+  .kline-table td:first-child { text-align: left; color: var(--gray-4); }
+  .kline-table tr:last-child td { border-bottom: none; }
+  .kline-table .price-up { color: var(--red); }
+  .kline-table .price-down { color: var(--green); }
+
+  /* 指标卡片 */
+  .indicator-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .indicator-card {
+    padding: 14px 18px;
+    background: var(--gray-1);
+    border-radius: 6px;
+    border: 1px solid var(--gray-2);
+  }
+  .indicator-card-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--gray-3);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 8px;
+  }
+  .indicator-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0;
+    font-size: 13px;
+  }
+  .indicator-label { color: var(--gray-4); }
+  .indicator-value { font-weight: 600; color: var(--navy); font-family: "SFMono-Regular", Consolas, monospace; }
+  .indicator-value.warn { color: var(--amber); }
+  .indicator-value.danger { color: var(--red); }
+
+  /* 筹码分布条 */
+  .chip-bar-container {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 60px;
+    padding: 0 4px;
+    margin-top: 8px;
+  }
+  .chip-bar {
+    flex: 1;
+    background: var(--navy-lt);
+    border-radius: 2px 2px 0 0;
+    min-width: 2px;
+    transition: background 0.15s;
+    opacity: 0.7;
+  }
+  .chip-bar.peak { background: var(--navy); opacity: 1; }
+  .chip-bar.support { background: var(--green); opacity: 0.9; }
+  .chip-bar.pressure { background: var(--red); opacity: 0.9; }
+  .chip-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--gray-3);
+    margin-top: 4px;
+    font-family: "SFMono-Regular", Consolas, monospace;
+  }
+  .chip-summary {
+    display: flex;
+    gap: 24px;
+    margin-top: 10px;
+    font-size: 13px;
+  }
+  .chip-summary-item span { font-weight: 600; }
+  .chip-summary .support { color: var(--green); }
+  .chip-summary .pressure { color: var(--red); }
 </style>
 </head>
 <body>
@@ -595,7 +739,7 @@ function renderSignal(sig, agentName, stockCode) {
     };
     metaHtml = '<div class="signal-detail-grid">' +
       Object.entries(sig.meta)
-        .filter(([k]) => k !== "reasoning_steps")
+        .filter(([k]) => !["reasoning_steps","kline","ma","boll","rsi","chip","stock_info","volume_ma"].includes(k))
         .map(([k,v]) =>
           `<div class="detail-item">
              <div class="detail-label">${k}</div>
@@ -635,11 +779,246 @@ function renderSignal(sig, agentName, stockCode) {
       </div>
 
       ${renderStepsChain(sig.reasoning_steps)}
+      ${renderMarketData(sig.meta)}
     </div>
   `;
 
   document.getElementById("resultArea").style.display = "block";
 }
+
+
+// ── 渲染行情数据 ──────────────────────────────────────
+function renderMarketData(meta) {
+  if (!meta || !meta.kline) return "";
+  const info = meta.stock_info || {};
+  const kline = meta.kline || [];
+  const ma = meta.ma || {};
+  const boll = meta.boll || {};
+  const rsi = meta.rsi || {};
+  const chip = meta.chip || {};
+
+  const lastClose = kline.length ? kline[kline.length-1].close : 0;
+  const changePct = info.change_pct || 0;
+  const priceDir = changePct >= 0 ? "up" : "down";
+  const sign = changePct >= 0 ? "+" : "";
+  const N = 10;
+  const recent = kline.slice(-N);
+  const offset = kline.length - recent.length;
+
+  function ival(arr, i) {
+    const idx = offset + i;
+    return (arr && idx < arr.length && arr[idx] != null) ? arr[idx] : null;
+  }
+  function fmtCell(v, dec) {
+    return v != null ? v.toFixed(dec || 2) : "—";
+  }
+  function priceCls(v, ref) {
+    if (v == null || ref == null) return "";
+    return v >= ref ? "price-up" : "price-down";
+  }
+  function rsiCls(v) {
+    if (v == null) return "";
+    if (v > 70) return "danger";
+    if (v < 30) return "danger";
+    if (v > 60 || v < 40) return "warn";
+    return "";
+  }
+
+  let html = `<div class="market-section">
+    <div class="market-section-title">行情数据</div>
+    <div class="stock-header">
+      <span class="stock-name">${info.name || ""}</span>
+      <span class="stock-price ${priceDir}">${lastClose.toFixed(2)}</span>
+      <span class="stock-change ${priceDir}">${sign}${changePct.toFixed(2)}%</span>
+      <span class="stock-meta-item">换手率 <span>${(info.turnover_rate||0).toFixed(2)}%</span></span>
+      <span class="stock-meta-item">成交量 <span>${(info.volume||0).toFixed(0)}</span></span>
+      <span class="stock-meta-item">数据源 <span>${meta.source||"tencent"}</span></span>
+      <span class="stock-meta-item">周期 <span>${meta.period||"day"}</span></span>
+    </div>`;
+
+  // ── K线 + 成交量 ──
+  if (recent.length) {
+    html += `<div style="margin-bottom:16px;">
+      <div class="detail-label" style="margin-bottom:8px;">K线 · 成交量（最近${recent.length}日）</div>
+      <div style="overflow-x:auto;"><table class="kline-table">
+        <tr><th>日期</th><th>开盘</th><th>收盘</th><th>最高</th><th>最低</th><th>成交量</th></tr>`;
+    recent.forEach((k, i) => {
+      const prevClose = i > 0 ? recent[i-1].close : k.open;
+      const cls = k.close >= prevClose ? "price-up" : "price-down";
+      html += `<tr>
+        <td>${k.date}</td>
+        <td>${k.open.toFixed(2)}</td>
+        <td class="${cls}">${k.close.toFixed(2)}</td>
+        <td>${k.high.toFixed(2)}</td>
+        <td>${k.low.toFixed(2)}</td>
+        <td>${k.volume.toFixed(0)}</td>
+      </tr>`;
+    });
+    html += "</table></div></div>";
+  }
+
+  // ── 成交量分布 ──
+  const vma = meta.volume_ma || {};
+  const hasVma = vma.vma5 || vma.vma10 || vma.vma20;
+  if (recent.length) {
+    html += `<div style="margin-bottom:16px;">
+      <div class="detail-label" style="margin-bottom:8px;">成交量分布（最近${recent.length}日）</div>
+      <div style="overflow-x:auto;"><table class="kline-table">
+        <tr><th>日期</th><th>成交量</th>`;
+    if (hasVma) {
+      if (vma.vma5) html += `<th>VMA5</th>`;
+      if (vma.vma10) html += `<th>VMA10</th>`;
+      if (vma.vma20) html += `<th>VMA20</th>`;
+      html += `<th>量比</th><th>状态</th>`;
+    }
+    html += `</tr>`;
+    recent.forEach((k, i) => {
+      const vol = k.volume;
+      const v5 = ival(vma.vma5, i);
+      const v10 = ival(vma.vma10, i);
+      const v20 = ival(vma.vma20, i);
+      const ratio = v5 != null && v5 > 0 ? vol / v5 : null;
+      let volStatus = "";
+      if (ratio != null) {
+        if (ratio > 2.0) volStatus = "巨量";
+        else if (ratio > 1.5) volStatus = "放量";
+        else if (ratio > 1.0) volStatus = "温和";
+        else if (ratio > 0.7) volStatus = "缩量";
+        else volStatus = "地量";
+      }
+      html += `<tr><td>${k.date}</td><td>${vol.toFixed(0)}</td>`;
+      if (hasVma) {
+        if (vma.vma5) html += `<td>${fmtCell(v5, 0)}</td>`;
+        if (vma.vma10) html += `<td>${fmtCell(v10, 0)}</td>`;
+        if (vma.vma20) html += `<td>${fmtCell(v20, 0)}</td>`;
+        html += `<td>${ratio != null ? ratio.toFixed(2) : "—"}</td><td>${volStatus}</td>`;
+      }
+      html += `</tr>`;
+    });
+    html += "</table></div></div>";
+  }
+
+  // ── MA 均线 ──
+  const maKeys = ["ma5","ma10","ma20","ma60","ma120","ma250"];
+  const hasMa = maKeys.some(k => ma[k] && ma[k].length);
+  if (hasMa && recent.length) {
+    html += `<div style="margin-bottom:16px;">
+      <div class="detail-label" style="margin-bottom:8px;">均线 MA（最近${recent.length}日）</div>
+      <div style="overflow-x:auto;"><table class="kline-table">
+        <tr><th>日期</th><th>收盘价</th>`;
+    maKeys.forEach(k => { html += `<th>${k.toUpperCase()}</th>`; });
+    html += `<th>偏离MA5</th></tr>`;
+    recent.forEach((k, i) => {
+      const ma5v = ival(ma.ma5, i);
+      const diff5 = ma5v != null ? k.close - ma5v : null;
+      const cls5 = diff5 != null ? priceCls(k.close, ma5v) : "";
+      html += `<tr><td>${k.date}</td><td>${k.close.toFixed(2)}</td>`;
+      maKeys.forEach(mk => {
+        const v = ival(ma[mk], i);
+        html += `<td>${fmtCell(v)}</td>`;
+      });
+      html += `<td class="${cls5}">${diff5 != null ? (diff5>=0?"+":"") + diff5.toFixed(2) : "—"}</td></tr>`;
+    });
+    html += "</table></div></div>";
+  }
+
+  // ── BOLL 布林带 ──
+  const hasBoll = boll.upper && boll.upper.length;
+  if (hasBoll && recent.length) {
+    html += `<div style="margin-bottom:16px;">
+      <div class="detail-label" style="margin-bottom:8px;">布林带 BOLL（最近${recent.length}日）</div>
+      <div style="overflow-x:auto;"><table class="kline-table">
+        <tr><th>日期</th><th>收盘价</th><th>上轨</th><th>中轨</th><th>下轨</th><th>带宽%</th><th>位置%</th></tr>`;
+    recent.forEach((k, i) => {
+      const u = ival(boll.upper, i);
+      const m = ival(boll.middle, i);
+      const l = ival(boll.lower, i);
+      const width = (u != null && m != null && m > 0) ? ((u - l) / m * 100) : null;
+      const pos = (u != null && l != null && (u - l) > 0) ? ((k.close - l) / (u - l) * 100) : null;
+      html += `<tr>
+        <td>${k.date}</td>
+        <td>${k.close.toFixed(2)}</td>
+        <td>${fmtCell(u)}</td>
+        <td>${fmtCell(m)}</td>
+        <td>${fmtCell(l)}</td>
+        <td>${fmtCell(width)}</td>
+        <td>${fmtCell(pos)}</td>
+      </tr>`;
+    });
+    html += "</table></div></div>";
+  }
+
+  // ── RSI ──
+  const rsiKeys = ["rsi6","rsi12","rsi24"];
+  const hasRsi = rsiKeys.some(k => rsi[k] && rsi[k].length);
+  if (hasRsi && recent.length) {
+    html += `<div style="margin-bottom:16px;">
+      <div class="detail-label" style="margin-bottom:8px;">RSI（最近${recent.length}日）</div>
+      <div style="overflow-x:auto;"><table class="kline-table">
+        <tr><th>日期</th><th>收盘价</th>`;
+    rsiKeys.forEach(k => { html += `<th>${k.toUpperCase()}</th>`; });
+    html += `<th>状态</th></tr>`;
+    recent.forEach((k, i) => {
+      const r6 = ival(rsi.rsi6, i);
+      const r12 = ival(rsi.rsi12, i);
+      const r24 = ival(rsi.rsi24, i);
+      const avg = (r6 != null && r12 != null && r24 != null) ? (r6+r12+r24)/3 : null;
+      let status = "";
+      if (avg != null) {
+        if (avg > 70) status = "超买";
+        else if (avg < 30) status = "超卖";
+        else if (avg > 60) status = "偏强";
+        else if (avg < 40) status = "偏弱";
+      }
+      html += `<tr>
+        <td>${k.date}</td>
+        <td>${k.close.toFixed(2)}</td>
+        <td class="${rsiCls(r6)}">${fmtCell(r6)}</td>
+        <td class="${rsiCls(r12)}">${fmtCell(r12)}</td>
+        <td class="${rsiCls(r24)}">${fmtCell(r24)}</td>
+        <td>${status}</td>
+      </tr>`;
+    });
+    html += "</table></div></div>";
+  }
+
+  // ── 筹码分布 ──
+  if (chip.prices && chip.prices.length && chip.distribution) {
+    const dist = chip.distribution;
+    const maxDist = Math.max(...dist);
+    const peakIdx = dist.indexOf(maxDist);
+    const supportIdx = chip.prices.findIndex(p => p >= chip.support_price) - 1;
+    const pressureIdx = chip.prices.findIndex(p => p >= chip.pressure_price) - 1;
+
+    html += `<div style="margin-top:16px;">
+      <div class="detail-label" style="margin-bottom:8px;">筹码分布（近${meta.chip_days||120}日）</div>
+      <div class="chip-bar-container">`;
+    dist.forEach((d, i) => {
+      const h = maxDist > 0 ? (d / maxDist * 100) : 0;
+      let cls = "";
+      if (i === peakIdx) cls = "peak";
+      else if (Math.abs(i - Math.max(0,supportIdx)) <= 1) cls = "support";
+      else if (Math.abs(i - Math.max(0,pressureIdx)) <= 1) cls = "pressure";
+      html += `<div class="chip-bar ${cls}" style="height:${Math.max(h,2)}%;" title="¥${chip.prices[i].toFixed(2)} ${(d*100).toFixed(1)}%"></div>`;
+    });
+    html += `</div>
+      <div class="chip-labels">
+        <span>¥${chip.prices[0].toFixed(2)}</span>
+        <span>¥${chip.prices[Math.floor(chip.prices.length/2)].toFixed(2)}</span>
+        <span>¥${chip.prices[chip.prices.length-1].toFixed(2)}</span>
+      </div>
+      <div class="chip-summary">
+        <span class="chip-summary-item">支撑位 <span class="support">¥${chip.support_price.toFixed(2)}</span></span>
+        <span class="chip-summary-item">压力位 <span class="pressure">¥${chip.pressure_price.toFixed(2)}</span></span>
+        <span class="chip-summary-item">当前价 <span>¥${lastClose.toFixed(2)}</span></span>
+      </div>
+    </div>`;
+  }
+
+  html += '</div>';
+  return html;
+}
+
 
 // ── 渲染七步验证链 ─────────────────────────────────
 function renderStepsChain(steps) {
