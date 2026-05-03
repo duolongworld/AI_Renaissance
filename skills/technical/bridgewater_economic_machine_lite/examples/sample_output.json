@@ -1,0 +1,120 @@
+{
+  "direction": "neutral",
+  "confidence": 0.38,
+  "reasoning": "当前增长和通胀证据暂时指向 Q1 金发姑娘，但信用、政策和债务周期证据不足，因此顶层方向保持 neutral，需人工复核。",
+  "signals": [
+    "quadrant_position: Q1_goldilocks",
+    "short_debt_cycle: transition",
+    "long_debt_pressure: unclear"
+  ],
+  "source": "bridgewater_economic_machine_lite",
+  "signal_type": "technical",
+  "stock_code": "",
+  "weight": 1.0,
+  "meta": {
+    "output_version": "0.1",
+    "target": "US",
+    "period": "current",
+    "time_horizon": "mid",
+    "risk_level": "medium",
+    "confidence_label": "低",
+    "macro_quadrant": "Q1_goldilocks",
+    "scores": {
+      "growth_score": 1.0,
+      "inflation_score": -1.0,
+      "credit_score": 0.0,
+      "policy_score": 0.0,
+      "debt_pressure_score": 0.0
+    },
+    "asset_allocation_tilt": {
+      "equities": "neutral",
+      "high_quality_bonds": "neutral",
+      "cash_short_bonds": "overweight",
+      "gold_commodities": "neutral",
+      "inflation_linked": "neutral",
+      "credit_bonds": "neutral"
+    },
+    "key_findings": [
+      "增长证据偏改善",
+      "通胀证据偏降温"
+    ],
+    "evidence": [
+      {
+        "source_type": "expert_input",
+        "source_name": "user_provided",
+        "date": "2026-04",
+        "metric": "PMI",
+        "value": "51.2 / uptrend",
+        "comparison": "支持增长上行",
+        "note": "支持增长上行"
+      },
+      {
+        "source_type": "expert_input",
+        "source_name": "user_provided",
+        "date": "2026-04",
+        "metric": "core_cpi",
+        "value": "downtrend",
+        "comparison": "支持通胀下行",
+        "note": "支持通胀下行"
+      }
+    ],
+    "risk_notes": [
+      "信用、政策和债务周期证据不足，不适合据此提高风险暴露。"
+    ],
+    "uncertainties": [
+      "缺少信用指标",
+      "缺少政策指标",
+      "缺少债务周期指标"
+    ],
+    "data_quality": {
+      "missing_required": [
+        "credit",
+        "policy",
+        "debt_cycle"
+      ],
+      "missing_optional": [
+
+      ],
+      "conflicting_indicators": [
+
+      ],
+      "stale_indicators": [
+
+      ],
+      "coverage_level": "low"
+    },
+    "review_log": {
+      "source_data_review": "fail",
+      "calculation_review": "pass",
+      "conclusion_review": "pass"
+    },
+    "needs_human_review": true,
+    "skill_name": "bridgewater_economic_machine_lite",
+    "owner_group": "专家2组（指标）",
+    "signal_details": {
+      "quadrant_position": {
+        "value": "Q1_goldilocks",
+        "direction": "bullish"
+      },
+      "short_debt_cycle": {
+        "value": "transition",
+        "direction": "neutral"
+      },
+      "long_debt_pressure": {
+        "value": "unclear",
+        "direction": "neutral"
+      }
+    },
+    "bridgewater_layers": {
+      "all_weather_layer": "asset_allocation_defense",
+      "pure_alpha_layer": "hypothesis_only",
+      "productivity_trend": "unclear"
+    },
+    "personal_finance_guardrails": [
+      "cash_flow_safety",
+      "no_leverage_expansion",
+      "rebalance_only_after_review"
+    ],
+    "skill_version": "0.3.1-agent-only-task-aligned"
+  }
+}

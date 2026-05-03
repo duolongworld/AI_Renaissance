@@ -1,0 +1,26 @@
+{
+  "target": "US",
+  "period": "current",
+  "time_horizon": "mid",
+  "data_mode": "user_provided",
+  "indicators": {
+    "growth": [
+      {
+        "name": "PMI",
+        "value": 50.1,
+        "direction": "flat",
+        "trend_3m": "flat",
+        "trend_6m": "unknown",
+        "comparison": "near_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "接近荣枯线"
+      }
+    ],
+    "inflation": [],
+    "credit": [],
+    "policy": [],
+    "debt_cycle": []
+  }
+}

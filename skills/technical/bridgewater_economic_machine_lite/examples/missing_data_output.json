@@ -1,0 +1,98 @@
+{
+  "direction": "neutral",
+  "confidence": 0.22,
+  "reasoning": "仅有接近临界值的增长指标，缺少通胀、信用、政策和债务周期证据，不能判断宏观象限。",
+  "signals": [
+    "quadrant_position: mixed_boundary",
+    "short_debt_cycle: transition",
+    "long_debt_pressure: unclear"
+  ],
+  "source": "bridgewater_economic_machine_lite",
+  "signal_type": "technical",
+  "stock_code": "",
+  "weight": 1.0,
+  "meta": {
+    "output_version": "0.1",
+    "skill_name": "bridgewater_economic_machine_lite",
+    "owner_group": "专家2组（指标）",
+    "target": "US",
+    "period": "current",
+    "time_horizon": "mid",
+    "risk_level": "high",
+    "confidence_label": "低",
+    "macro_quadrant": "mixed_boundary",
+    "scores": {
+      "growth_score": 0.0,
+      "inflation_score": 0.0,
+      "credit_score": 0.0,
+      "policy_score": 0.0,
+      "debt_pressure_score": 0.0
+    },
+    "asset_allocation_tilt": {
+      "equities": "neutral",
+      "high_quality_bonds": "neutral",
+      "cash_short_bonds": "overweight",
+      "gold_commodities": "neutral",
+      "inflation_linked": "neutral",
+      "credit_bonds": "neutral"
+    },
+    "key_findings": [
+      "现有数据不足以形成强判断"
+    ],
+    "evidence": [
+      {
+        "source_type": "expert_input",
+        "source_name": "user_provided",
+        "date": "2026-04",
+        "metric": "PMI",
+        "value": "50.1 / flat",
+        "comparison": "接近荣枯线",
+        "note": "增长信号不明确"
+      }
+    ],
+    "risk_notes": [
+      "数据不足时不应输出进攻性配置建议。"
+    ],
+    "uncertainties": [
+      "缺少通胀指标",
+      "缺少信用指标",
+      "缺少政策指标",
+      "缺少债务周期指标"
+    ],
+    "data_quality": {
+      "missing_required": [
+        "inflation",
+        "credit",
+        "policy",
+        "debt_cycle"
+      ],
+      "missing_optional": [
+
+      ],
+      "conflicting_indicators": [
+
+      ],
+      "stale_indicators": [
+
+      ],
+      "coverage_level": "low"
+    },
+    "review_log": {
+      "source_data_review": "fail",
+      "calculation_review": "pass",
+      "conclusion_review": "pass"
+    },
+    "needs_human_review": true,
+    "bridgewater_layers": {
+      "all_weather_layer": "asset_allocation_defense",
+      "pure_alpha_layer": "hypothesis_only",
+      "productivity_trend": "unclear"
+    },
+    "personal_finance_guardrails": [
+      "cash_flow_safety",
+      "no_leverage_expansion",
+      "rebalance_only_after_review"
+    ],
+    "skill_version": "0.3.1-agent-only-task-aligned"
+  }
+}

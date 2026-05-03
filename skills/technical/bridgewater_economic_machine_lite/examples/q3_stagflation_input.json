@@ -1,0 +1,102 @@
+{
+  "target": "US",
+  "period": "current",
+  "time_horizon": "mid",
+  "data_mode": "user_provided",
+  "indicators": {
+    "growth": [
+      {
+        "name": "PMI",
+        "value": 47.5,
+        "direction": "down",
+        "trend_3m": "down",
+        "trend_6m": "down",
+        "comparison": "below_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "低于荣枯线"
+      },
+      {
+        "name": "employment",
+        "value": "weakening",
+        "direction": "down",
+        "trend_3m": "down",
+        "trend_6m": "flat",
+        "comparison": "below_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "就业边际转弱"
+      }
+    ],
+    "inflation": [
+      {
+        "name": "core_cpi",
+        "value": "sticky",
+        "direction": "up",
+        "trend_3m": "up",
+        "trend_6m": "up",
+        "comparison": "above_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "核心通胀粘性"
+      },
+      {
+        "name": "wage_growth",
+        "value": "high",
+        "direction": "up",
+        "trend_3m": "up",
+        "trend_6m": "up",
+        "comparison": "above_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "工资压力仍高"
+      }
+    ],
+    "credit": [
+      {
+        "name": "credit_spread",
+        "value": "widening",
+        "direction": "up",
+        "trend_3m": "up",
+        "trend_6m": "up",
+        "comparison": "above_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "信用利差扩大"
+      }
+    ],
+    "policy": [
+      {
+        "name": "policy_stance",
+        "value": "constrained",
+        "direction": "up",
+        "trend_3m": "up",
+        "trend_6m": "up",
+        "comparison": "above_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "通胀高导致政策难宽松"
+      }
+    ],
+    "debt_cycle": [
+      {
+        "name": "debt_pressure",
+        "value": "rising",
+        "direction": "up",
+        "trend_3m": "up",
+        "trend_6m": "up",
+        "comparison": "above_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "债务压力上升"
+      }
+    ]
+  }
+}

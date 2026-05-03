@@ -1,0 +1,115 @@
+{
+  "direction": "bearish",
+  "confidence": 0.7,
+  "reasoning": "增长和通胀同时下行，象限偏 Q4 衰退/通缩；高质量债券和现金更重要，但信用利差扩大提示盈利与违约风险仍需防守。",
+  "signals": [
+    "quadrant_position: Q4_recession_disinflation",
+    "short_debt_cycle: recession",
+    "long_debt_pressure: debt_pressure"
+  ],
+  "source": "bridgewater_economic_machine_lite",
+  "signal_type": "technical",
+  "stock_code": "",
+  "weight": 1.0,
+  "meta": {
+    "output_version": "0.1",
+    "skill_name": "bridgewater_economic_machine_lite",
+    "owner_group": "专家2组（指标）",
+    "target": "US",
+    "period": "current",
+    "time_horizon": "mid",
+    "risk_level": "medium",
+    "confidence_label": "中",
+    "macro_quadrant": "Q4_recession_disinflation",
+    "scores": {
+      "growth_score": -1.0,
+      "inflation_score": -1.0,
+      "credit_score": 1.0,
+      "policy_score": -1.0,
+      "debt_pressure_score": 1.0
+    },
+    "asset_allocation_tilt": {
+      "equities": "underweight",
+      "high_quality_bonds": "overweight",
+      "cash_short_bonds": "overweight",
+      "gold_commodities": "neutral",
+      "inflation_linked": "neutral",
+      "credit_bonds": "underweight"
+    },
+    "key_findings": [
+      "增长指标转弱",
+      "通胀同步降温",
+      "信用利差扩大导致防守优先"
+    ],
+    "evidence": [
+      {
+        "source_type": "expert_input",
+        "source_name": "user_provided",
+        "date": "2026-04",
+        "metric": "PMI / earnings_revision",
+        "value": "46.8 / negative",
+        "comparison": "below_baseline",
+        "note": "支持增长下行判断"
+      },
+      {
+        "source_type": "expert_input",
+        "source_name": "user_provided",
+        "date": "2026-04",
+        "metric": "core_cpi / commodity_price",
+        "value": "cooling / falling",
+        "comparison": "near_or_below_baseline",
+        "note": "支持通胀下行判断"
+      },
+      {
+        "source_type": "expert_input",
+        "source_name": "user_provided",
+        "date": "2026-04",
+        "metric": "credit_spread",
+        "value": "widening",
+        "comparison": "above_baseline",
+        "note": "提示衰退阶段信用风险上升"
+      }
+    ],
+    "risk_notes": [
+      "信用风险可能继续压制权益和信用债",
+      "政策宽松对风险资产的传导存在时滞"
+    ],
+    "uncertainties": [
+      "未提供失业率、违约率和财政反应数据，衰退深度仍需复核"
+    ],
+    "data_quality": {
+      "missing_required": [
+
+      ],
+      "missing_optional": [
+        "unemployment",
+        "default_rate",
+        "fiscal_response"
+      ],
+      "conflicting_indicators": [
+
+      ],
+      "stale_indicators": [
+
+      ],
+      "coverage_level": "medium"
+    },
+    "review_log": {
+      "source_data_review": "pass",
+      "calculation_review": "pass",
+      "conclusion_review": "pass"
+    },
+    "bridgewater_layers": {
+      "all_weather_layer": "asset_allocation_defense",
+      "pure_alpha_layer": "hypothesis_only",
+      "productivity_trend": "unclear"
+    },
+    "personal_finance_guardrails": [
+      "cash_flow_safety",
+      "no_leverage_expansion",
+      "rebalance_only_after_review"
+    ],
+    "needs_human_review": true,
+    "skill_version": "0.3.1-agent-only-task-aligned"
+  }
+}

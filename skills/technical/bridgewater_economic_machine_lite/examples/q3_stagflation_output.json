@@ -1,0 +1,105 @@
+{
+  "direction": "bearish",
+  "confidence": 0.76,
+  "reasoning": "增长下行、通胀上行，且信用与政策约束偏负面，当前偏向 Q3 滞胀环境，风险等级较高。",
+  "signals": [
+    "quadrant_position: Q3_stagflation",
+    "short_debt_cycle: tightening",
+    "long_debt_pressure: debt_pressure"
+  ],
+  "source": "bridgewater_economic_machine_lite",
+  "signal_type": "technical",
+  "stock_code": "",
+  "weight": 1.0,
+  "meta": {
+    "output_version": "0.1",
+    "skill_name": "bridgewater_economic_machine_lite",
+    "owner_group": "专家2组（指标）",
+    "target": "US",
+    "period": "current",
+    "time_horizon": "mid",
+    "risk_level": "high",
+    "confidence_label": "高",
+    "macro_quadrant": "Q3_stagflation",
+    "scores": {
+      "growth_score": -1.0,
+      "inflation_score": 1.0,
+      "credit_score": 1.0,
+      "policy_score": 1.0,
+      "debt_pressure_score": 1.0
+    },
+    "asset_allocation_tilt": {
+      "equities": "underweight",
+      "high_quality_bonds": "neutral",
+      "cash_short_bonds": "overweight",
+      "gold_commodities": "overweight",
+      "inflation_linked": "overweight",
+      "credit_bonds": "underweight"
+    },
+    "key_findings": [
+      "增长证据走弱",
+      "通胀证据升温",
+      "信用条件收紧",
+      "政策受到通胀约束"
+    ],
+    "evidence": [
+      {
+        "source_type": "expert_input",
+        "source_name": "user_provided",
+        "date": "2026-04",
+        "metric": "PMI",
+        "value": "47.5 / downtrend",
+        "comparison": "低于荣枯线",
+        "note": "支持增长下行"
+      },
+      {
+        "source_type": "expert_input",
+        "source_name": "user_provided",
+        "date": "2026-04",
+        "metric": "core_cpi",
+        "value": "sticky / uptrend",
+        "comparison": "通胀粘性强",
+        "note": "支持通胀上行"
+      }
+    ],
+    "risk_notes": [
+      "滞胀环境下股债可能同时承压。",
+      "不适合提高杠杆。"
+    ],
+    "uncertainties": [
+      "具体通胀预期与债务细项仍需复核。"
+    ],
+    "data_quality": {
+      "missing_required": [
+
+      ],
+      "missing_optional": [
+        "market_inflation_expectation"
+      ],
+      "conflicting_indicators": [
+
+      ],
+      "stale_indicators": [
+
+      ],
+      "coverage_level": "high"
+    },
+    "review_log": {
+      "source_data_review": "pass",
+      "calculation_review": "pass",
+      "conclusion_review": "pass"
+    },
+    "needs_human_review": true,
+    "bridgewater_layers": {
+      "all_weather_layer": "asset_allocation_defense",
+      "pure_alpha_layer": "hypothesis_only",
+      "productivity_trend": "unclear"
+    },
+    "personal_finance_guardrails": [
+      "cash_flow_safety",
+      "no_leverage_expansion",
+      "rebalance_only_after_review"
+    ],
+    "skill_version": "0.3.1-agent-only-task-aligned"
+  }
+}

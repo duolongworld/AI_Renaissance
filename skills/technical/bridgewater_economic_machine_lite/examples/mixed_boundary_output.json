@@ -1,0 +1,106 @@
+{
+  "direction": "neutral",
+  "confidence": 0.42,
+  "reasoning": "增长和通胀证据互相拉扯，当前应标记为 mixed_boundary；不适合据此形成强方向判断，重点是补齐债务、信用和政策数据。",
+  "signals": [
+    "quadrant_position: mixed_boundary",
+    "short_debt_cycle: transition",
+    "long_debt_pressure: unclear"
+  ],
+  "source": "bridgewater_economic_machine_lite",
+  "signal_type": "technical",
+  "stock_code": "",
+  "weight": 1.0,
+  "meta": {
+    "output_version": "0.1",
+    "skill_name": "bridgewater_economic_machine_lite",
+    "owner_group": "专家2组（指标）",
+    "target": "US",
+    "period": "current",
+    "time_horizon": "mid",
+    "risk_level": "medium",
+    "confidence_label": "低",
+    "macro_quadrant": "mixed_boundary",
+    "scores": {
+      "growth_score": -0.5,
+      "inflation_score": 0.0,
+      "credit_score": 0.0,
+      "policy_score": 0.0,
+      "debt_pressure_score": 0.0
+    },
+    "asset_allocation_tilt": {
+      "equities": "neutral",
+      "high_quality_bonds": "neutral",
+      "cash_short_bonds": "overweight",
+      "gold_commodities": "neutral",
+      "inflation_linked": "neutral",
+      "credit_bonds": "neutral"
+    },
+    "key_findings": [
+      "增长信号接近边界",
+      "通胀信号冲突",
+      "债务压力数据不足"
+    ],
+    "evidence": [
+      {
+        "source_type": "expert_input",
+        "source_name": "user_provided",
+        "date": "2026-04",
+        "metric": "PMI / employment",
+        "value": "50.2 / weakening",
+        "comparison": "near_baseline / weakening",
+        "note": "增长信号不够一致"
+      },
+      {
+        "source_type": "expert_input",
+        "source_name": "user_provided",
+        "date": "2026-04",
+        "metric": "core_cpi / oil_price",
+        "value": "sticky / falling",
+        "comparison": "above_baseline / below_baseline",
+        "note": "通胀信号存在冲突"
+      }
+    ],
+    "risk_notes": [
+      "边界状态下不应输出强配置建议",
+      "后续数据可能把象限推向 Q3 或 Q4"
+    ],
+    "uncertainties": [
+      "缺少债务/GDP、偿债压力、信用脉冲和央行流动性证据"
+    ],
+    "data_quality": {
+      "missing_required": [
+        "debt_pressure_detail"
+      ],
+      "missing_optional": [
+        "credit_impulse",
+        "central_bank_liquidity"
+      ],
+      "conflicting_indicators": [
+        "core_cpi_up_vs_oil_down",
+        "PMI_flat_vs_employment_down"
+      ],
+      "stale_indicators": [
+
+      ],
+      "coverage_level": "medium"
+    },
+    "review_log": {
+      "source_data_review": "pass",
+      "calculation_review": "pass",
+      "conclusion_review": "pass"
+    },
+    "bridgewater_layers": {
+      "all_weather_layer": "asset_allocation_defense",
+      "pure_alpha_layer": "hypothesis_only",
+      "productivity_trend": "unclear"
+    },
+    "personal_finance_guardrails": [
+      "cash_flow_safety",
+      "no_leverage_expansion",
+      "rebalance_only_after_review"
+    ],
+    "needs_human_review": true,
+    "skill_version": "0.3.1-agent-only-task-aligned"
+  }
+}

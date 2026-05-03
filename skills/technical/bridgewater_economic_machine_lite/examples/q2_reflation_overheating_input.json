@@ -1,0 +1,102 @@
+{
+  "target": "US",
+  "period": "current",
+  "time_horizon": "mid",
+  "data_mode": "user_provided",
+  "indicators": {
+    "growth": [
+      {
+        "name": "PMI",
+        "value": 53.0,
+        "direction": "up",
+        "trend_3m": "up",
+        "trend_6m": "up",
+        "comparison": "above_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "PMI 高于荣枯线且继续改善"
+      },
+      {
+        "name": "retail_sales",
+        "value": "strong",
+        "direction": "up",
+        "trend_3m": "up",
+        "trend_6m": "up",
+        "comparison": "above_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "消费需求仍强"
+      }
+    ],
+    "inflation": [
+      {
+        "name": "core_cpi",
+        "value": "re-accelerating",
+        "direction": "up",
+        "trend_3m": "up",
+        "trend_6m": "flat",
+        "comparison": "above_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "核心通胀重新升温"
+      },
+      {
+        "name": "commodity_price",
+        "value": "rising",
+        "direction": "up",
+        "trend_3m": "up",
+        "trend_6m": "up",
+        "comparison": "above_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "商品价格上行推升通胀压力"
+      }
+    ],
+    "credit": [
+      {
+        "name": "credit_spread",
+        "value": "stable",
+        "direction": "flat",
+        "trend_3m": "flat",
+        "trend_6m": "flat",
+        "comparison": "near_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "信用利差未明显恶化"
+      }
+    ],
+    "policy": [
+      {
+        "name": "policy_stance",
+        "value": "tightening_bias",
+        "direction": "up",
+        "trend_3m": "up",
+        "trend_6m": "flat",
+        "comparison": "above_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "通胀升温使政策偏收紧"
+      }
+    ],
+    "debt_cycle": [
+      {
+        "name": "debt_pressure",
+        "value": "stable_to_rising",
+        "direction": "up",
+        "trend_3m": "flat",
+        "trend_6m": "up",
+        "comparison": "near_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "债务压力边际上升但未进入失控状态"
+      }
+    ]
+  }
+}

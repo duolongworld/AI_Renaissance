@@ -1,0 +1,102 @@
+{
+  "target": "US",
+  "period": "current",
+  "time_horizon": "mid",
+  "data_mode": "user_provided",
+  "indicators": {
+    "growth": [
+      {
+        "name": "PMI",
+        "value": 51.5,
+        "direction": "up",
+        "trend_3m": "up",
+        "trend_6m": "up",
+        "comparison": "above_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "高于荣枯线且改善"
+      },
+      {
+        "name": "employment",
+        "value": "improving",
+        "direction": "up",
+        "trend_3m": "up",
+        "trend_6m": "flat",
+        "comparison": "above_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "就业稳定"
+      }
+    ],
+    "inflation": [
+      {
+        "name": "core_cpi",
+        "value": "cooling",
+        "direction": "down",
+        "trend_3m": "down",
+        "trend_6m": "down",
+        "comparison": "near_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "核心通胀降温"
+      },
+      {
+        "name": "oil_price",
+        "value": "flat_to_down",
+        "direction": "down",
+        "trend_3m": "down",
+        "trend_6m": "flat",
+        "comparison": "near_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "能源未再推升通胀"
+      }
+    ],
+    "credit": [
+      {
+        "name": "financial_conditions",
+        "value": "looser",
+        "direction": "down",
+        "trend_3m": "down",
+        "trend_6m": "down",
+        "comparison": "below_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "金融条件放松"
+      }
+    ],
+    "policy": [
+      {
+        "name": "policy_stance",
+        "value": "on_hold",
+        "direction": "flat",
+        "trend_3m": "flat",
+        "trend_6m": "flat",
+        "comparison": "near_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "政策中性"
+      }
+    ],
+    "debt_cycle": [
+      {
+        "name": "debt_pressure",
+        "value": "stable",
+        "direction": "flat",
+        "trend_3m": "flat",
+        "trend_6m": "flat",
+        "comparison": "near_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "债务压力未继续恶化"
+      }
+    ]
+  }
+}

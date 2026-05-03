@@ -1,0 +1,37 @@
+{
+  "target": "US",
+  "period": "current",
+  "time_horizon": "mid",
+  "data_mode": "user_provided",
+  "indicators": {
+    "growth": [
+      {
+        "name": "PMI",
+        "value": 51.2,
+        "direction": "up",
+        "trend_3m": "up",
+        "comparison": "above_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "note": "高于荣枯线",
+        "source_type": "expert_input"
+      }
+    ],
+    "inflation": [
+      {
+        "name": "core_cpi",
+        "value": "downtrend",
+        "direction": "down",
+        "trend_3m": "down",
+        "comparison": "near_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "note": "核心通胀边际降温",
+        "source_type": "expert_input"
+      }
+    ],
+    "credit": [],
+    "policy": [],
+    "debt_cycle": []
+  }
+}

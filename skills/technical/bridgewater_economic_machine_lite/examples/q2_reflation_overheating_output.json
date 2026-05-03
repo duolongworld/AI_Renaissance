@@ -1,0 +1,105 @@
+{
+  "direction": "neutral",
+  "confidence": 0.68,
+  "reasoning": "增长与通胀同时上行，宏观象限偏 Q2 再通胀/过热；商品和抗通胀资产相对重要，但政策收紧风险限制进攻性结论。",
+  "signals": [
+    "quadrant_position: Q2_reflation_overheating",
+    "short_debt_cycle: overheating",
+    "long_debt_pressure: high_debt_boom"
+  ],
+  "source": "bridgewater_economic_machine_lite",
+  "signal_type": "technical",
+  "stock_code": "",
+  "weight": 1.0,
+  "meta": {
+    "output_version": "0.1",
+    "skill_name": "bridgewater_economic_machine_lite",
+    "owner_group": "专家2组（指标）",
+    "target": "US",
+    "period": "current",
+    "time_horizon": "mid",
+    "risk_level": "medium",
+    "confidence_label": "中",
+    "macro_quadrant": "Q2_reflation_overheating",
+    "scores": {
+      "growth_score": 1.0,
+      "inflation_score": 1.0,
+      "credit_score": 0.0,
+      "policy_score": 1.0,
+      "debt_pressure_score": 0.5
+    },
+    "asset_allocation_tilt": {
+      "equities": "neutral",
+      "high_quality_bonds": "underweight",
+      "cash_short_bonds": "neutral",
+      "gold_commodities": "overweight",
+      "inflation_linked": "overweight",
+      "credit_bonds": "neutral"
+    },
+    "key_findings": [
+      "增长证据改善",
+      "通胀压力重新上行",
+      "政策存在收紧倾向"
+    ],
+    "evidence": [
+      {
+        "source_type": "expert_input",
+        "source_name": "user_provided",
+        "date": "2026-04",
+        "metric": "PMI / retail_sales",
+        "value": "up / strong",
+        "comparison": "above_baseline",
+        "note": "支持增长上行判断"
+      },
+      {
+        "source_type": "expert_input",
+        "source_name": "user_provided",
+        "date": "2026-04",
+        "metric": "core_cpi / commodity_price",
+        "value": "re-accelerating / rising",
+        "comparison": "above_baseline",
+        "note": "支持通胀上行判断"
+      }
+    ],
+    "risk_notes": [
+      "通胀上行可能触发政策进一步收紧",
+      "估值资产可能承压"
+    ],
+    "uncertainties": [
+      "未提供完整债务/GDP 与偿债压力数据，长期债务周期仍需复核"
+    ],
+    "data_quality": {
+      "missing_required": [
+
+      ],
+      "missing_optional": [
+        "debt_to_gdp",
+        "interest_burden"
+      ],
+      "conflicting_indicators": [
+
+      ],
+      "stale_indicators": [
+
+      ],
+      "coverage_level": "medium"
+    },
+    "review_log": {
+      "source_data_review": "pass",
+      "calculation_review": "pass",
+      "conclusion_review": "pass"
+    },
+    "bridgewater_layers": {
+      "all_weather_layer": "asset_allocation_defense",
+      "pure_alpha_layer": "hypothesis_only",
+      "productivity_trend": "unclear"
+    },
+    "personal_finance_guardrails": [
+      "cash_flow_safety",
+      "no_leverage_expansion",
+      "rebalance_only_after_review"
+    ],
+    "needs_human_review": true,
+    "skill_version": "0.3.1-agent-only-task-aligned"
+  }
+}

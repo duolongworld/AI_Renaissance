@@ -1,0 +1,102 @@
+{
+  "target": "US",
+  "period": "current",
+  "time_horizon": "mid",
+  "data_mode": "user_provided",
+  "indicators": {
+    "growth": [
+      {
+        "name": "PMI",
+        "value": 46.8,
+        "direction": "down",
+        "trend_3m": "down",
+        "trend_6m": "down",
+        "comparison": "below_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "PMI 低于荣枯线"
+      },
+      {
+        "name": "earnings_revision",
+        "value": "negative",
+        "direction": "down",
+        "trend_3m": "down",
+        "trend_6m": "down",
+        "comparison": "below_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "盈利预期下修"
+      }
+    ],
+    "inflation": [
+      {
+        "name": "core_cpi",
+        "value": "cooling",
+        "direction": "down",
+        "trend_3m": "down",
+        "trend_6m": "down",
+        "comparison": "near_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "核心通胀降温"
+      },
+      {
+        "name": "commodity_price",
+        "value": "falling",
+        "direction": "down",
+        "trend_3m": "down",
+        "trend_6m": "down",
+        "comparison": "below_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "商品价格走弱"
+      }
+    ],
+    "credit": [
+      {
+        "name": "credit_spread",
+        "value": "widening",
+        "direction": "up",
+        "trend_3m": "up",
+        "trend_6m": "up",
+        "comparison": "above_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "信用利差扩大"
+      }
+    ],
+    "policy": [
+      {
+        "name": "policy_stance",
+        "value": "easing_bias",
+        "direction": "down",
+        "trend_3m": "down",
+        "trend_6m": "flat",
+        "comparison": "below_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "增长走弱后政策存在宽松倾向"
+      }
+    ],
+    "debt_cycle": [
+      {
+        "name": "debt_pressure",
+        "value": "rising",
+        "direction": "up",
+        "trend_3m": "up",
+        "trend_6m": "up",
+        "comparison": "above_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "信用压力下债务风险上升"
+      }
+    ]
+  }
+}

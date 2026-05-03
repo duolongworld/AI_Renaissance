@@ -1,0 +1,102 @@
+{
+  "target": "US",
+  "period": "current",
+  "time_horizon": "mid",
+  "data_mode": "user_provided",
+  "indicators": {
+    "growth": [
+      {
+        "name": "PMI",
+        "value": 50.2,
+        "direction": "flat",
+        "trend_3m": "flat",
+        "trend_6m": "unknown",
+        "comparison": "near_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "接近荣枯线"
+      },
+      {
+        "name": "employment",
+        "value": "weakening",
+        "direction": "down",
+        "trend_3m": "down",
+        "trend_6m": "flat",
+        "comparison": "near_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "就业边际转弱"
+      }
+    ],
+    "inflation": [
+      {
+        "name": "core_cpi",
+        "value": "sticky",
+        "direction": "up",
+        "trend_3m": "flat",
+        "trend_6m": "up",
+        "comparison": "above_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "核心通胀仍有粘性"
+      },
+      {
+        "name": "oil_price",
+        "value": "falling",
+        "direction": "down",
+        "trend_3m": "down",
+        "trend_6m": "down",
+        "comparison": "below_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "能源价格缓和"
+      }
+    ],
+    "credit": [
+      {
+        "name": "credit_spread",
+        "value": "flat",
+        "direction": "flat",
+        "trend_3m": "flat",
+        "trend_6m": "flat",
+        "comparison": "near_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "信用信号不明确"
+      }
+    ],
+    "policy": [
+      {
+        "name": "policy_stance",
+        "value": "data_dependent",
+        "direction": "flat",
+        "trend_3m": "flat",
+        "trend_6m": "flat",
+        "comparison": "near_baseline",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "政策取决于后续数据"
+      }
+    ],
+    "debt_cycle": [
+      {
+        "name": "debt_pressure",
+        "value": "unknown",
+        "direction": "unknown",
+        "trend_3m": "unknown",
+        "trend_6m": "unknown",
+        "comparison": "unknown",
+        "date": "2026-04",
+        "source": "user_provided",
+        "source_type": "expert_input",
+        "note": "缺少债务压力数据"
+      }
+    ]
+  }
+}
