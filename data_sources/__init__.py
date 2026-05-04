@@ -6,7 +6,13 @@ data_sources - 统一数据层（开发3组）
 """
 
 from .base import DataSourceBase
+from .cninfo import CninfoDataSource
 from .eastmoney import EastMoneyDataSource
 from .eastmoney_guba import EastMoneyGubaDataSource
 
-__all__ = ["DataSourceBase", "EastMoneyDataSource", "EastMoneyGubaDataSource"]
+__all__ = [
+    "CninfoDataSource",
+    "DataSourceBase",
+    "EastMoneyDataSource",
+    "EastMoneyGubaDataSource",
+]
