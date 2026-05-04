@@ -95,6 +95,12 @@ def index():
     )
 
 
+@app.route("/data")
+def data_skills_page():
+    """渲染数据 Skill 测试页面"""
+    return render_template("data.html")
+
+
 @app.route("/api/agents", methods=["GET"])
 def list_agents():
     """返回所有可用 Agent（供前端动态加载）"""
@@ -224,6 +230,151 @@ def reload_agents():
     import agents.signal
     importlib.reload(agents.signal)
     return jsonify({"success": True, "message": "已重新加载"})
+
+
+# ── 数据 Skill 测试接口 ─────────────────────────────────
+
+DATA_SKILLS = {
+    "腾讯财经K线": {
+        "type": "skill_script",
+        "module": "skills.data.tencent_technical.scripts.fetch_kline",
+        "function": "fetch_kline_with_indicators",
+        "default_params": {"stock_code": "600519", "k_type": "day", "num": 60},
+        "description": "获取K线数据（OHLCV）+ 技术指标（MA/BOLL/RSI）",
+        "result_action": "wrap_result",
+    },
+    "东方财富财务": {
+        "module": "data_sources.eastmoney",
+        "class": "EastMoneyDataSource",
+        "test_method": "get_financial_data",
+        "default_params": {"stock_code": "600519"},
+        "description": "获取三大财务报表（资产负债表/利润表/现金流量表）",
+    },
+}
+
+
+@app.route("/api/data_skills", methods=["GET"])
+def list_data_skills():
+    """返回所有可测试的数据 Skill"""
+    result = []
+    for name, info in DATA_SKILLS.items():
+        result.append({
+            "name": name,
+            "description": info.get("description", ""),
+            "default_params": info.get("default_params", {}),
+        })
+    return jsonify(result)
+
+
+@app.route("/api/test_skill", methods=["POST"])
+def test_data_skill():
+    """
+    测试数据 Skill 接口
+
+    POST /api/test_skill
+    Body: {"skill_name": "腾讯财经K线", "stock_code": "600519", "params": {...}}
+    """
+    data = request.get_json(force=True)
+    skill_name = data.get("skill_name", "")
+    stock_code = data.get("stock_code", "").strip()
+
+    if not skill_name:
+        return jsonify({"error": "请选择数据 Skill"}), 400
+
+    if skill_name not in DATA_SKILLS:
+        return jsonify({"error": f"数据 Skill [{skill_name}] 未找到"}), 400
+
+    info = DATA_SKILLS[skill_name]
+
+    # 构建参数
+    params = dict(info.get("default_params", {}))
+    if stock_code:
+        params["stock_code"] = stock_code
+    extra = data.get("params", {})
+    params.update(extra)
+
+    try:
+        skill_type = info.get("type", "class")
+        if skill_type == "skill_script":
+            # Skill 脚本模式：直接调用函数
+            mod = importlib.import_module(info["module"])
+            func = getattr(mod, info["function"])
+            result = func(**params)
+        else:
+            # 类模式：实例化后调用方法
+            mod = importlib.import_module(info["module"])
+            cls = getattr(mod, info["class"])
+            instance = cls()
+            method = getattr(instance, info["test_method"])
+            result = method(**params)
+    except Exception as e:
+        return jsonify({
+            "error": f"执行失败：{str(e)}",
+            "traceback": traceback.format_exc(),
+        }), 500
+
+    return jsonify({
+        "success": True,
+        "skill_name": skill_name,
+        "params": params,
+        "result": result,
+    })
+
+
+def _enrich_tencent_kline(result: dict) -> dict:
+    """为腾讯K线数据补充计算 MA/BOLL/RSI 指标"""
+    kline = result.get("kline", [])
+    if not kline:
+        return result
+
+    closes = [item["close"] for item in kline if item.get("close") is not None]
+
+    for i, item in enumerate(kline):
+        # MA
+        ma_values = {}
+        for p in [5, 10, 20, 60]:
+            if i >= p - 1 and len(closes) >= p:
+                window = closes[i - p + 1:i + 1]
+                ma_values[f"ma{p}"] = round(sum(window) / p, 3)
+            else:
+                ma_values[f"ma{p}"] = None
+        item["ma"] = ma_values
+
+        # BOLL
+        period = 20
+        if i >= period - 1 and len(closes) >= period:
+            window = closes[i - period + 1:i + 1]
+            middle = sum(window) / period
+            variance = sum((c - middle) ** 2 for c in window) / period
+            std = variance ** 0.5
+            item["boll"] = {
+                "upper": round(middle + 2 * std, 3),
+                "middle": round(middle, 3),
+                "lower": round(middle - 2 * std, 3),
+            }
+        else:
+            item["boll"] = {"upper": None, "middle": None, "lower": None}
+
+        # RSI
+        changes = [closes[j] - closes[j - 1] for j in range(1, len(closes))]
+        rsi_values = {}
+        for p in [6, 12, 14, 24]:
+            if i >= p and i <= len(changes):
+                window = changes[i - p:i]
+                gains = [c for c in window if c > 0]
+                losses = [-c for c in window if c < 0]
+                avg_gain = sum(gains) / p if gains else 0
+                avg_loss = sum(losses) / p if losses else 0
+                if avg_loss == 0:
+                    rsi_values[f"rsi{p}"] = 100.0
+                else:
+                    rsi_values[f"rsi{p}"] = round(100 - 100 / (1 + avg_gain / avg_loss), 2)
+            else:
+                rsi_values[f"rsi{p}"] = None
+        item["rsi"] = rsi_values
+
+    result["indicators"] = ["ma", "boll", "rsi"]
+    return result
 
 
 if __name__ == "__main__":
