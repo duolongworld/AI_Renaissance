@@ -1,4 +1,4 @@
-# 专家 Skill 通用模板
+# 专家分析 Skill 模板
 
 > 这是一份给专家组参照使用的 Skill 模板。开发1组维护模板结构，专家组负责填充专业分析逻辑。
 
@@ -36,8 +36,6 @@ skills/risk/tail_risk_warning/SKILL.md
 - `{domain}`：Skill 所属领域，用英文目录名表示，例如 `financial` 表示财务，`risk` 表示风控。
 - `{skill_name}`：Skill 的英文名，用小写字母和下划线，例如 `cash_flow_quality_check`。
 - `SKILL.md`：固定文件名，里面写具体分析框架。
-
----
 
 ## SKILL.md 模板
 

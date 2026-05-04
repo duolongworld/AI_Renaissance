@@ -14,7 +14,7 @@
    └──┬───┘ └──┬───┘ └──┬───┘ └──┬───┘ └──┬───┘ └──┬───┘ └──┬───┘
       │        │        │        │        │        │        │
    ┌──┴────────┴────────┴────────┴────────┴────────┴────────┴───┐
-   │                   data_sources（数据层）                       │
+   │            data_sources（数据执行层） + skills/data（数据接口说明）      │
    └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -24,7 +24,7 @@
 |---|---|---|
 | Agent 层 | 8 个 Agent，每个专家组维护自己的 Agent | `agents/{domain}/` |
 | Skill 层 | N 个 Skill，每个专家组维护自己领域的 Skill | `skills/{domain}/` |
-| 数据层 | 开发3组统一封装，纯 Python 类/函数 | `data_sources/` |
+| 数据层 | `data_sources/` 执行真实数据获取；`skills/data/` 描述数据接口说明 | `data_sources/`、`skills/data/` |
 
 ---
 
@@ -108,7 +108,8 @@ Agent.analyze() 时通过 self.get_skill(name) 获取内容
 
 ### Skill 模板
 
-详见 `docs/SKILL_TEMPLATE.md`。
+专家分析 Skill 详见 `docs/ANALYSIS_SKILL_TEMPLATE.md`。
+数据接口说明 Skill 详见 `docs/DATA_SKILL_TEMPLATE.md`。
 
 ---
 
@@ -116,9 +117,9 @@ Agent.analyze() 时通过 self.get_skill(name) 获取内容
 
 ### 设计原则
 
-- **纯 Python 类/函数**，不套 Skill 格式
-- **统一接口**，Agent 只调接口不管数据从哪来
-- **开发3组统一维护**，其他组不直接调 API
+- **执行代码放在 `data_sources/`**，负责请求、解析、编码、异常处理和结构化返回
+- **数据接口说明放在 `skills/data/`**，说明输入参数、输出字段、失败格式和数据边界
+- **开发3组统一维护**，Agent 依据数据接口说明调用数据源，不散落硬编码外部 API
 
 ### 目录结构
 
@@ -126,7 +127,16 @@ Agent.analyze() 时通过 self.get_skill(name) 获取内容
 data_sources/
 ├── __init__.py
 ├── base.py           # DataSourceBase（基类）
-└── eastmoney.py      # EastMoneyDataSource（东方财富）
+├── eastmoney.py      # EastMoneyDataSource（东方财富财报）
+└── eastmoney_guba.py # EastMoneyGubaDataSource（东方财富股吧）
+```
+
+```text
+skills/data/
+└── eastmoney_guba/
+    ├── SKILL.md      # 股吧帖子数据接口说明
+    └── scripts/
+        └── fetch_guba.py  # CLI 调试包装器，核心逻辑在 data_sources/
 ```
 
 ### 基类接口
@@ -156,6 +166,7 @@ OrchestratorAgent.analyze(stock_code)
 │ MacroAgent.analyze()          │──→ 加载 skills/macro/     Skill
 │ IndustryAgent.analyze()       │──→ 加载 skills/industry/  Skill
 │ NewsAgent.analyze()           │──→ 加载 skills/news/      Skill
+│                               │──→ 读取 skills/data/      数据接口说明
 │ RiskAgent.analyze()           │──→ 加载 skills/risk/      Skill
 │                               │
 │    每个 Agent 通过 data_sources 获取数据
@@ -189,12 +200,12 @@ ArbitrationResult
 |------|---------------------|---------------------------|
 | Agent 数量 | 50+ 个细粒度 Agent | 8 个 Agent（1 编排 + 7 专家） |
 | Agent 结构 | 四层（感知/研究/风控/认知） | 扁平化，每组1个Agent |
-| 感知层 | 9 个独立数据 Agent | 合并到 data_sources/ 数据层 |
+| 感知层 | 9 个独立数据 Agent | 合并到 data_sources/ 数据执行层，数据接口说明放入 skills/data/ |
 | 风控层 | 6 个风控 Agent | 专家7组 RiskAgent，输出Signal参与博弈 |
 | 认知层 | 4 个推理 Agent | 合并到 Orchestrator Agent |
 | 仲裁 | arbitration/engine.py | agents/orchestrator/arbitration.py |
 | Skill 加载 | Agent 硬编码 Skill 路径 | 动态加载 + 全局注册表 |
-| 数据获取 | Agent 内直接调 API | data_sources/ 统一封装 |
+| 数据获取 | Agent 内直接调 API | Agent 调 data_sources/，skills/data/ 描述数据接口说明 |
 
 ---
 

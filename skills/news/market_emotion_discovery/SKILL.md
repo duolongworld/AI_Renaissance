@@ -28,13 +28,13 @@ status: draft
 
 ### 数据来源
 
-本 Skill 为分析层，**不直接爬取数据**，消费由数据获取层 Skill 提供的结构化帖子数据：
+本 Skill 为分析层，**不直接爬取数据**，消费由数据源按数据接口说明提供的结构化帖子数据：
 
-| 数据获取 Skill | 领域 | 提供内容 |
+| 数据接口说明 | 执行数据源 | 提供内容 |
 |---|---|---|
-| **eastmoney_guba**（skills/data/eastmoney_guba） | 数据获取层 | 东方财富股吧帖子列表（标题、正文、阅读数、回复数、发布时间） |
+| **eastmoney_guba**（skills/data/eastmoney_guba） | `data_sources/eastmoney_guba.py` | 东方财富股吧帖子列表（标题、正文、阅读数、回复数、发布时间） |
 
-数据获取 Skill 返回的结构化帖子数据格式：
+数据源返回的结构化帖子数据格式：
 ```json
 {
   "status": "success",
