@@ -385,7 +385,7 @@ git branch -a
 如果在 PowerShell 里查看文件乱码，可以用：
 
 ```powershell
-Get-Content docs\SKILL_TEMPLATE.md -Encoding UTF8
+Get-Content docs\ANALYSIS_SKILL_TEMPLATE.md -Encoding UTF8
 ```
 
 ---

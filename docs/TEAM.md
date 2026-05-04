@@ -10,7 +10,7 @@
 |---|---|---|---|
 | 开发1组（架构） | 荒唐 | 维护 Agent 基类、Signal 规范、Skill 注册机制、Git 工作流 | `agents/base.py`、`agents/signal.py`、`agents/registry.py` |
 | 开发2组（功能） | pkm | 实现 Orchestrator Agent、仲裁引擎、推理链、主流程调度 | `agents/orchestrator/` |
-| 开发3组（数据） | 过去，未来 | 统一封装所有数据源，让 Agent 只管分析不管数据从哪来 | `data_sources/` |
+| 开发3组（数据） | 过去，未来 | 统一封装数据源并维护数据接口说明，让 Agent 只管编排和分析 | `data_sources/`、`skills/data/` |
 
 ---
 
@@ -41,7 +41,7 @@
 ## 协作原则
 
 1. **框架归开发1组** — 其他人不要改 `base.py`、`signal.py`、`registry.py`
-2. **数据归开发3组** — Agent 只调 `data_sources/` 接口，不直接调 API
+2. **数据归开发3组** — 真实抓取逻辑进入 `data_sources/`；`skills/data/` 描述数据接口说明，Agent 不散落硬编码外部 API
 3. **Agent 各组自维护** — 每个专家组维护自己的 Agent（`agents/{domain}/`）
 4. **Skill 各组自维护** — 每个专家组维护自己领域目录下的 Skill（`skills/{domain}/`）
 5. **Orchestrator 归开发2组** — 仲裁逻辑、推理链、主流程调度

@@ -1,25 +1,26 @@
 ---
 name: eastmoney-guba
-description: 从东方财富股吧抓取帖子数据（标题、正文、阅读数、回复数、发布时间），为舆情分析提供结构化原始数据。作为数据获取层 Skill，供舆情 Agent 或其他需要社交数据的模块调用。
+description: 东方财富股吧帖子数据契约（标题、正文、阅读数、回复数、发布时间）。真实抓取逻辑在 data_sources/eastmoney_guba.py，本 Skill 说明输入参数、输出格式和使用边界。
 owner_group: 开发3组（数据）
 domain: data
 status: draft
 ---
 
-# 东方财富股吧数据获取 Skill
+# 东方财富股吧数据契约 Skill
 
 ## 1. 适用范围
 
 所属小组：开发3组（数据）
 
 适用任务：
-- 从东方财富股吧（guba.eastmoney.com）抓取指定个股的帖子列表
+- 描述从东方财富股吧（guba.eastmoney.com）获取指定个股帖子列表所需的数据契约
 - 提供结构化帖子数据（标题、正文、阅读数、回复数、发布时间等），供上游情绪分析 Skill 使用
 - 支持热门帖子和最新帖子两种列表
 - 热门帖子可额外抓取正文内容
 
 边界说明：
-- 本 Skill **只负责数据获取**，不做任何情绪分析或判断
+- 本 Skill **只负责说明数据契约**，不做任何情绪分析或判断
+- 真实抓取逻辑由 `data_sources/eastmoney_guba.py` 中的 `EastMoneyGubaDataSource.get_posts()` 执行
 - 数据源为东方财富股吧公开页面，用户偏散户，存在数据代表性偏差
 - 爬取受反爬策略影响，可能偶尔失败或返回不完整数据
 - 本 Skill 不处理限流/代理，调用方需自行处理大规模抓取场景
@@ -127,5 +128,5 @@ status: draft
 
 ## 7. 关联 Skill
 
-本 Skill 为数据获取层，其输出供以下分析层 Skill 消费：
+本 Skill 为数据契约层，其输出供以下分析层 Skill 消费：
 - **market_emotion_discovery**（skills/news/market_emotion_discovery）：市场情绪极端发现，消费本 Skill 提供的帖子数据进行情绪分析

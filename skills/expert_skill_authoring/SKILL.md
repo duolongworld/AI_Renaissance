@@ -31,6 +31,8 @@ status: active
 - “检查这个 Skill 是否符合标准输出”
 - “帮我把 Skill 写入项目”
 
+如果用户要写 `skills/data/` 下的数据接口说明 Skill，改用 `docs/DATA_SKILL_TEMPLATE.md`；本 Skill 主要服务专家分析 Skill。
+
 ## 先问清楚
 
 如果用户没有说明清楚，先补问或自行整理这些信息：
@@ -57,7 +59,7 @@ status: active
 | 专家5组（行业） | industry | `skills/industry/supply_chain_turning_point/SKILL.md` |
 | 专家6组（舆情） | news | `skills/news/sentiment_event_check/SKILL.md` |
 | 专家7组（风控） | risk | `skills/risk/tail_risk_warning/SKILL.md` |
-| 估值类 Skill | valuation | `skills/valuation/pe_band_check/SKILL.md`，由相关专家组按任务认领 |
+| 估值类 Skill | valuation | `skills/valuation/pe_band_check/SKILL.md`，预留信号类型，由相关专家组按任务认领 |
 
 ## 生成 SKILL.md
 
@@ -219,7 +221,7 @@ status: draft
 
 当你已经被 Coding 工具调用，并需要把专家组想法写入项目时，按下面规则执行：
 
-1. 先读取 `docs/SKILL_TEMPLATE.md`，确认当前目录规范、字段规范和输出规范。
+1. 先读取 `docs/ANALYSIS_SKILL_TEMPLATE.md`，确认当前目录规范、字段规范和输出规范。
 2. 根据专家组方向选择目录，例如 `skills/financial/cash_flow_quality_check/SKILL.md`。
 3. 新增或修改 Skill 相关文件，避免改动 Agent、数据源、仲裁层或主流程文件；如果确实发现这些部分需要调整，整理成建议交给对应开发组。
 4. 生成的 `SKILL.md` 需要包含适用范围、输入材料、分析步骤、判断规则、标准输出和质量检查。

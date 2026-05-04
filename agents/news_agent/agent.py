@@ -6,24 +6,18 @@ Skill 域: skills/news/ + skills/data/
 核心能力：新闻情感分析、社交情绪追踪、把情绪变成可交易信号
 
 架构分层：
-  - 数据获取：调用 skills/data/eastmoney_guba（东方财富股吧帖子抓取）
+  - 数据接口说明：读取 skills/data/eastmoney_guba（东方财富股吧帖子字段规范）
+  - 数据获取：调用 data_sources/eastmoney_guba.py（东方财富股吧帖子抓取）
   - 情绪分析：调用 skills/news/market_emotion_discovery（市场情绪极端发现）
   - Agent 本身：只做编排，不硬编码任何数据获取或分析逻辑
 """
 
-import re
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 
-try:
-    import requests
-    HAS_REQUESTS = True
-except ImportError:
-    HAS_REQUESTS = False
-
 from agents.base import BaseAgent
 from agents.signal import Signal, bullish_signal, bearish_signal, neutral_signal
-from loguru import logger
+from data_sources import EastMoneyGubaDataSource
 
 
 # ── 情绪分析关键词（从 market_emotion_discovery Skill 规则提取） ──────
@@ -61,10 +55,10 @@ class NewsAgent(BaseAgent):
     舆情情感 Agent（专家6组）
 
     编排两层 Skill：
-      1. 数据获取层：skills/data/eastmoney_guba → 抓取股吧帖子原始数据
+      1. 数据接口说明：skills/data/eastmoney_guba → 声明股吧帖子输入/输出格式
       2. 分析层：skills/news/market_emotion_discovery → 市场情绪极端发现
 
-    Agent 本身不硬编码爬取逻辑，数据获取委托给数据层 Skill，
+    Agent 本身不硬编码爬取逻辑，数据获取委托给 data_sources，
     情绪分析逻辑遵循 market_emotion_discovery Skill 规则。
     """
 
@@ -74,15 +68,18 @@ class NewsAgent(BaseAgent):
         super().__init__(name="舆情情感Agent", config=config or {})
         # 加载分析层 Skill（market_emotion_discovery）
         self.load_skills_from_domain("news")
-        # 加载数据获取层 Skill（eastmoney_guba）
+        # 加载数据接口说明 Skill（eastmoney_guba）
         self.load_skills_from_domain("data")
+        self.guba_data_source = (
+            self.config.get("guba_data_source") or EastMoneyGubaDataSource()
+        )
 
     def analyze(self, stock_code: str) -> Signal:
         """
         分析指定股票的股吧舆情
 
         流程：
-        1. 调用数据获取层 Skill 获取原始帖子数据
+        1. 按数据接口说明调用 data_sources 获取原始帖子数据
         2. 按 market_emotion_discovery Skill 规则进行情绪分析
         3. 输出标准 Signal（signal_type="news"）
 
@@ -96,7 +93,7 @@ class NewsAgent(BaseAgent):
         self.log(f"开始分析 {code} 的股吧舆情")
         self.log(f"已加载 Skill: {self.list_skills()}")
 
-        # ── 第1步：数据获取（委托 skills/data/eastmoney_guba） ──
+        # ── 第1步：数据获取（委托 data_sources，接口说明见 skills/data/eastmoney_guba） ──
         try:
             guba_data = self._fetch_guba_data(code)
         except Exception as e:
@@ -146,67 +143,26 @@ class NewsAgent(BaseAgent):
         # ── 第3步：构建 Signal ──
         return self._build_signal(code, analysis)
 
-    # ── 数据获取层（委托 skills/data/eastmoney_guba） ──────────────
+    # ── 数据获取层（委托 data_sources/eastmoney_guba.py） ──────────────
 
     def _fetch_guba_data(self, code: str) -> Dict[str, Any]:
         """
-        调用数据获取层 Skill 获取股吧帖子
+        调用股吧数据源获取帖子
 
-        优先使用 Skill 的脚本执行数据获取，
-        如果脚本不可用则回退到内嵌的轻量实现。
+        skills/data/eastmoney_guba/SKILL.md 只作为数据接口说明，
+        真实抓取逻辑收口在 data_sources/eastmoney_guba.py。
         """
-        if not HAS_REQUESTS:
-            return {
-                "status": "error",
-                "stock_code": code,
-                "error": "requests 库未安装",
-                "posts": [],
-            }
-
-        # 尝试通过 Skill 脚本获取数据
         skill_content = self.get_skill("eastmoney_guba")
         if skill_content:
-            self.log("使用 skills/data/eastmoney_guba Skill 获取数据")
+            self.log("已加载 eastmoney_guba 数据接口说明 Skill")
 
-        # 调用 Skill 脚本中的函数
-        try:
-            # 动态导入 Skill 脚本
-            import importlib.util
-            repo_root = self._find_repo_root()
-            script_path = repo_root / "skills" / "data" / "eastmoney_guba" / "scripts" / "fetch_guba.py"
-
-            if script_path.exists():
-                spec = importlib.util.spec_from_file_location("fetch_guba", str(script_path))
-                mod = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(mod)
-
-                pages = self.config.get("pages", 2)
-                fetch_content = self.config.get("fetch_content", True)
-                result = mod.fetch_guba_posts(
-                    stock_code=code,
-                    pages=pages,
-                    fetch_content=fetch_content,
-                )
-                self.log(f"Skill 脚本返回 {len(result.get('posts', []))} 条帖子")
-                return result
-        except Exception as e:
-            self.log(f"Skill 脚本执行失败，回退到内嵌实现: {e}", level="warning")
-
-        # 回退：内嵌的轻量数据获取实现
-        return self._fetch_guba_fallback(code)
-
-    def _fetch_guba_fallback(self, code: str) -> Dict[str, Any]:
-        """
-        内嵌的轻量数据获取（回退方案）
-
-        当 Skill 脚本不可用时使用，逻辑与 skills/data/eastmoney_guba/scripts/fetch_guba.py 一致
-        """
-        from skills.data.eastmoney_guba.scripts.fetch_guba import fetch_guba_posts
-        return fetch_guba_posts(
+        result = self.guba_data_source.get_posts(
             stock_code=code,
             pages=self.config.get("pages", 2),
             fetch_content=self.config.get("fetch_content", True),
         )
+        self.log(f"股吧数据源返回 {len(result.get('posts', []))} 条帖子")
+        return result
 
     # ── 情绪分析层（遵循 market_emotion_discovery Skill 规则） ──────
 

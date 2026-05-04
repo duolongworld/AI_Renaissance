@@ -30,7 +30,7 @@ agents/
 
 - **Skill**：专家写的分析规则说明书，放在 `skills/{domain}/{skill_name}/SKILL.md`
 - **Agent**：自动加载自己领域下的所有 Skill，按 Skill 规则分析，输出 Signal
-- **数据**：通过 `data_sources/` 统一获取，不直接调 API
+- **数据**：通过 `data_sources/` 统一获取；`skills/data/` 只描述数据接口说明，不承载主要抓取逻辑
 
 ```python
 # Agent 启动时自动加载
@@ -69,7 +69,7 @@ class YourAgent(BaseAgent):
         """
         核心分析逻辑
 
-        1. 获取数据（通过 data_sources）
+        1. 获取数据（依据 Skill/数据接口说明，通过 data_sources）
         2. 按 Skill 规则分析
         3. 封装成标准 Signal 返回
         """
@@ -224,7 +224,7 @@ skill_content = self.get_skill("financial_report_analysis")
 
 ## 七、数据获取
 
-所有数据通过 `data_sources/` 获取，不直接调 API：
+所有真实数据获取代码通过 `data_sources/` 收口，不直接散落在 Agent 中：
 
 ```python
 from data_sources import EastMoneyDataSource
@@ -234,10 +234,10 @@ data_source = EastMoneyDataSource()
 # 获取三张表
 financial_data = data_source.get_financial_data("600519")
 
-# 获取行情
+# 获取行情（当前接口预留，待开发3组实现）
 market_data = data_source.get_market_data("600519")
 
-# 获取资金流向
+# 获取资金流向（当前接口预留，待开发3组实现）
 fund_flow = data_source.get_fund_flow_data("600519")
 ```
 
@@ -246,6 +246,17 @@ Agent 通过 config 注入数据源：
 ```python
 data_source = EastMoneyDataSource()
 agent = FinancialAgent(config={"data_source": data_source})
+```
+
+数据接口说明类 Skill 放在 `skills/data/`，用于说明输入参数、输出字段、失败格式和数据边界。它使用独立模板 `docs/DATA_SKILL_TEMPLATE.md`，不要套用专家分析 Skill 的 `direction/confidence` 输出规范。Agent 可以加载这些 Skill 理解数据源怎么调用、返回什么字段，但运行时应调用 `data_sources/` 中的 Python 数据源。
+
+舆情示例：
+
+```python
+from data_sources import EastMoneyGubaDataSource
+
+guba_source = EastMoneyGubaDataSource()
+guba_data = guba_source.get_posts("600519", pages=2, fetch_content=True)
 ```
 
 ---
@@ -291,7 +302,7 @@ print(result.decision, result.direction, result.confidence)
 
 ### Q2: 数据从哪来？
 
-**A**: 通过 `data_sources/` 统一获取，不直接调 API。开发3组维护数据层，你只需在 config 里传入 data_source。
+**A**: 通过 `data_sources/` 统一获取，不直接调 API。`skills/data/` 用来描述数据接口说明；开发3组维护数据层，你只需在 config 里传入 data_source。
 
 ### Q3: 风险Agent也输出Signal吗？
 

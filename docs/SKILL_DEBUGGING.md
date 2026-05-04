@@ -2,6 +2,8 @@
 
 > 目标：先把专家 Skill 的规则、证据和标准输出调稳定，再交给开发2组做 Agent 调用和系统联调。
 
+本文只适用于专家分析 Skill。`skills/data/` 下的数据接口说明 Skill 使用 `docs/DATA_SKILL_TEMPLATE.md`。
+
 当前项目设计是：
 
 - **专家组**：负责专业 Skill 内容，包括适用范围、输入材料、判断规则、证据规则和质量检查。
@@ -36,10 +38,8 @@ skills/examples/cash_flow_quality_check/SKILL.md
 模板说明看：
 
 ```text
-docs/SKILL_TEMPLATE.md
+docs/ANALYSIS_SKILL_TEMPLATE.md
 ```
-
----
 
 ## 二、先调三件事
 

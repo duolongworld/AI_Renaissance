@@ -20,8 +20,12 @@ class EastMoneyDataSource(DataSourceBase):
     """
     东方财富数据源
 
-    封装东方财富 NewFinanceAnalysis API，提供：
+    封装东方财富 NewFinanceAnalysis API。
+
+    当前已实现：
     - 三大财务报表（资产负债表、利润表、现金流量表）
+
+    计划实现：
     - 行情数据
     - 资金流向数据
     """
