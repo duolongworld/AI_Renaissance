@@ -9,10 +9,14 @@ from .base import DataSourceBase
 from .cninfo import CninfoDataSource
 from .eastmoney import EastMoneyDataSource
 from .eastmoney_guba import EastMoneyGubaDataSource
+from .market_sentiment import MarketSentimentDataSource
+from .industry_sentiment import IndustrySentimentDataSource
 
 __all__ = [
     "CninfoDataSource",
     "DataSourceBase",
     "EastMoneyDataSource",
     "EastMoneyGubaDataSource",
+    "MarketSentimentDataSource",
+    "IndustrySentimentDataSource",
 ]

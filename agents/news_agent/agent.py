@@ -3,13 +3,14 @@
 
 signal_type: news
 Skill 域: skills/news/ + skills/data/
-核心能力：新闻情感分析、社交情绪追踪、把情绪变成可交易信号
+核心能力：大盘情绪温度 + 行业景气热度 + 个股舆情分析，统一编排输出
 
 架构分层：
-  - 数据接口说明：读取 skills/data/eastmoney_guba（东方财富股吧帖子字段规范）
-  - 数据获取：调用 data_sources/eastmoney_guba.py（东方财富股吧帖子抓取）
-  - 情绪分析：调用 skills/news/market_emotion_discovery（市场情绪极端发现）
-  - Agent 本身：只做编排，不硬编码任何数据获取或分析逻辑
+  - 大盘情绪：skills/news/market_sentiment_tracker → 0-100 温度计 + 仓位建议
+  - 行业景气：skills/news/industry_sentiment_tracker → 行业板块景气热度
+  - 个股舆情：skills/news/market_emotion_discovery → 个股股吧情绪分析
+  - 数据获取：data_sources/market_sentiment.py + data_sources/industry_sentiment.py + data_sources/eastmoney_guba.py
+  - Agent 本身：编排大盘→行业→个股三层分析，统一输出
 """
 
 from datetime import datetime
@@ -17,10 +18,11 @@ from typing import Dict, Any, List, Optional
 
 from agents.base import BaseAgent
 from agents.signal import Signal, bullish_signal, bearish_signal, neutral_signal
-from data_sources import EastMoneyGubaDataSource
+from data_sources import EastMoneyGubaDataSource, MarketSentimentDataSource, IndustrySentimentDataSource
+import math
 
 
-# ── 情绪分析关键词（从 market_emotion_discovery Skill 规则提取） ──────
+# ── 个股情绪分析关键词（从 market_emotion_discovery Skill 规则提取） ──────
 
 BULLISH_KEYWORDS = [
     "利好", "大涨", "牛", "突破", "加仓", "看好", "买入",
@@ -54,104 +56,168 @@ class NewsAgent(BaseAgent):
     """
     舆情情感 Agent（专家6组）
 
-    编排两层 Skill：
-      1. 数据接口说明：skills/data/eastmoney_guba → 声明股吧帖子输入/输出格式
-      2. 分析层：skills/news/market_emotion_discovery → 市场情绪极端发现
+    编排三层分析（先大盘再行业后个股）：
+      1. 大盘情绪温度：skills/news/market_sentiment_tracker → 全市场冷热
+      2. 行业景气热度：skills/news/industry_sentiment_tracker → 行业板块景气
+      3. 个股舆情分析：skills/news/market_emotion_discovery → 个股情绪极端发现
 
-    Agent 本身不硬编码爬取逻辑，数据获取委托给 data_sources，
-    情绪分析逻辑遵循 market_emotion_discovery Skill 规则。
+    输出顺序：大盘背景 → 行业景气 → 个股详情，让用户先看大气候再看个股。
     """
 
     signal_type = "news"
 
     def __init__(self, config: Optional[dict] = None):
         super().__init__(name="舆情情感Agent", config=config or {})
-        # 加载分析层 Skill（market_emotion_discovery）
+        # 加载分析层 Skill（market_sentiment_tracker + industry_sentiment_tracker + market_emotion_discovery）
         self.load_skills_from_domain("news")
-        # 加载数据接口说明 Skill（eastmoney_guba）
+        # 加载数据接口说明 Skill（eastmoney_guba, cninfo）
         self.load_skills_from_domain("data")
+
+        # 数据源
         self.guba_data_source = (
             self.config.get("guba_data_source") or EastMoneyGubaDataSource()
         )
+        self.market_sentiment_source = (
+            self.config.get("market_sentiment_source") or MarketSentimentDataSource()
+        )
+        self.industry_sentiment_source = (
+            self.config.get("industry_sentiment_source") or IndustrySentimentDataSource()
+        )
+
+        # 默认关闭正文抓取：东财反爬严格
+        self._fetch_content = self.config.get("fetch_content", False)
 
     def analyze(self, stock_code: str) -> Signal:
         """
-        分析指定股票的股吧舆情
-
-        流程：
-        1. 按数据接口说明调用 data_sources 获取原始帖子数据
-        2. 按 market_emotion_discovery Skill 规则进行情绪分析
-        3. 输出标准 Signal（signal_type="news"）
+        统一编排：先大盘情绪，再行业景气，后个股舆情
 
         Args:
-            stock_code: 股票代码，如 "600519"、"sz300757"
+            stock_code: 股票代码
 
         Returns:
-            Signal: 标准化舆情信号
+            Signal: 包含大盘+行业+个股三层信息的综合信号
         """
         code = self._normalize_code(stock_code)
-        self.log(f"开始分析 {code} 的股吧舆情")
+        self.log(f"开始分析 {code}（先大盘→行业→个股）")
         self.log(f"已加载 Skill: {self.list_skills()}")
 
-        # ── 第1步：数据获取（委托 data_sources，接口说明见 skills/data/eastmoney_guba） ──
+        # ── 第1步：大盘情绪温度 ──
+        market_result = self._analyze_market_sentiment()
+
+        # ── 第2步：行业景气热度 ──
+        industry_result = self._analyze_industry_sentiment(code)
+
+        # ── 第3步：个股舆情分析 ──
+        stock_result = self._analyze_stock_sentiment(code)
+
+        # ── 第4步：综合编排输出 ──
+        return self._build_combined_signal(code, market_result, industry_result, stock_result)
+
+    # ══════════════════════════════════════════
+    # 大盘情绪温度（market_sentiment_tracker）
+    # ══════════════════════════════════════════
+
+    def _analyze_market_sentiment(self) -> Dict[str, Any]:
+        """大盘情绪温度分析（遵循 market_sentiment_tracker Skill 规则）"""
+        self.log("采集大盘情绪数据...")
+        try:
+            data = self.market_sentiment_source.get_sentiment_data()
+            if data.get("status") == "success":
+                self.log(f"大盘情绪温度: {data['score']}/100，阶段: {data['stage']['name']}")
+            else:
+                self.log(f"大盘情绪数据获取失败: {data.get('stage', {}).get('suggestion', '')}", level="warning")
+            return data
+        except Exception as e:
+            self.log(f"大盘情绪分析异常: {e}", level="error")
+            return {
+                "status": "error",
+                "score": 50.0,
+                "stage": {"name": "数据不足", "suggestion": str(e), "position": "30-50%", "direction": "neutral"},
+                "direction": "neutral",
+                "confidence": 0.3,
+                "indicators": {},
+                "raw_data": {},
+                "special_signals": [],
+                "uncertainties": [f"大盘数据获取异常: {e}"],
+            }
+
+    # ══════════════════════════════════════════
+    # 行业景气热度（industry_sentiment_tracker）
+    # ══════════════════════════════════════════
+
+    def _analyze_industry_sentiment(self, stock_code: str) -> Dict[str, Any]:
+        """行业景气热度分析（遵循 industry_sentiment_tracker Skill 规则）"""
+        self.log(f"采集 {stock_code} 所属行业景气数据...")
+        try:
+            data = self.industry_sentiment_source.get_industry_sentiment(stock_code)
+            if data.get("status") == "success":
+                self.log(f"行业景气: {data.get('industry_name', '未知')} 温度 {data['score']}/100，阶段: {data['stage']['name']}")
+            else:
+                self.log(f"行业景气数据获取失败: {data.get('stage', {}).get('suggestion', '')}", level="warning")
+            return data
+        except Exception as e:
+            self.log(f"行业景气分析异常: {e}", level="error")
+            return {
+                "status": "error",
+                "industry_name": None,
+                "score": 50.0,
+                "stage": {"name": "数据不足", "suggestion": str(e), "position": "30-50%", "direction": "neutral"},
+                "direction": "neutral",
+                "confidence": 0.3,
+                "position_suggestion": "30-50%",
+                "special_signals": [],
+                "indicators": {},
+                "raw_data_summary": {},
+                "uncertainties": [f"行业数据获取异常: {e}"],
+            }
+
+    # ══════════════════════════════════════════
+    # 个股舆情分析（market_emotion_discovery）
+    # ══════════════════════════════════════════
+
+    def _analyze_stock_sentiment(self, code: str) -> Dict[str, Any]:
+        """个股舆情分析（遵循 market_emotion_discovery Skill 规则）"""
+        self.log(f"采集 {code} 的股吧数据...")
         try:
             guba_data = self._fetch_guba_data(code)
         except Exception as e:
             self.log(f"抓取股吧数据失败: {e}", level="error")
-            return neutral_signal(
-                confidence=0.3,
-                reasoning=f"抓取股吧数据失败: {e}",
-                source=self.name,
-                stock_code=code,
-                signal_type=self.signal_type,
-                meta={
-                    "output_version": "0.1",
-                    "skill_name": "market_emotion_discovery",
-                    "data_skill": "eastmoney_guba",
-                    "owner_group": "专家6组（舆情）",
-                    "target": code,
-                    "needs_human_review": True,
-                    "uncertainties": [f"数据抓取失败: {e}"],
-                },
-            )
+            return {
+                "status": "error",
+                "direction": "neutral",
+                "confidence": 0.3,
+                "reasoning": f"抓取股吧数据失败: {e}",
+                "signals": [],
+                "emotion_state": "数据不足",
+                "risk_level": "low",
+                "needs_human_review": True,
+                "evidence": [],
+                "uncertainties": [f"数据抓取失败: {e}"],
+            }
 
         if guba_data.get("status") != "success" or not guba_data.get("posts"):
             self.log(f"未获取到 {code} 的股吧帖子", level="warning")
-            return neutral_signal(
-                confidence=0.3,
-                reasoning=f"未获取到 {code} 的股吧帖子数据",
-                source=self.name,
-                stock_code=code,
-                signal_type=self.signal_type,
-                meta={
-                    "output_version": "0.1",
-                    "skill_name": "market_emotion_discovery",
-                    "data_skill": "eastmoney_guba",
-                    "owner_group": "专家6组（舆情）",
-                    "target": code,
-                    "needs_human_review": True,
-                    "uncertainties": ["未获取到帖子数据"],
-                },
-            )
+            return {
+                "status": "error",
+                "direction": "neutral",
+                "confidence": 0.3,
+                "reasoning": f"未获取到 {code} 的股吧帖子",
+                "signals": [],
+                "emotion_state": "数据不足",
+                "risk_level": "low",
+                "needs_human_review": True,
+                "evidence": [],
+                "uncertainties": ["未获取到帖子数据"],
+            }
 
         posts = guba_data["posts"]
-        self.log(f"数据获取层返回 {len(posts)} 条帖子")
-
-        # ── 第2步：情绪分析（遵循 market_emotion_discovery Skill 规则） ──
+        self.log(f"获取到 {len(posts)} 条帖子，开始情绪分析")
         analysis = self._analyze_sentiment(posts)
-
-        # ── 第3步：构建 Signal ──
-        return self._build_signal(code, analysis)
-
-    # ── 数据获取层（委托 data_sources/eastmoney_guba.py） ──────────────
+        analysis["status"] = "success"
+        analysis["time_range"] = self._calc_time_range(posts)
+        return analysis
 
     def _fetch_guba_data(self, code: str) -> Dict[str, Any]:
-        """
-        调用股吧数据源获取帖子
-
-        skills/data/eastmoney_guba/SKILL.md 只作为数据接口说明，
-        真实抓取逻辑收口在 data_sources/eastmoney_guba.py。
-        """
         skill_content = self.get_skill("eastmoney_guba")
         if skill_content:
             self.log("已加载 eastmoney_guba 数据接口说明 Skill")
@@ -159,15 +225,14 @@ class NewsAgent(BaseAgent):
         result = self.guba_data_source.get_posts(
             stock_code=code,
             pages=self.config.get("pages", 2),
-            fetch_content=self.config.get("fetch_content", True),
+            fetch_content=self._fetch_content,
         )
         self.log(f"股吧数据源返回 {len(result.get('posts', []))} 条帖子")
         return result
 
-    # ── 情绪分析层（遵循 market_emotion_discovery Skill 规则） ──────
+    # ── 情绪分析逻辑（遵循 market_emotion_discovery Skill 规则） ──────
 
     def _normalize_code(self, code: str) -> str:
-        """标准化股票代码，去除市场前缀"""
         code = code.strip().upper()
         for prefix in ("SH", "SZ", "BJ"):
             if code.startswith(prefix):
@@ -176,15 +241,6 @@ class NewsAgent(BaseAgent):
         return code
 
     def _analyze_sentiment(self, posts: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """
-        基于 market_emotion_discovery Skill 规则的情绪分析
-
-        分析流程（遵循 SKILL.md 第3节）：
-        1. 计算情绪综合指数（关键词匹配 + 加权统计）
-        2. 判断情绪状态（狂热/恐慌/中性）
-        3. 判断方向和置信度（逆向逻辑：狂热→bearish，恐慌→bullish）
-        4. 提取证据和风险说明
-        """
         bullish_keywords = set(BULLISH_KEYWORDS)
         bearish_keywords = set(BEARISH_KEYWORDS)
 
@@ -195,22 +251,18 @@ class NewsAgent(BaseAgent):
         neutral_posts = []
 
         for post in posts:
-            # 合并标题和正文进行分析
             text = post.get("title", "")
             if post.get("content"):
                 text = text + " " + post["content"]
 
-            # 计算权重
             weight = 1.0
             if post.get("source_type") == "hot":
                 weight *= HOT_POST_WEIGHT
             if post.get("reads", 0) >= HIGH_READS_THRESHOLD:
                 weight *= HIGH_READS_WEIGHT
-            # 有正文的帖子额外加权
             if post.get("content"):
                 weight *= 1.3
 
-            # 关键词匹配
             bull_hits = sum(1 for kw in bullish_keywords if kw in text)
             bear_hits = sum(1 for kw in bearish_keywords if kw in text)
 
@@ -223,38 +275,24 @@ class NewsAgent(BaseAgent):
             else:
                 neutral_posts.append(post)
 
-        # 计算情绪比例（对应 SKILL.md 第3步：情绪综合指数）
         total = weighted_bullish + weighted_bearish
-        if total == 0:
-            bullish_ratio = 0.5
-        else:
-            bullish_ratio = weighted_bullish / total
+        bullish_ratio = weighted_bullish / total if total > 0 else 0.5
         bearish_ratio = 1.0 - bullish_ratio
-
-        # 计算情绪极化度（SKILL.md 第3步）
         polarization = abs(bullish_ratio - bearish_ratio)
 
-        # 判断情绪状态和方向（SKILL.md 第4步 + 第6步）
-        # 逆向逻辑：狂热→bearish，恐慌→bullish
         if bullish_ratio > 0.75 and polarization > 0.4:
-            # 狂热状态 → 逆向看空
             direction = "bearish"
             emotion_state = "狂热"
             confidence = 0.7 + 0.12 * (bullish_ratio - 0.75) / 0.25
         elif bearish_ratio > 0.75 and polarization > 0.4:
-            # 恐慌状态 → 逆向看多
             direction = "bullish"
             emotion_state = "恐慌"
             confidence = 0.7 + 0.12 * (bearish_ratio - 0.75) / 0.25
         elif bullish_ratio > BULLISH_THRESHOLD:
-            # 偏看多（直接信号，非极端）
             direction = "bullish"
             emotion_state = "偏乐观"
-            confidence = 0.5 + 0.3 * (bullish_ratio - BULLISH_THRESHOLD) / (
-                1.0 - BULLISH_THRESHOLD
-            )
+            confidence = 0.5 + 0.3 * (bullish_ratio - BULLISH_THRESHOLD) / (1.0 - BULLISH_THRESHOLD)
         elif bullish_ratio < BEARISH_THRESHOLD:
-            # 偏看空（直接信号，非极端）
             direction = "bearish"
             emotion_state = "偏悲观"
             confidence = 0.5 + 0.3 * (BEARISH_THRESHOLD - bullish_ratio) / BEARISH_THRESHOLD
@@ -265,28 +303,20 @@ class NewsAgent(BaseAgent):
 
         confidence = min(round(confidence, 2), MAX_CONFIDENCE)
 
-        # 构建信号列表（取 top 帖子标题）
+        # 信号列表（精简为 top 2 + top 2）
         signals = []
-        for p in bullish_posts[:3]:
+        for p in bullish_posts[:2]:
             signals.append(f"[看多] {p.get('title', '')[:40]}")
-        for p in bearish_posts[:3]:
+        for p in bearish_posts[:2]:
             signals.append(f"[看空] {p.get('title', '')[:40]}")
 
-        # 构建 reasoning
-        content_count = sum(1 for p in posts if p.get("content"))
         reasoning = (
-            f"共分析 {len(posts)} 条帖子"
-            f"（其中 {content_count} 条含正文），"
-            f"看多 {len(bullish_posts)} 条，"
-            f"看空 {len(bearish_posts)} 条，"
-            f"中性 {len(neutral_posts)} 条。"
-            f"看多比例 {bullish_ratio:.1%}，"
-            f"情绪极化度 {polarization:.1%}，"
-            f"情绪状态: {emotion_state}，"
-            f"方向: {direction}。"
+            f"分析 {len(posts)} 条帖子，"
+            f"看多 {len(bullish_posts)} 条，看空 {len(bearish_posts)} 条。"
+            f"看多比例 {bullish_ratio:.1%}，极化度 {polarization:.1%}，"
+            f"情绪: {emotion_state}，方向: {direction}。"
         )
 
-        # 判断风险等级（SKILL.md 第4.3节）
         if confidence >= 0.7 and direction != "neutral":
             risk_level = "high"
         elif confidence >= 0.5 and direction != "neutral":
@@ -294,33 +324,24 @@ class NewsAgent(BaseAgent):
         else:
             risk_level = "low"
 
-        needs_human_review = (
-            confidence < 0.4
-            or len(posts) < 5
-            or abs(bullish_ratio - 0.5) < 0.05
-        )
+        needs_human_review = confidence < 0.4 or len(posts) < 5
 
-        # 构建 evidence（SKILL.md 第7步）
+        # 精选 evidence：看多、看空各取 top 3（按阅读量排序）
         evidence = []
-        for p in sorted(
-            bullish_posts + bearish_posts, key=lambda x: x.get("reads", 0), reverse=True
-        )[:5]:
-            sentiment = "bullish" if p in bullish_posts else "bearish"
-            ev = {
+        for p in sorted(bullish_posts, key=lambda x: x.get("reads", 0), reverse=True)[:3]:
+            evidence.append({
                 "title": p.get("title", ""),
                 "reads": p.get("reads", 0),
-                "replies": p.get("replies", 0),
-                "author": p.get("author", ""),
-                "post_time": p.get("post_time", ""),
-                "sentiment": sentiment,
+                "sentiment": "bullish",
                 "source": f"东财股吧·{p.get('source_type', '')}",
-            }
-            if p.get("content"):
-                ev["content_summary"] = p["content"][:80] + "..."
-            evidence.append(ev)
-
-        # 计算数据时间范围
-        time_range = self._calc_time_range(posts)
+            })
+        for p in sorted(bearish_posts, key=lambda x: x.get("reads", 0), reverse=True)[:3]:
+            evidence.append({
+                "title": p.get("title", ""),
+                "reads": p.get("reads", 0),
+                "sentiment": "bearish",
+                "source": f"东财股吧·{p.get('source_type', '')}",
+            })
 
         return {
             "direction": direction,
@@ -338,69 +359,190 @@ class NewsAgent(BaseAgent):
             "bearish_count": len(bearish_posts),
             "neutral_count": len(neutral_posts),
             "evidence": evidence,
-            "time_range": time_range,
         }
 
-    def _build_signal(self, stock_code: str, analysis: Dict[str, Any]) -> Signal:
-        """构建标准 Signal 对象（遵循 market_emotion_discovery Skill 输出规范）"""
-        direction = analysis["direction"]
-        confidence = analysis["confidence"]
-        reasoning = analysis["reasoning"]
-        signals = analysis["signals"]
+    # ══════════════════════════════════════════
+    # 综合信号构建
+    # ══════════════════════════════════════════
+
+    def _build_combined_signal(
+        self,
+        stock_code: str,
+        market_result: Dict[str, Any],
+        industry_result: Dict[str, Any],
+        stock_result: Dict[str, Any],
+    ) -> Signal:
+        """
+        构建综合信号：大盘温度 + 行业景气 + 个股舆情
+
+        输出顺序：先大盘再行业后个股，让用户先看大气候
+        """
+        # ── 大盘部分 ──
+        market_score = market_result.get("score", 50.0)
+        market_stage = market_result.get("stage", {})
+        market_direction = market_result.get("direction", "neutral")
+        market_confidence = market_result.get("confidence", 0.3)
+        market_signals = market_result.get("special_signals", [])
+        market_indicators = market_result.get("indicators", {})
+        market_uncertainties = market_result.get("uncertainties", [])
+        market_raw = market_result.get("raw_data", {})
+
+        # ── 行业部分 ──
+        industry_name = industry_result.get("industry_name")
+        industry_score = industry_result.get("score", 50.0)
+        industry_stage = industry_result.get("stage", {})
+        industry_direction = industry_result.get("direction", "neutral")
+        industry_confidence = industry_result.get("confidence", 0.3)
+        industry_signals = industry_result.get("special_signals", [])
+        industry_indicators = industry_result.get("indicators", {})
+        industry_raw = industry_result.get("raw_data_summary", {})
+        industry_uncertainties = industry_result.get("uncertainties", [])
+        industry_position = industry_result.get("position_suggestion", "30-50%")
+        has_industry = industry_result.get("status") == "success" and industry_name is not None
+
+        # ── 个股部分 ──
+        stock_direction = stock_result.get("direction", "neutral")
+        stock_confidence = stock_result.get("confidence", 0.3)
+        stock_reasoning = stock_result.get("reasoning", "")
+        stock_signals = stock_result.get("signals", [])
+        stock_emotion = stock_result.get("emotion_state", "未知")
+        stock_risk = stock_result.get("risk_level", "low")
+        stock_evidence = stock_result.get("evidence", [])
+        stock_uncertainties = stock_result.get("uncertainties", [])
+        stock_ratio = stock_result.get("bullish_ratio", 0.5)
+        stock_polarization = stock_result.get("polarization", 0)
+        stock_total = stock_result.get("total_posts", 0)
+
+        # ── 综合方向：以个股为主，行业做修正，大盘做背景 ──
+        combined_direction = stock_direction
+        combined_confidence = stock_confidence
+
+        # 行业和个股方向一致时提升置信度，矛盾时降低
+        if has_industry and industry_direction != "neutral" and stock_direction != "neutral":
+            if industry_direction == stock_direction:
+                combined_confidence = min(0.9, combined_confidence + 0.05)
+            else:
+                combined_confidence = max(0.2, combined_confidence - 0.08)
+
+        # 大盘和个股方向一致时提升，矛盾时降低（影响小于行业）
+        if market_direction != "neutral" and stock_direction != "neutral":
+            if market_direction == stock_direction:
+                combined_confidence = min(0.9, combined_confidence + 0.03)
+            else:
+                combined_confidence = max(0.2, combined_confidence - 0.05)
+
+        # 构建综合 reasoning
+        reasoning_parts = [
+            f"【大盘】情绪温度 {market_score}/100，{market_stage.get('name', '未知')}，"
+            f"建议仓位 {market_stage.get('position', '30-50%')}。",
+        ]
+        if has_industry:
+            reasoning_parts.append(
+                f"【行业·{industry_name}】景气温度 {industry_score}/100，"
+                f"{industry_stage.get('name', '未知')}，建议仓位 {industry_position}。"
+            )
+        reasoning_parts.append(f"【个股 {stock_code}】{stock_reasoning}")
+        reasoning = "".join(reasoning_parts)
+
+        # 合并 signals：大盘→行业→个股
+        all_signals = []
+        if market_signals:
+            all_signals.append(f"[大盘] {market_stage.get('name', '')}，温度{market_score}")
+            for sig in market_signals[:2]:
+                all_signals.append(f"[大盘] {sig}")
+        if has_industry and industry_signals:
+            all_signals.append(f"[行业·{industry_name}] {industry_stage.get('name', '')}，温度{industry_score}")
+            for sig in industry_signals[:2]:
+                all_signals.append(f"[行业] {sig}")
+        all_signals.extend(stock_signals[:4])
+
+        # 综合风险等级
+        risk_level = max(
+            stock_risk,
+            "high" if market_score > 80 or market_score < 20 else
+            "medium" if market_score > 65 or market_score < 35 else "low",
+            "high" if has_industry and (industry_score > 80 or industry_score < 20) else
+            "medium" if has_industry and (industry_score > 65 or industry_score < 35) else "low",
+            key=lambda x: {"low": 0, "medium": 1, "high": 2}.get(x, 0)
+        )
 
         meta = {
-            "output_version": "0.1",
-            "skill_name": "market_emotion_discovery",
-            "data_skill": "eastmoney_guba",
+            "output_version": "0.3",
             "owner_group": "专家6组（舆情）",
             "target": stock_code,
             "period": "实时",
-            "data_time_range": analysis.get("time_range", ""),
             "time_horizon": "short",
-            "risk_level": analysis["risk_level"],
-            "emotion_state": analysis.get("emotion_state", "中性"),
-            "polarization": analysis.get("polarization", 0),
-            "bullish_ratio": analysis.get("bullish_ratio", 0.5),
-            "bearish_ratio": analysis.get("bearish_ratio", 0.5),
-            "key_findings": [
-                f"情绪状态: {analysis.get('emotion_state', '未知')}",
-                f"看多帖子 {analysis['bullish_count']} 条，看空 {analysis['bearish_count']} 条，中性 {analysis['neutral_count']} 条",
-                f"看多比例 {analysis['bullish_ratio']:.1%}，情绪极化度 {analysis.get('polarization', 0):.1%}",
-            ],
-            "evidence": analysis["evidence"],
-            "risk_notes": [
-                "基于标题+正文的关键词分析，置信度上限0.8",
-                "热门帖子已抓取正文，最新帖子仅分析标题",
-                "数据来自东方财富股吧，偏散户视角",
-            ],
-            "uncertainties": [
-                "部分帖子仅基于标题分析，未抓取正文",
-                "无法分析图片/视频内容",
-                "关键词匹配可能遗漏隐含情绪",
-                "情绪极端不等于立即反转，可能持续一段时间",
-            ],
-            "needs_human_review": analysis["needs_human_review"],
-            "total_posts_analyzed": analysis["total_posts"],
-            "bullish_count": analysis["bullish_count"],
-            "bearish_count": analysis["bearish_count"],
-            "neutral_count": analysis["neutral_count"],
+            "risk_level": risk_level,
+            "needs_human_review": stock_result.get("needs_human_review", False) or market_confidence < 0.3,
+            # ── 大盘情绪 ──
+            "market": {
+                "skill_name": "market_sentiment_tracker",
+                "score": market_score,
+                "stage": market_stage.get("name", "未知"),
+                "direction": market_direction,
+                "confidence": market_confidence,
+                "position_suggestion": market_stage.get("position", "30-50%"),
+                "special_signals": market_signals,
+                "indicators": market_indicators,
+                "raw_data_summary": {
+                    k: (None if (isinstance(v, float) and (math.isnan(v) or math.isinf(v))) else v)
+                    for k, v in market_raw.items()
+                    if v is not None and k in ("limit_up", "limit_down", "breadth", "north_flow", "margin", "margin_change", "rsi")
+                },
+                "uncertainties": market_uncertainties,
+            },
+            # ── 行业景气 ──
+            "industry": {
+                "skill_name": "industry_sentiment_tracker",
+                "industry_name": industry_name,
+                "score": industry_score,
+                "stage": industry_stage.get("name", "未知") if isinstance(industry_stage, dict) else "未知",
+                "direction": industry_direction,
+                "confidence": industry_confidence,
+                "position_suggestion": industry_position,
+                "special_signals": industry_signals,
+                "indicators": industry_indicators,
+                "raw_data_summary": {
+                    k: (None if (isinstance(v, float) and (math.isnan(v) or math.isinf(v))) else v)
+                    for k, v in industry_raw.items()
+                    if v is not None
+                },
+                "uncertainties": industry_uncertainties,
+            } if has_industry else None,
+            # ── 个股舆情 ──
+            "stock": {
+                "skill_name": "market_emotion_discovery",
+                "data_skill": "eastmoney_guba",
+                "direction": stock_direction,
+                "confidence": stock_confidence,
+                "emotion_state": stock_emotion,
+                "bullish_ratio": round(stock_ratio, 3),
+                "polarization": round(stock_polarization, 3),
+                "total_posts": stock_total,
+                "bullish_count": stock_result.get("bullish_count", 0),
+                "bearish_count": stock_result.get("bearish_count", 0),
+                "evidence": stock_evidence,
+                "data_time_range": stock_result.get("time_range", ""),
+                "uncertainties": stock_uncertainties,
+            },
         }
 
-        if direction == "bullish":
+        # 构建 Signal
+        if combined_direction == "bullish":
             return bullish_signal(
-                confidence=confidence,
+                confidence=combined_confidence,
                 reasoning=reasoning,
-                signals=signals,
+                signals=all_signals,
                 source=self.name,
                 stock_code=stock_code,
                 signal_type=self.signal_type,
                 meta=meta,
             )
-        elif direction == "bearish":
+        elif combined_direction == "bearish":
             return bearish_signal(
-                confidence=confidence,
+                confidence=combined_confidence,
                 reasoning=reasoning,
-                signals=signals,
+                signals=all_signals,
                 source=self.name,
                 stock_code=stock_code,
                 signal_type=self.signal_type,
@@ -408,7 +550,7 @@ class NewsAgent(BaseAgent):
             )
         else:
             return neutral_signal(
-                confidence=confidence,
+                confidence=combined_confidence,
                 reasoning=reasoning,
                 source=self.name,
                 stock_code=stock_code,
@@ -417,7 +559,6 @@ class NewsAgent(BaseAgent):
             )
 
     def _calc_time_range(self, posts: List[Dict[str, Any]]) -> str:
-        """根据帖子时间计算数据覆盖的时间范围"""
         now = datetime.now()
         year = now.year
         parsed_times = []
@@ -433,10 +574,8 @@ class NewsAgent(BaseAgent):
                 parsed_times.append(dt)
             except ValueError:
                 continue
-
         if not parsed_times:
             return "未知"
-
         earliest = min(parsed_times)
         latest = max(parsed_times)
         fmt = "%m-%d %H:%M"

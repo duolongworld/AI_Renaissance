@@ -10,6 +10,8 @@ AI Renaissance - Agent 本地调试工具（麦肯锡风格）
 """
 
 from flask import Flask, render_template, request, jsonify
+import json
+import math
 import sys
 import os
 import importlib
@@ -18,6 +20,29 @@ import traceback
 app = Flask(__name__, 
             template_folder=os.path.join(os.path.dirname(__file__), "templates"),
             static_folder=os.path.join(os.path.dirname(__file__), "static"))
+
+# ── 全局兜底：NaN / Infinity → null（JSON 标准不支持 NaN/Infinity）────────
+class _SafeJSONEncoder(json.JSONEncoder):
+    """将 float('nan'), float('inf'), float('-inf') 序列化为 null"""
+    def default(self, o):
+        return super().default(o)
+    def encode(self, o):
+        return super().encode(self._sanitize(o))
+    def iterencode(self, o, _one_shot=False):
+        return super().iterencode(self._sanitize(o), _one_shot)
+    @staticmethod
+    def _sanitize(o):
+        if isinstance(o, float):
+            if math.isnan(o) or math.isinf(o):
+                return None
+            return o
+        if isinstance(o, dict):
+            return {k: _SafeJSONEncoder._sanitize(v) for k, v in o.items()}
+        if isinstance(o, (list, tuple)):
+            return [_SafeJSONEncoder._sanitize(v) for v in o]
+        return o
+
+app.json_encoder = _SafeJSONEncoder
 
 # 把项目根目录加入路径
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -66,7 +91,7 @@ AVAILABLE_AGENTS = {
         "module": "agents.news_agent.agent",
         "class": "NewsAgent",
         "owner": "专家6组",
-        "description": "新闻情感分析、社交情绪追踪、情绪交易信号",
+        "description": "大盘、行业、个股情绪温度三层辅助，数据计算较多，加载运行需要5分钟左右",
         "signal_type": "news",
     },
     "风险预警Agent": {

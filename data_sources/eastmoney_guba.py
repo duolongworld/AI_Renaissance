@@ -130,6 +130,9 @@ def fetch_post_content(url: str) -> str:
     """抓取单条帖子的正文内容"""
     try:
         resp = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
+        # 403/429 等反爬状态码直接跳过，不重试
+        if resp.status_code in (403, 429):
+            return ""
         resp.raise_for_status()
         resp.encoding = resp.apparent_encoding or "gbk"
         html = resp.text
@@ -192,11 +195,17 @@ def fetch_guba_posts(
                 logger.warning(f"[东方财富股吧数据源] 抓取列表失败 {url}: {exc}")
 
     if fetch_content:
+        # 限制最多抓取正文条数，避免大量 403 请求拖垮服务
+        max_content_fetch = 5
+        fetched = 0
         for post in all_posts:
+            if fetched >= max_content_fetch:
+                break
             if post["source_type"] == "hot" and post.get("url"):
                 content = fetch_post_content(post["url"])
                 if content:
                     post["content"] = content
+                    fetched += 1
 
     return {
         "status": "success",

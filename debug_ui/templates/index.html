@@ -233,6 +233,12 @@
     border-radius:6px;font-size:13px;color:var(--cyan);
   }
 
+  /* ===== Market + Stock Sections ===== */
+  .market-section{
+    padding:16px 20px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-lg);
+    margin-top:16px;
+  }
+
   /* ===== Orchestrate Result ===== */
   .orch-result{margin-top:20px}
   .orch-decision{
@@ -439,6 +445,8 @@ function renderResult(sig, agentName, stockCode) {
   const confPct = Math.round(conf * 100);
   const meta = sig.meta || {};
   const isNews = (sig.signal_type === "news" || agentName.includes("舆情"));
+  const hasTriple = isNews && meta.market && meta.industry && meta.stock; // v0.3 大盘+行业+个股
+  const hasDual = isNews && meta.market && meta.stock; // v0.2 大盘+个股
   let html = "";
 
   // === Signal Header Bar ===
@@ -454,8 +462,16 @@ function renderResult(sig, agentName, stockCode) {
   // === Reasoning ===
   html += `<div class="sig-reasoning">${sig.reasoning || "No reasoning provided"}</div>`;
 
-  // === News Agent: Sentiment Dashboard ===
-  if (isNews && meta.bullish_count !== undefined) {
+  // === v0.3: 大盘+行业+个股 三层展示 ===
+  if (hasTriple) {
+    html += renderMarketSentiment(meta.market);
+    html += renderIndustrySentiment(meta.industry);
+    html += renderStockSentiment(meta.stock, dir, confPct);
+  } else if (hasDual) {
+    html += renderMarketSentiment(meta.market);
+    html += renderStockSentiment(meta.stock, dir, confPct);
+  } else if (isNews && meta.bullish_count !== undefined) {
+    // v0.1 兼容
     html += renderSentimentDashboard(meta, dir, confPct);
   }
 
@@ -466,32 +482,14 @@ function renderResult(sig, agentName, stockCode) {
     html += `</ul></div>`;
   }
 
-  // === Detail Grid (non-news meta) ===
-  const skipKeys = new Set(["reasoning_steps","evidence","key_findings","risk_notes","uncertainties",
-    "bullish_count","bearish_count","neutral_count","total_posts_analyzed",
-    "needs_human_review","skill_name","data_skill","owner_group","target","period",
-    "data_time_range","time_horizon","risk_level","output_version","emotion_state",
-    "bullish_ratio","bearish_ratio","polarization"]);
-  const detailEntries = Object.entries(meta).filter(([k]) => !skipKeys.has(k));
-  if (detailEntries.length) {
-    html += `<div class="detail-grid">`;
-    detailEntries.forEach(([k,v]) => {
-      html += `<div class="detail-cell"><div class="detail-lbl">${k}</div><div class="detail-val">${fmtVal(v)}</div></div>`;
-    });
-    html += `</div>`;
-  }
-
   // === Core Metrics Row ===
   const metrics = [];
-  if (meta.skill_name) metrics.push(["Analysis Skill", meta.skill_name]);
-  if (meta.data_skill) metrics.push(["Data Skill", meta.data_skill]);
   if (meta.risk_level) metrics.push(["Risk Level", meta.risk_level]);
   if (meta.time_horizon) metrics.push(["Time Horizon", meta.time_horizon]);
   if (meta.needs_human_review !== undefined) metrics.push(["Human Review", meta.needs_human_review ? "⚠ Yes" : "✓ No"]);
   metrics.push(["Stock Code", sig.stock_code || stockCode]);
   metrics.push(["Signal Type", sig.signal_type || "—"]);
-  metrics.push(["Weight", sig.weight != null ? sig.weight : "—"]);
-  metrics.push(["Timestamp", sig.timestamp || "—"]);
+  metrics.push(["Output Version", meta.output_version || "—"]);
 
   html += `<div class="detail-grid">`;
   metrics.forEach(([k,v]) => {
@@ -499,18 +497,271 @@ function renderResult(sig, agentName, stockCode) {
   });
   html += `</div>`;
 
-  // === Steps Chain ===
-  html += renderStepsChain(sig.reasoning_steps);
-
   html += `</div>`; // close sig-body
 
   document.getElementById("resultArea").innerHTML = html;
   document.getElementById("resultArea").style.display = "block";
 
   // Animate gauge after render
-  if (isNews && meta.bullish_count !== undefined) {
+  if (hasTriple) {
+    setTimeout(() => animateTempGauge(meta.market.score), 100);
+    setTimeout(() => animateIndustryGauge(meta.industry.score), 150);
+  } else if (hasDual) {
+    setTimeout(() => animateTempGauge(meta.market.score), 100);
+  } else if (isNews && meta.bullish_count !== undefined) {
     setTimeout(() => animateGauge(confPct, dir), 100);
   }
+}
+
+// ── Market Sentiment (大盘温度计) ────────────
+function renderMarketSentiment(market) {
+  const score = market.score || 50;
+  const stage = market.stage || "未知";
+  const direction = market.direction || "neutral";
+  const position = market.position_suggestion || "30-50%";
+  const specialSignals = market.special_signals || [];
+  const indicators = market.indicators || {};
+  const raw = market.raw_data_summary || {};
+  const uncertainties = market.uncertainties || [];
+
+  // 温度颜色
+  let tempColor = "var(--cyan)";
+  let tempBg = "var(--cyan-dim)";
+  if (score <= 20) { tempColor = "var(--cyan)"; tempBg = "var(--cyan-dim)"; }
+  else if (score <= 35) { tempColor = "var(--green)"; tempBg = "var(--green-dim)"; }
+  else if (score <= 65) { tempColor = "var(--amber)"; tempBg = "var(--amber-dim)"; }
+  else if (score <= 80) { tempColor = "var(--red)"; tempBg = "var(--red-dim)"; }
+  else { tempColor = "var(--red)"; tempBg = "var(--red-dim)"; }
+
+  // 阶段 emoji
+  const stageEmoji = score <= 20 ? "🧊" : score <= 35 ? "❄️" : score <= 45 ? "🌤️" :
+                     score <= 54 ? "⚖️" : score <= 65 ? "☀️" : score <= 80 ? "🔥" : "🌋";
+
+  let html = `<div class="market-section">
+    <div class="sec-title" style="font-size:15px;margin-bottom:12px">📊 大盘情绪温度</div>
+
+    <div class="gauge-wrap">
+      <div class="gauge-ring">
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          <circle class="ring-bg" cx="70" cy="70" r="58"/>
+          <circle class="ring-fg" id="tempRing" cx="70" cy="70" r="58"
+            stroke="${tempColor}" stroke-dasharray="0 364.42" style="transition:stroke-dasharray 1s ease"/>
+        </svg>
+        <div class="gauge-center">
+          <div class="gauge-pct" id="tempPct" style="color:${tempColor}">0</div>
+          <div class="gauge-label">TEMPERATURE</div>
+        </div>
+      </div>
+
+      <div class="gauge-stats">
+        <div style="font-size:18px;font-weight:600;margin-bottom:4px">${stageEmoji} ${stage}</div>
+        <div style="font-size:12px;color:var(--text-3);margin-bottom:8px">
+          方向 <strong style="color:${direction==='bullish'?'var(--green)':direction==='bearish'?'var(--red)':'var(--text-2)'}">${dirLabel(direction)}</strong>
+          &nbsp;·&nbsp; 建议仓位 <strong style="color:var(--text-1)">${position}</strong>
+        </div>
+        ${specialSignals.length ? `<div style="margin-top:4px">${specialSignals.map(s =>
+          `<span style="display:inline-block;padding:2px 8px;margin:2px;border-radius:4px;font-size:11px;background:var(--amber-dim);color:var(--amber)">${s}</span>`
+        ).join("")}</div>` : ""}
+        ${Object.keys(indicators).length ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text-3)">
+          ${Object.entries(indicators).slice(0,5).map(([k,v]) =>
+            `<span style="margin-right:10px">${k}: <strong style="color:var(--text-1)">${typeof v === 'number' ? v.toFixed(1) : v}</strong></span>`
+          ).join("")}
+        </div>` : ""}
+      </div>
+    </div>
+
+    ${raw.limit_up !== undefined ? `<div style="font-size:11px;color:var(--text-3);margin-top:8px;padding:8px 12px;background:var(--bg-3);border-radius:var(--radius)">
+      涨停 <strong style="color:var(--red)">${raw.limit_up || 0}</strong> 家 ·
+      跌停 <strong style="color:var(--green)">${raw.limit_down || 0}</strong> 家 ·
+      上涨占比 <strong style="color:var(--text-1)">${raw.breadth != null ? (raw.breadth*100).toFixed(1)+'%' : '—'}</strong> ·
+      北向 <strong style="color:var(--text-1)">${raw.north_flow != null ? (raw.north_flow>0?'+':'')+raw.north_flow.toFixed(1)+'亿' : '—'}</strong> ·
+      融资变化 <strong style="color:var(--text-1)">${raw.margin_change != null ? (raw.margin_change>0?'+':'')+raw.margin_change.toFixed(1)+'%' : '—'}</strong>
+    </div>` : ""}
+
+    ${uncertainties.length ? `<div style="font-size:11px;color:var(--text-3);margin-top:4px">⚠ ${uncertainties.slice(0,2).join(' · ')}</div>` : ""}
+  </div>`;
+
+  return html;
+}
+
+// ── Industry Sentiment (行业景气热度) ────────────
+function renderIndustrySentiment(industry) {
+  const name = industry.industry_name || "未知行业";
+  const score = industry.score || 50;
+  const stage = industry.stage || "未知";
+  const direction = industry.direction || "neutral";
+  const position = industry.position_suggestion || "30-50%";
+  const specialSignals = industry.special_signals || [];
+  const indicators = industry.indicators || {};
+  const raw = industry.raw_data_summary || {};
+  const uncertainties = industry.uncertainties || [];
+
+  // 温度颜色
+  let tempColor = "var(--amber)";
+  if (score <= 20) { tempColor = "var(--cyan)"; }
+  else if (score <= 35) { tempColor = "var(--green)"; }
+  else if (score <= 65) { tempColor = "var(--amber)"; }
+  else if (score <= 80) { tempColor = "var(--red)"; }
+  else { tempColor = "var(--red)"; }
+
+  const stageEmoji = score <= 20 ? "🧊" : score <= 35 ? "❄️" : score <= 45 ? "🌤️" :
+                     score <= 54 ? "⚖️" : score <= 65 ? "☀️" : score <= 80 ? "🔥" : "🌋";
+
+  let html = `<div class="market-section">
+    <div class="sec-title" style="font-size:15px;margin-bottom:12px">🏭 行业景气热度 · ${name}</div>
+
+    <div class="gauge-wrap">
+      <div class="gauge-ring">
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          <circle class="ring-bg" cx="70" cy="70" r="58"/>
+          <circle class="ring-fg" id="industryRing" cx="70" cy="70" r="58"
+            stroke="${tempColor}" stroke-dasharray="0 364.42" style="transition:stroke-dasharray 1s ease"/>
+        </svg>
+        <div class="gauge-center">
+          <div class="gauge-pct" id="industryPct" style="color:${tempColor}">0</div>
+          <div class="gauge-label">INDUSTRY</div>
+        </div>
+      </div>
+
+      <div class="gauge-stats">
+        <div style="font-size:18px;font-weight:600;margin-bottom:4px">${stageEmoji} ${stage}</div>
+        <div style="font-size:12px;color:var(--text-3);margin-bottom:8px">
+          方向 <strong style="color:${direction==='bullish'?'var(--green)':direction==='bearish'?'var(--red)':'var(--text-2)'}">${dirLabel(direction)}</strong>
+          &nbsp;·&nbsp; 建议仓位 <strong style="color:var(--text-1)">${position}</strong>
+        </div>
+        ${specialSignals.length ? `<div style="margin-top:4px">${specialSignals.map(s =>
+          `<span style="display:inline-block;padding:2px 8px;margin:2px;border-radius:4px;font-size:11px;background:var(--amber-dim);color:var(--amber)">${s}</span>`
+        ).join("")}</div>` : ""}
+        ${Object.keys(indicators).length ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text-3)">
+          ${Object.entries(indicators).slice(0,5).map(([k,v]) =>
+            `<span style="margin-right:10px">${k.replace('industry_','')}: <strong style="color:var(--text-1)">${typeof v === 'number' ? v.toFixed(1) : v}</strong></span>`
+          ).join("")}
+        </div>` : ""}
+      </div>
+    </div>
+
+    ${raw.breadth != null || raw.fund_flow_net != null ? `<div style="font-size:11px;color:var(--text-3);margin-top:8px;padding:8px 12px;background:var(--bg-3);border-radius:var(--radius)">
+      ${raw.up_count != null ? `上涨 ${raw.up_count} · 下跌 ${raw.down_count || 0} · ` : ''}
+      ${raw.breadth != null ? `上涨占比 <strong style="color:var(--text-1)">${(raw.breadth*100).toFixed(1)}%</strong> · ` : ''}
+      ${raw.fund_flow_net != null ? `资金净流入 <strong style="color:var(--text-1)">${raw.fund_flow_net>0?'+':''}${raw.fund_flow_net.toFixed(1)}亿</strong> · ` : ''}
+      ${raw.rank_percentile != null ? `涨幅排名 <strong style="color:var(--text-1)">Top ${((1-raw.rank_percentile)*100).toFixed(0)}%</strong>` : ''}
+    </div>` : ""}
+
+    ${uncertainties.length ? `<div style="font-size:11px;color:var(--text-3);margin-top:4px">⚠ ${uncertainties.slice(0,2).join(' · ')}</div>` : ""}
+  </div>`;
+
+  return html;
+}
+
+// ── Animate Industry Gauge ────────────
+function animateIndustryGauge(score) {
+  const ring = document.getElementById("industryRing");
+  const pct = document.getElementById("industryPct");
+  if (!ring || !pct) return;
+  const circumference = 2 * Math.PI * 58;
+  const targetDash = (score / 100) * circumference;
+  setTimeout(() => {
+    ring.setAttribute("stroke-dasharray", `${targetDash} ${circumference}`);
+    let current = 0;
+    const step = score / 30;
+    const timer = setInterval(() => {
+      current += step;
+      if (current >= score) { current = score; clearInterval(timer); }
+      pct.textContent = Math.round(current);
+    }, 20);
+  }, 100);
+}
+
+// ── Stock Sentiment (个股舆情) ────────────
+function renderStockSentiment(stock, dir, confPct) {
+  const emotionState = stock.emotion_state || "";
+  const bullRatio = stock.bullish_ratio || 0.5;
+  const bearRatio = 1 - bullRatio;
+  const polarization = stock.polarization || 0;
+  const totalPosts = stock.total_posts || 0;
+  const bullCount = stock.bullish_count || 0;
+  const bearCount = stock.bearish_count || 0;
+  const evidence = stock.evidence || [];
+  const timeRange = stock.data_time_range || "";
+  const uncertainties = stock.uncertainties || [];
+  const bullPct = Math.round(bullRatio * 100);
+  const bearPct = Math.round(bearRatio * 100);
+
+  let html = `<div class="market-section" style="margin-top:16px">
+    <div class="sec-title" style="font-size:15px;margin-bottom:12px">📝 个股舆情分析</div>`;
+
+  // Emotion State Badge
+  if (emotionState) {
+    const eClass = emotionState.includes("狂热") ? "hot" : emotionState.includes("恐慌") ? "panic" :
+                   emotionState.includes("乐观") ? "bullish" :
+                   emotionState.includes("悲观") ? "bearish" : "neutral";
+    html += `<div class="emotion-state ${eClass}">${emotionState}</div>`;
+  }
+
+  // Stats bar
+  html += `<div class="gauge-wrap">
+    <div style="flex:1">
+      <div class="stat-row">
+        <span class="stat-dot bull"></span>
+        <span style="color:var(--green);min-width:32px">看多</span>
+        <div class="stat-bar"><div class="stat-bar-fill bull" style="width:${bullPct}%"></div></div>
+        <span class="stat-num">${bullCount}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-dot bear"></span>
+        <span style="color:var(--red);min-width:32px">看空</span>
+        <div class="stat-bar"><div class="stat-bar-fill bear" style="width:${bearPct}%"></div></div>
+        <span class="stat-num">${bearCount}</span>
+      </div>
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text-3)">
+        极化度 <strong style="color:var(--text-1)">${(polarization*100).toFixed(1)}%</strong>
+        &nbsp;·&nbsp; 总帖子 <strong style="color:var(--text-1)">${totalPosts}</strong>
+        ${timeRange ? ` &nbsp;·&nbsp; ${timeRange}` : ""}
+      </div>
+    </div>
+  </div>`;
+
+  // Top evidence (compact)
+  if (evidence.length) {
+    const bullEv = evidence.filter(e => e.sentiment === "bullish");
+    const bearEv = evidence.filter(e => e.sentiment === "bearish");
+    html += `<div class="dual-col">`;
+    html += `<div class="col-card bull">
+      <div class="col-title bull"><span class="icon">📈</span> 看多评论（精选） (${bullEv.length})</div>
+      <ul class="col-items">${bullEv.length ? bullEv.slice(0,3).map(e => `<li>${e.title || JSON.stringify(e)}</li>`).join("") : '<li style="color:var(--text-3)">—</li>'}</ul>
+    </div>`;
+    html += `<div class="col-card bear">
+      <div class="col-title bear"><span class="icon">📉</span> 看空评论（精选） (${bearEv.length})</div>
+      <ul class="col-items">${bearEv.length ? bearEv.slice(0,3).map(e => `<li>${e.title || JSON.stringify(e)}</li>`).join("") : '<li style="color:var(--text-3)">—</li>'}</ul>
+    </div>`;
+    html += `</div>`;
+  }
+
+  if (uncertainties.length) {
+    html += `<div style="font-size:11px;color:var(--text-3);margin-top:4px">⚠ ${uncertainties.slice(0,2).join(' · ')}</div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+// ── Animate Temperature Gauge ────────────
+function animateTempGauge(score) {
+  const ring = document.getElementById("tempRing");
+  const pct = document.getElementById("tempPct");
+  if (!ring || !pct) return;
+  const circumference = 2 * Math.PI * 58;
+  const targetDash = (score / 100) * circumference;
+  setTimeout(() => {
+    ring.setAttribute("stroke-dasharray", `${targetDash} ${circumference}`);
+    let current = 0;
+    const step = score / 30;
+    const timer = setInterval(() => {
+      current += step;
+      if (current >= score) { current = score; clearInterval(timer); }
+      pct.textContent = Math.round(current);
+    }, 20);
+  }, 100);
 }
 
 // ── Sentiment Dashboard (News Agent 专用) ────────────
@@ -582,12 +833,12 @@ function renderSentimentDashboard(meta, dir, confPct) {
     const bearEv = meta.evidence.filter(e => e.sentiment === "bearish");
     html += `<div class="dual-col">`;
     html += `<div class="col-card bull">
-      <div class="col-title bull"><span class="icon">📈</span> 看多依据 (${bullEv.length})</div>
-      <ul class="col-items">${bullEv.length ? bullEv.map(e => `<li>${e.title || JSON.stringify(e)}</li>`).join("") : '<li style="color:var(--text-3)">—</li>'}</ul>
+      <div class="col-title bull"><span class="icon">📈</span> 看多评论（精选） (${bullEv.length})</div>
+      <ul class="col-items">${bullEv.length ? bullEv.slice(0,3).map(e => `<li>${e.title || JSON.stringify(e)}</li>`).join("") : '<li style="color:var(--text-3)">—</li>'}</ul>
     </div>`;
     html += `<div class="col-card bear">
-      <div class="col-title bear"><span class="icon">📉</span> 看空依据 (${bearEv.length})</div>
-      <ul class="col-items">${bearEv.length ? bearEv.map(e => `<li>${e.title || JSON.stringify(e)}</li>`).join("") : '<li style="color:var(--text-3)">—</li>'}</ul>
+      <div class="col-title bear"><span class="icon">📉</span> 看空评论（精选） (${bearEv.length})</div>
+      <ul class="col-items">${bearEv.length ? bearEv.slice(0,3).map(e => `<li>${e.title || JSON.stringify(e)}</li>`).join("") : '<li style="color:var(--text-3)">—</li>'}</ul>
     </div>`;
     html += `</div>`;
 
