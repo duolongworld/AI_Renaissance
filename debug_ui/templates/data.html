@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Renaissance · Data Debug</title>
+<script src="/static/echarts.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg-0:#0a0e1a;--bg-1:#111827;--bg-2:#1a2234;--bg-3:#243049;
+    --border:#2a3654;--border-light:#3b4f73;
+    --text-1:#e8edf5;--text-2:#94a3c0;--text-3:#5b6d8a;
+    --cyan:#00e5ff;--cyan-dim:#00e5ff33;--cyan-bg:#00e5ff0d;
+    --green:#00e676;--green-dim:#00e67633;
+    --red:#ff5252;--red-dim:#ff525233;
+    --amber:#ffab40;
+    --radius:8px;--radius-lg:12px;
+    --font-mono:"SF Mono","Fira Code","JetBrains Mono",monospace;
+  }
+  body{font-family:-apple-system,"SF Pro Display","PingFang SC",sans-serif;background:var(--bg-0);color:var(--text-1);line-height:1.6;min-height:100vh}
+
+  .topbar{
+    background:linear-gradient(180deg,var(--bg-1) 0%,var(--bg-0) 100%);
+    border-bottom:1px solid var(--border);padding:0 32px;height:52px;
+    display:flex;align-items:center;justify-content:space-between;
+    position:sticky;top:0;z-index:100;backdrop-filter:blur(12px);
+  }
+  .topbar-brand{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;letter-spacing:.5px}
+  .topbar-brand .dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+  .topbar-nav{display:flex;gap:24px}
+  .topbar-nav a{font-size:12px;color:var(--text-3);text-decoration:none;font-weight:500;transition:color .15s}
+  .topbar-nav a:hover,.topbar-nav a.active{color:var(--cyan)}
+  .topbar-status{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--text-3)}
+  .topbar-status .live{color:var(--green);font-weight:500}
+
+  .main{max-width:1500px;margin:0 auto;padding:28px 32px 80px}
+
+  .ctrl{
+    background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius-lg);
+    padding:20px 24px;margin-bottom:24px;
+    display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;
+  }
+  .ctrl-group{display:flex;flex-direction:column;flex:1;min-width:140px}
+  .ctrl-group label{font-size:11px;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+  .ctrl-group select,.ctrl-group input{
+    height:38px;border:1px solid var(--border);border-radius:6px;padding:0 12px;
+    font-size:13px;color:var(--text-1);background:var(--bg-2);outline:none;transition:border .15s;font-family:inherit;
+  }
+  .ctrl-group select:focus,.ctrl-group input:focus{border-color:var(--cyan);box-shadow:0 0 0 2px var(--cyan-dim)}
+  .ctrl-group select option{background:var(--bg-2);color:var(--text-1)}
+  .btn-run{
+    height:38px;padding:0 28px;border:1px solid var(--cyan);border-radius:6px;
+    background:var(--cyan-bg);color:var(--cyan);font-size:13px;font-weight:600;
+    cursor:pointer;transition:all .15s;white-space:nowrap;
+  }
+  .btn-run:hover{background:var(--cyan-dim);box-shadow:0 0 20px #00e5ff22}
+  .btn-run:disabled{opacity:.4;cursor:default;box-shadow:none}
+
+  .error-box{display:none;padding:12px 16px;background:#ff52520d;border:1px solid #ff525233;border-left:3px solid var(--red);border-radius:0 var(--radius) var(--radius) 0;margin-bottom:20px;font-size:12px;color:var(--red);font-family:var(--font-mono);white-space:pre-wrap}
+  .loading{display:none;text-align:center;padding:48px;color:var(--text-3);font-size:13px}
+  .pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--cyan);animation:pulse 1.2s ease-in-out infinite;margin-right:8px}
+  @keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}
+
+  .summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:20px}
+  .s-card{padding:12px 16px;background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius)}
+  .s-card .lbl{font-size:10px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px}
+  .s-card .val{font-size:14px;color:var(--text-1);font-weight:600}
+
+  .chart-box{
+    background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius-lg);
+    margin-bottom:16px;overflow:hidden;
+  }
+  .chart-title{padding:14px 20px;font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+  .chart-title::before{content:"";width:3px;height:12px;background:var(--cyan);border-radius:2px}
+  .chart-inner{width:100%;height:520px}
+
+  .table-wrap{background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:24px}
+  .table-title{padding:14px 20px;font-size:11px;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+  .table-title::before{content:"";width:3px;height:12px;background:var(--cyan);border-radius:2px}
+  .tbl-scroll{overflow-x:auto;max-height:500px;overflow-y:auto}
+  table.kt{width:100%;border-collapse:collapse;font-size:11px;font-family:var(--font-mono)}
+  table.kt th{
+    text-align:right;padding:8px 10px;background:var(--bg-2);color:var(--text-3);
+    font-weight:600;text-transform:uppercase;letter-spacing:.5px;font-size:10px;
+    border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:1;
+  }
+  table.kt th:first-child{text-align:left}
+  table.kt td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text-2);text-align:right;white-space:nowrap}
+  table.kt td:first-child{text-align:left;color:var(--text-1)}
+  table.kt tr:hover td{background:var(--bg-2)}
+  .up{color:var(--green)!important}.dn{color:var(--red)!important}
+
+  .footer{text-align:center;padding:32px;font-size:11px;color:var(--text-3);border-top:1px solid var(--border);margin-top:40px}
+
+  @media(max-width:768px){.main{padding:16px}.ctrl{flex-direction:column}.ctrl-group{min-width:100%}.chart-inner{height:350px}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <span class="dot"></span>AI Renaissance<span>Data Debug</span>
+  </div>
+  <div class="topbar-nav">
+    <a href="/">Agent Debug</a>
+    <a href="/data" class="active">Data Debug</a>
+  </div>
+  <div class="topbar-status">
+    <span class="live">● ONLINE</span><span>v0.3</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="ctrl">
+    <div class="ctrl-group">
+      <label>Data Skill</label>
+      <select id="skillSelect" onchange="onSkillChange()"><option value="">— Select —</option></select>
+    </div>
+    <div class="ctrl-group" style="max-width:160px;">
+      <label>Stock Code</label>
+      <input id="stockCode" type="text" placeholder="600519" />
+    </div>
+    <button class="btn-run" id="runBtn" onclick="run()">FETCH</button>
+  </div>
+  <div class="ctrl" id="klineOptions" style="display:none;">
+    <div class="ctrl-group" style="max-width:120px;">
+      <label>Period</label>
+      <select id="kType">
+        <option value="day">日K</option>
+        <option value="week">周K</option>
+        <option value="month">月K</option>
+        <option value="m1">1分钟</option>
+        <option value="m5">5分钟</option>
+        <option value="m15">15分钟</option>
+        <option value="m30">30分钟</option>
+        <option value="m60">60分钟</option>
+      </select>
+    </div>
+    <div class="ctrl-group" style="max-width:90px;">
+      <label>Count</label>
+      <input id="numCount" type="number" value="120" min="1" max="640" />
+    </div>
+  </div>
+
+  <div class="error-box" id="errBox"></div>
+  <div class="loading" id="loading"><span class="pulse"></span>Fetching data...</div>
+  <div id="result" style="display:none;"></div>
+</div>
+
+<div class="footer">AI Renaissance · Data Debug</div>
+
+<script>
+const KLINE_SKILLS = ["腾讯财经K线"];
+
+function onSkillChange() {
+  const skill = document.getElementById("skillSelect").value;
+  document.getElementById("klineOptions").style.display =
+    KLINE_SKILLS.includes(skill) ? "flex" : "none";
+}
+
+async function init() {
+  try {
+    const resp = await fetch("/api/data_skills");
+    const data = await resp.json();
+    const sel = document.getElementById("skillSelect");
+    data.forEach(s => {
+      const opt = document.createElement("option");
+      opt.value = s.name; opt.textContent = s.name;
+      sel.appendChild(opt);
+    });
+    if (data.length) sel.selectedIndex = 1;
+    onSkillChange();
+  } catch(e) { console.error(e); }
+}
+
+async function run() {
+  const skill = document.getElementById("skillSelect").value;
+  const stock = document.getElementById("stockCode").value.trim();
+  const kType = document.getElementById("kType").value;
+  const count = parseInt(document.getElementById("numCount").value) || 120;
+  if (!skill) { showErr("Select a data skill"); return; }
+  if (!stock) { showErr("Enter a stock code"); return; }
+
+  hideErr();
+  document.getElementById("loading").style.display = "block";
+  document.getElementById("result").style.display = "none";
+  document.getElementById("runBtn").disabled = true;
+
+  try {
+    const resp = await fetch("/api/test_skill", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ skill_name: skill, stock_code: stock, params: { k_type: kType, num: count } }),
+    });
+    const data = await resp.json();
+    if (data.error) { showErr(data.error + (data.traceback ? "\n" + data.traceback : "")); }
+    else { render(data); }
+  } catch(e) { showErr("Network: " + e.message); }
+  finally {
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("runBtn").disabled = false;
+  }
+}
+
+function fmt(v, d) { d = d || 2; return v != null ? v.toFixed(d) : "—"; }
+function fmtVol(v) { if (v == null) return "—"; return v >= 1e8 ? (v/1e8).toFixed(1)+"亿" : v >= 1e4 ? (v/1e4).toFixed(0)+"万" : v.toFixed(0); }
+function showErr(m) { const b=document.getElementById("errBox"); b.textContent=m; b.style.display="block"; }
+function hideErr() { document.getElementById("errBox").style.display="none"; }
+
+// Store chart instances for resize
+let klineChart = null, rsiChart = null;
+
+function render(data) {
+  const r = data.result || {};
+  const kline = r.kline || [];
+  const h = [];
+
+  // ── Summary cards ──
+  h.push(`<div class="summary">
+    <div class="s-card"><div class="lbl">Status</div><div class="val">${r.status || "—"}</div></div>
+    <div class="s-card"><div class="lbl">Stock</div><div class="val">${r.stock_code || "—"}</div></div>
+    <div class="s-card"><div class="lbl">Period</div><div class="val">${r.k_type || "—"}</div></div>
+    <div class="s-card"><div class="lbl">Total</div><div class="val">${r.total || 0}</div></div>
+    <div class="s-card"><div class="lbl">Fetch Time</div><div class="val">${(r.fetch_time || "—").replace("T"," ")}</div></div>
+    <div class="s-card"><div class="lbl">Indicators</div><div class="val">${(r.indicators || []).join(", ") || "—"}</div></div>
+  </div>`);
+
+  if (!kline.length) {
+    h.push(`<div class="error-box" style="display:block">No kline data returned</div>`);
+    document.getElementById("result").innerHTML = h.join("");
+    document.getElementById("result").style.display = "block";
+    return;
+  }
+
+  // ── Charts placeholder ──
+  h.push(`<div class="chart-box">
+    <div class="chart-title">K线图 · BOLL · MA</div>
+    <div class="chart-inner" id="klineChart"></div>
+  </div>`);
+  h.push(`<div class="chart-box">
+    <div class="chart-title">RSI 相对强弱指数</div>
+    <div class="chart-inner" id="rsiChart" style="height:280px"></div>
+  </div>`);
+
+  // ── Full data table ──
+  h.push(`<div class="table-wrap">
+    <div class="table-title">K线 + 技术指标明细（共 ${kline.length} 条）</div>
+    <div class="tbl-scroll"><table class="kt">
+    <thead><tr>
+      <th>Date</th><th>Open</th><th>Close</th><th>High</th><th>Low</th><th>Volume</th>
+      <th>MA5</th><th>MA10</th><th>MA20</th><th>MA60</th>
+      <th>BOLL-U</th><th>BOLL-M</th><th>BOLL-L</th>
+      <th>RSI6</th><th>RSI12</th><th>RSI14</th><th>RSI24</th>
+    </tr></thead><tbody>`);
+  kline.forEach(item => {
+    const m = item.ma || {}, b = item.boll || {}, s = item.rsi || {};
+    const chg = item.close != null && item.open != null ? item.close - item.open : 0;
+    const cls = chg > 0 ? "up" : chg < 0 ? "dn" : "";
+    h.push(`<tr>
+      <td>${item.date || "—"}</td>
+      <td>${fmt(item.open)}</td><td class="${cls}">${fmt(item.close)}</td>
+      <td>${fmt(item.high)}</td><td>${fmt(item.low)}</td><td>${fmtVol(item.volume)}</td>
+      <td>${fmt(m.ma5)}</td><td>${fmt(m.ma10)}</td><td>${fmt(m.ma20)}</td><td>${fmt(m.ma60)}</td>
+      <td>${fmt(b.upper)}</td><td>${fmt(b.middle)}</td><td>${fmt(b.lower)}</td>
+      <td>${fmt(s.rsi6,1)}</td><td>${fmt(s.rsi12,1)}</td><td>${fmt(s.rsi14,1)}</td><td>${fmt(s.rsi24,1)}</td>
+    </tr>`);
+  });
+  h.push(`</tbody></table></div></div>`);
+
+  document.getElementById("result").innerHTML = h.join("");
+  document.getElementById("result").style.display = "block";
+
+  // ── Render charts ──
+  renderKlineChart(kline, r.k_type || "day");
+  renderRsiChart(kline);
+}
+
+function buildEChartsBase() {
+  return {
+    backgroundColor: "transparent",
+    textStyle: { color: "#94a3c0", fontSize: 11 },
+    grid: { top: 60, right: 60, bottom: 40, left: 60 },
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "cross", crossStyle: { color: "#5b6d8a" } },
+      backgroundColor: "#111827cc",
+      borderColor: "#2a3654",
+      textStyle: { color: "#e8edf5", fontSize: 11, fontFamily: "SF Mono, monospace" },
+    },
+    xAxis: {
+      type: "category",
+      data: [],
+      axisLine: { lineStyle: { color: "#2a3654" } },
+      axisTick: { show: false },
+      axisLabel: { color: "#5b6d8a", fontSize: 10, rotate: 0 },
+    },
+    yAxis: [],
+    series: [],
+  };
+}
+
+function renderKlineChart(kline, period) {
+  if (klineChart) klineChart.dispose();
+
+  const dates = kline.map(d => d.date);
+  const ohlc = kline.map(d => [d.open, d.close, d.low, d.high]);
+  const volumes = kline.map(d => [d.date, d.volume || 0, d.close >= d.open ? 1 : -1]);
+
+  // MA series
+  const ma5 = kline.map(d => d.ma?.ma5 ?? null);
+  const ma10 = kline.map(d => d.ma?.ma10 ?? null);
+  const ma20 = kline.map(d => d.ma?.ma20 ?? null);
+  const ma60 = kline.map(d => d.ma?.ma60 ?? null);
+  const hasMA = ma5.some(v => v != null);
+
+  // BOLL series
+  const bollUpper = kline.map(d => d.boll?.upper ?? null);
+  const bollMiddle = kline.map(d => d.boll?.middle ?? null);
+  const bollLower = kline.map(d => d.boll?.lower ?? null);
+  const hasBOLL = bollMiddle.some(v => v != null);
+
+  const option = buildEChartsBase();
+  option.grid = { top: 70, right: 70, bottom: 60, left: 70 };
+  option.xAxis.data = dates;
+  option.xAxis.axisLabel.rotate = kline.length > 60 ? 45 : 0;
+  // Show fewer labels for readability
+  const labelInterval = Math.max(1, Math.floor(dates.length / 15));
+
+  option.yAxis = [{
+    type: "value",
+    scale: true,
+    splitLine: { lineStyle: { color: "#1a2234" } },
+    axisLabel: { color: "#5b6d8a", fontSize: 10 },
+    position: "right",
+  }];
+
+  option.series = [
+    // K-line candlestick
+    {
+      name: "K线",
+      type: "candlestick",
+      data: ohlc,
+      itemStyle: {
+        color: "#00e676",
+        color0: "#ff5252",
+        borderColor: "#00e676",
+        borderColor0: "#ff5252",
+      },
+      markPoint: {
+        label: { color: "#e8edf5", fontSize: 10 },
+        data: [
+          { type: "max", name: "最高", symbol: "pin", symbolSize: 30 },
+          { type: "min", name: "最低", symbol: "pin", symbolSize: 30 },
+        ],
+      },
+    },
+  ];
+
+  // MA lines
+  if (hasMA) {
+    const maColors = { MA5: "#f5c842", MA10: "#ff8a65", MA20: "#ce93d8", MA60: "#4fc3f7" };
+    [{ name: "MA5", data: ma5 }, { name: "MA10", data: ma10 }, { name: "MA20", data: ma20 }, { name: "MA60", data: ma60 }]
+      .forEach(({ name, data }) => {
+        option.series.push({
+          name, type: "line", data,
+          smooth: true, symbol: "none",
+          lineStyle: { color: maColors[name], width: 1, type: name === "MA60" ? "dashed" : "solid" },
+          itemStyle: { color: maColors[name] },
+        });
+      });
+  }
+
+  // BOLL lines
+  if (hasBOLL) {
+    [{ name: "BOLL Upper", data: bollUpper, color: "#ff5252" },
+     { name: "BOLL Mid", data: bollMiddle, color: "#ffab40" },
+     { name: "BOLL Lower", data: bollLower, color: "#00e676" }]
+      .forEach(({ name, data, color }) => {
+        option.series.push({
+          name, type: "line", data,
+          smooth: false, symbol: "none",
+          lineStyle: { color, width: 1.5, type: name === "BOLL Mid" ? "solid" : "dashed" },
+          itemStyle: { color },
+        });
+      });
+
+    // BOLL fill area between upper and lower
+    option.series.push({
+      name: "BOLL Band",
+      type: "line", data: bollUpper,
+      smooth: false, symbol: "none",
+      lineStyle: { opacity: 0 },
+      areaStyle: { color: "#ffab4022" },
+      stack: "boll-band",
+    });
+  }
+
+  // Volume bar at bottom (on a second axis if needed — keep it simple with tooltip for now)
+
+  option.tooltip.formatter = function(params) {
+    if (!params || !params.length) return "";
+    const d = params[0];
+    let html = `<div style="font-weight:700;margin-bottom:4px">${d.axisValue}</div>`;
+    params.forEach(p => {
+      if (p.seriesName === "K线") {
+        const [open, close, low, high] = p.data || [];
+        html += `O:${fmtRaw(open)} C:${fmtRaw(close)}<br/>L:${fmtRaw(low)} H:${fmtRaw(high)}<br/>`;
+      } else if (p.seriesName === "BOLL Band") {
+        // skip
+      } else if (p.value != null) {
+        html += `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color};margin-right:4px"></span>${p.seriesName}: ${fmtRaw(p.value)}<br/>`;
+      }
+    });
+    return html;
+  };
+
+  klineChart = echarts.init(document.getElementById("klineChart"));
+  klineChart.setOption(option);
+
+  // Click on chart → scroll table to matching row
+  klineChart.on("click", function(params) {
+    if (params.dataIndex != null) scrollTableTo(params.dataIndex);
+  });
+}
+
+function renderRsiChart(kline) {
+  if (rsiChart) rsiChart.dispose();
+
+  const dates = kline.map(d => d.date);
+  const rsi6 = kline.map(d => d.rsi?.rsi6 ?? null);
+  const rsi12 = kline.map(d => d.rsi?.rsi12 ?? null);
+  const rsi14 = kline.map(d => d.rsi?.rsi14 ?? null);
+  const rsi24 = kline.map(d => d.rsi?.rsi24 ?? null);
+  const hasRSI = rsi6.some(v => v != null);
+
+  const option = buildEChartsBase();
+  option.grid = { top: 40, right: 60, bottom: 30, left: 60 };
+  option.xAxis.data = dates;
+  option.xAxis.axisLabel.rotate = kline.length > 60 ? 45 : 0;
+
+  option.yAxis = [{
+    type: "value",
+    min: 0, max: 100,
+    splitLine: { lineStyle: { color: "#1a2234" } },
+    axisLabel: { color: "#5b6d8a", fontSize: 10 },
+    position: "right",
+  }];
+
+  // Reference lines at 30 and 70
+  option.series = [
+    { name: "超买线 70", type: "line", data: [], markLine: { silent: true, symbol: "none", lineStyle: { color: "#ff5252", type: "dashed", width: 1 }, label: { color: "#ff5252", fontSize: 9 }, data: [{ yAxis: 70 }] } },
+    { name: "超卖线 30", type: "line", data: [], markLine: { silent: true, symbol: "none", lineStyle: { color: "#00e676", type: "dashed", width: 1 }, label: { color: "#00e676", fontSize: 9 }, data: [{ yAxis: 30 }] } },
+  ];
+
+  if (hasRSI) {
+    const rsiColors = { RSI6: "#ffab40", RSI12: "#ff8a65", RSI14: "#ce93d8", RSI24: "#4fc3f7" };
+    [{ name: "RSI6", data: rsi6 }, { name: "RSI12", data: rsi12 }, { name: "RSI14", data: rsi14 }, { name: "RSI24", data: rsi24 }]
+      .forEach(({ name, data }) => {
+        option.series.push({
+          name, type: "line", data,
+          smooth: true, symbol: "none",
+          lineStyle: { color: rsiColors[name], width: 1.5 },
+          itemStyle: { color: rsiColors[name] },
+        });
+      });
+  }
+
+  rsiChart = echarts.init(document.getElementById("rsiChart"));
+  rsiChart.setOption(option);
+
+  rsiChart.on("click", function(params) {
+    if (params.dataIndex != null) scrollTableTo(params.dataIndex);
+  });
+}
+
+function fmtRaw(v) { return v != null ? (typeof v === "number" ? v.toFixed(2) : v) : "—"; }
+
+function scrollTableTo(idx) {
+  const table = document.querySelector("table.kt");
+  if (!table) return;
+  const rows = table.querySelectorAll("tbody tr");
+  if (rows[idx]) {
+    rows[idx].scrollIntoView({ behavior: "smooth", block: "center" });
+    rows.forEach(r => r.style.background = "");
+    rows[idx].style.background = "#243049";
+  }
+}
+
+// Resize charts on window resize
+window.addEventListener("resize", function() {
+  if (klineChart) klineChart.resize();
+  if (rsiChart) rsiChart.resize();
+});
+
+document.getElementById("stockCode").addEventListener("keyup", e => { if(e.key==="Enter") run(); });
+
+init();
+</script>
+</body>
+</html>
