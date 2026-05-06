@@ -929,7 +929,16 @@ function renderOrchestrateResult(result, stockCode) {
 
   if (result.signals_summary) {
     html += `<div class="sentiment-section"><div class="sec-title">Signals Summary</div><ul class="sig-list">`;
-    result.signals_summary.forEach(s => { html += `<li>${s}</li>`; });
+    if (Array.isArray(result.signals_summary)) {
+      result.signals_summary.forEach(s => { html += `<li>${s}</li>`; });
+    } else {
+      // Handle dict format: {total: N, bullish: N, bearish: N, neutral: N}
+      const summary = result.signals_summary;
+      if (summary.total !== undefined) html += `<li>Total: ${summary.total}</li>`;
+      if (summary.bullish !== undefined) html += `<li>Bullish: ${summary.bullish}</li>`;
+      if (summary.bearish !== undefined) html += `<li>Bearish: ${summary.bearish}</li>`;
+      if (summary.neutral !== undefined) html += `<li>Neutral: ${summary.neutral}</li>`;
+    }
     html += `</ul></div>`;
   }
 
