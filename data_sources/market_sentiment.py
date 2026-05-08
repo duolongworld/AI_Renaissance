@@ -255,8 +255,10 @@ class MarketSentimentDataSource:
             )
             if df is not None and not df.empty:
                 # 尝试多种列名
-                date_col = "日期" if "日期" in df.columns else "date"
-                margin_col = "融资余额(元)" if "融资余额(元)" in df.columns else "rzye"
+                date_col_arr = ["信用交易日期", "交易日期", "日期", "trade_date", "date"]
+                margin_col_arr = ["融资余额", "融资余额(元)", "rzye"]
+                date_col = next((col for col in date_col_arr if col in df.columns), "date")
+                margin_col = next((col for col in margin_col_arr if col in df.columns), "rzye")
                 df = df.sort_values(date_col, ascending=False)
                 latest = float(df.iloc[0][margin_col]) / 1e8
                 old_val = float(df.iloc[-1][margin_col]) / 1e8 if len(df) > 5 else latest
