@@ -5,6 +5,7 @@ numpy>=1.23.0
 pydantic>=2.0.0
 
 # Data sources
+akshare>=1.18.0
 # eastmoney-sdk  # 东方财富API（待定）
 # tencent-stock  # 腾讯自选股API（待定）
 

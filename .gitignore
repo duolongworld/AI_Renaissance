@@ -6,6 +6,7 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 ENV/
 build/
 develop-eggs/
@@ -39,8 +40,9 @@ logs/
 .env
 .<环境影响>
 
-# Data
-data/
+# Data (only root-level data/, not skills/data/)
+/data/
+data_sources/data/
 *.db
 *.sqlite
 *.csv

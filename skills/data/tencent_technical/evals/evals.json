@@ -1,0 +1,41 @@
+{
+  "skill_name": "tencent-technical",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我获取贵州茅台600519最近60个交易日的日K线数据，需要包含MA均线、BOLL布林带和RSI指标，输出JSON格式",
+      "expected_output": "status为success，stock_code标准化为sh600519，kline包含60条日K线，每条包含open/close/high/low/volume及ma/boll/rsi技术指标字段",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "查一下港股腾讯00700的周K线行情，要最近30周的，计算MA和BOLL指标",
+      "expected_output": "status为success，stock_code标准化为hk00700，kline包含周K线数据，每条包含MA和BOLL指标",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "看一下美股特斯拉TSLA的日K线，最近100天，只需要原始OHLCV数据就行，不用算指标",
+      "expected_output": "status为success，stock_code标准化为ustsla，kline包含日K线OHLCV数据，不包含技术指标字段",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "查询代码为999999的股票日K线数据",
+      "expected_output": "status为error，kline为空数组，因为999999不是任何市场的有效股票代码",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "获取平安银行000001的15分钟K线数据，最近200条，只要RSI指标",
+      "expected_output": "status为success，stock_code标准化为sz000001，k_type为m15，kline包含分钟K线OHLCV及rsi指标",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "用港股代码hk09988查一下阿里巴巴的日K线，要240条",
+      "expected_output": "status为success，保留hk09988前缀，kline包含约240条日K线",
+      "files": []
+    }
+  ]
+}

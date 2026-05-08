@@ -1,21 +1,29 @@
-from agents.research.financial.cash_flow.agent import CashFlowAgent
-from arbitration.engine import ArbitrationEngine
-from agents.signal import SignalBundle
+from agents.financial.agent import FinancialAgent
+from agents.orchestrator.arbitration import ArbitrationEngine
+from agents.signal import SignalBundle, bullish_signal
 
 
-def test_cash_flow_agent_returns_signal():
-    agent = CashFlowAgent(config={})
+def test_financial_agent_returns_signal():
+    agent = FinancialAgent(config={})
     signal = agent.analyze("000001")
 
-    assert signal.source == "现金流验证Agent"
+    assert signal.source == "财务分析Agent"
+    assert signal.signal_type == "financial"
     assert signal.direction in {"bullish", "bearish", "neutral"}
 
 
 def test_arbitration_engine_handles_single_signal_bundle():
-    agent = CashFlowAgent(config={})
-    signal = agent.analyze("000001")
     bundle = SignalBundle(stock_code="000001")
-    bundle.add(signal)
+    bundle.add(
+        bullish_signal(
+            confidence=0.8,
+            reasoning="single high-confidence smoke signal",
+            signals=["smoke"],
+            source="SmokeTestAgent",
+            stock_code="000001",
+            signal_type="financial",
+        )
+    )
 
     result = ArbitrationEngine().arbitrate(bundle)
     expected_summary = "📊 信号汇总：共1个信号，看多1个，看空0个，中性0个"

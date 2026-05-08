@@ -33,4 +33,4 @@ jobs:
         run: python -m pytest -q
 
       - name: Compile Python files
-        run: python -m compileall main.py agents arbitration
+        run: python -m compileall main.py agents data_sources
