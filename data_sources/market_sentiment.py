@@ -1,11 +1,13 @@
 """
 A股大盘市场情绪数据源
 
-通过 AKShare 采集全市场情绪指标，供舆情 Agent 调用。
+通过 AKShare + 东财大盘股吧社区数据采集全市场情绪指标，供舆情 Agent 调用。
 对应的分析层 Skill 见 skills/news/market_sentiment_tracker/SKILL.md
 
 设计原则：每个指标独立 try/except，单个指标失败不影响整体评分。
-整体采集控制在 30 秒内完成，超时返回部分数据。
+整体采集控制在 60 秒内完成，超时返回部分数据。
+
+v0.4: 6阶段市场情绪（无人问津/暗度陈仓/人声渐起/人声鼎沸/恐慌抛售/绝望冰点）
 """
 
 from datetime import datetime, timedelta
@@ -23,27 +25,84 @@ except ImportError:
     AKSHARE_AVAILABLE = False
 
 
-# 情绪评分权重配置（与 SKILL.md 对齐）
+# 情绪评分权重配置（与 SKILL.md 对齐，v0.4 新增2个社区指标）
 WEIGHTS = {
-    "turnover_rate":   0.15,  # 换手率异动
-    "limit_up_ratio":  0.15,  # 涨跌停比
-    "margin_change":   0.15,  # 融资余额变化
-    "north_flow":      0.12,  # 北向资金
-    "breadth":         0.13,  # 涨跌比（市场宽度）
-    "volume_ratio":    0.10,  # 量比/成交额变化
-    "rsi":             0.10,  # RSI 技术指标
-    "pe_percentile":   0.10,  # 估值历史百分位
+    # 量化指标（合计 0.50）
+    "turnover_rate":       0.07,
+    "limit_up_ratio":      0.07,
+    "margin_change":       0.07,
+    "north_flow":          0.06,
+    "breadth":             0.06,
+    "volume_ratio":        0.06,
+    "rsi":                 0.06,
+    "pe_percentile":       0.05,
+    # 社区指标（合计 0.50）— 舆情系统以社区情绪为核心
+    "discussion_volume":   0.25,
+    "community_sentiment": 0.25,
 }
 
-# 情绪阶段定义
-SCORE_LEVELS = [
-    (0,  20,  "极度恐慌", "冰点区域，逆向布局信号",           "50-70%", "bullish"),
-    (21, 35,  "冷淡悲观", "情绪低迷，逢低关注低估值",         "40-60%", "bullish"),
-    (36, 45,  "偏冷中性", "持仓为主，关注结构性机会",         "30-50%", "neutral"),
-    (46, 54,  "中性均衡", "精选个股，减少频繁操作",           "30-50%", "neutral"),
-    (55, 65,  "偏热乐观", "控制加仓节奏，注意风险",           "20-40%", "neutral"),
-    (66, 80,  "情绪偏热", "逐步减仓，锁定部分利润",           "20-30%", "bearish"),
-    (81, 100, "极度亢奋", "沸点区域，警惕顶部，大幅降低仓位", "10-20%", "bearish"),
+# ── 6阶段市场情绪定义（v0.4）──────────────────────
+MARKET_PHASES = [
+    {
+        "id": "despair_freezing",
+        "name": "绝望冰点",
+        "score_range": (0, 10),
+        "description": "彻底绝望，无人愿意买入，讨论冻结",
+        "position": "80-95%",
+        "direction": "bullish",
+        "icon": "🧊",
+        "color": "#63b3ed",
+    },
+    {
+        "id": "nobody_cares",
+        "name": "无人问津",
+        "score_range": (10, 25),
+        "description": "极端冷清，无人讨论，市场被遗忘",
+        "position": "70-90%",
+        "direction": "bullish",
+        "icon": "🕳️",
+        "color": "#4a5568",
+    },
+    {
+        "id": "panic_selling",
+        "name": "恐慌抛售",
+        "score_range": (10, 35),
+        "description": "恐慌主导，大量抛售，讨论激烈",
+        "position": "30-50%",
+        "direction": "bullish",
+        "icon": "⚡",
+        "color": "#f6ad55",
+    },
+    {
+        "id": "secret_accumulation",
+        "name": "暗度陈仓",
+        "score_range": (25, 45),
+        "description": "聪明钱悄悄进场，散户沉默，暗流涌动",
+        "position": "50-70%",
+        "direction": "bullish",
+        "icon": "🦉",
+        "color": "#2d3748",
+    },
+    {
+        "id": "voices_rising",
+        "name": "人声渐起",
+        "score_range": (45, 75),
+        "description": "讨论逐渐增多，市场关注度上升",
+        "position": "40-60%",
+        "direction": "neutral",
+        "icon": "📈",
+        "color": "#ecc94b",
+    },
+    {
+        "id": "climax",
+        "name": "人声鼎沸",
+        "score_range": (75, 100),
+        "description": "全民热议，疯狂追涨，极度亢奋",
+        "position": "20-40%",
+        "direction": "bearish",
+        "icon": "🔥",
+        "color": "#e53e3e",
+    },
 ]
 
 
@@ -62,13 +121,13 @@ class MarketSentimentDataSource:
             {
                 "status": "success" | "error",
                 "score": float,
-                "stage": {...},
+                "stage": {id, name, icon, color, description, position, direction},
                 "direction": str,
                 "confidence": float,
                 "indicators": {...},
                 "raw_data": {...},
                 "special_signals": [...],
-                ...
+                "community": {...},  # v0.4: 社区数据
             }
         """
         if not AKSHARE_AVAILABLE:
@@ -131,14 +190,38 @@ class MarketSentimentDataSource:
         except Exception as e:
             logger.warning(f"[{self.name}] 技术指标计算失败: {e}")
 
+        # 6. 社区讨论数据（v0.4 新增）
+        community_data = None
+        try:
+            from .community_sentiment import CommunitySentimentDataSource
+            community_source = CommunitySentimentDataSource()
+            community_data = community_source.get_community_sentiment()
+            if community_data.get("status") in ("success", "partial"):
+                aggregate = community_data["aggregate"]
+                indicators["discussion_volume"] = aggregate["discussion_volume_score"]
+                indicators["community_sentiment"] = self._normalize_community_sentiment(
+                    aggregate["bullish_ratio"]
+                )
+                raw_data["community"] = community_data
+                logger.info(
+                    f"[{self.name}] 社区: {aggregate['total_posts']}帖, "
+                    f"热度{aggregate['discussion_volume_score']:.0f}, "
+                    f"多{aggregate['bullish_ratio']:.1%}/空{aggregate['bearish_ratio']:.1%}"
+                )
+        except Exception as e:
+            logger.warning(f"[{self.name}] 社区数据获取失败: {e}")
+
         # 计算综合得分
         score = self._calculate_score(indicators)
-        stage = self._get_stage(score)
+
+        # 判定阶段（使用6阶段规则引擎）
+        stage = self._determine_phase(score, community_data, raw_data)
+
         direction = stage["direction"]
-        special_signals = self._detect_special_signals(raw_data, score)
+        special_signals = self._detect_special_signals(raw_data, score, community_data)
 
         # 确定置信度
-        confidence = self._calc_confidence(score, special_signals, indicators)
+        confidence = self._calc_confidence(score, special_signals, indicators, community_data)
 
         return {
             "status": "success",
@@ -151,6 +234,7 @@ class MarketSentimentDataSource:
             "raw_data": raw_data,
             "special_signals": special_signals,
             "uncertainties": self._get_uncertainties(indicators),
+            "community": community_data,
         }
 
     # ── 数据采集 ──────────────────────────────
@@ -169,7 +253,6 @@ class MarketSentimentDataSource:
             zt_count = None
 
         dt_count = None
-        # stock_dt_pool_em 可能不存在于新版 akshare，尝试多种接口
         for func_name in ("stock_dt_pool_em", "stock_zt_pool_dtgc_em"):
             try:
                 func = getattr(ak, func_name)
@@ -179,7 +262,6 @@ class MarketSentimentDataSource:
             except (AttributeError, Exception):
                 continue
 
-        # 如果涨跌停都拿不到，尝试前几个交易日
         if zt_count is None and dt_count is None:
             for offset in range(1, 5):
                 try:
@@ -201,17 +283,14 @@ class MarketSentimentDataSource:
         return zt_count, dt_count
 
     def _get_market_breadth(self) -> Optional[float]:
-        """获取市场涨跌比（简化方案：用上证指数涨跌推算）"""
+        """获取市场涨跌比"""
         try:
-            # 简化方案：获取上证指数最新涨跌幅，推算市场宽度
-            # 涨跌幅 > 0 约对应上涨占比 > 50%
             df = ak.stock_zh_index_daily(symbol="sh000001")
             if df is not None and not df.empty:
                 df = df.sort_values("date", ascending=False)
                 latest_close = float(df.iloc[0]["close"])
                 prev_close = float(df.iloc[1]["close"]) if len(df) > 1 else latest_close
                 chg_pct = (latest_close - prev_close) / prev_close * 100
-                # 简化映射：涨跌幅 -3% ~ +3% → 上涨占比 20% ~ 80%
                 breadth = max(0.1, min(0.9, 0.5 + chg_pct / 10))
                 return breadth
         except Exception as e:
@@ -221,12 +300,10 @@ class MarketSentimentDataSource:
     def _get_north_flow(self) -> Optional[float]:
         """获取北向资金净流入（亿元）"""
         try:
-            # 新版 akshare 使用 stock_hsgt_hist_em
             df = ak.stock_hsgt_hist_em(symbol="沪股通")
             if df is not None and not df.empty:
                 df = df.sort_values("日期", ascending=False)
                 latest = df.iloc[0]
-                # 尝试多种列名
                 for col in ["当日资金流入", "当日成交净买额", "净买入"]:
                     if col in df.columns:
                         val = float(latest[col])
@@ -236,7 +313,6 @@ class MarketSentimentDataSource:
         except Exception:
             pass
         try:
-            # 备用接口
             df = ak.stock_hsgt_fund_flow_summary_em()
             if df is not None and not df.empty:
                 val = float(df.iloc[0].get("当日资金流入", 0))
@@ -254,13 +330,11 @@ class MarketSentimentDataSource:
                 end_date=self._get_today_str(),
             )
             if df is not None and not df.empty:
-                # 尝试多种列名
                 date_col = "日期" if "日期" in df.columns else "date"
                 margin_col = "融资余额(元)" if "融资余额(元)" in df.columns else "rzye"
                 df = df.sort_values(date_col, ascending=False)
                 latest = float(df.iloc[0][margin_col]) / 1e8
                 old_val = float(df.iloc[-1][margin_col]) / 1e8 if len(df) > 5 else latest
-                # 防止 NaN/Inf
                 if np.isnan(latest) or np.isinf(latest) or np.isnan(old_val) or np.isinf(old_val):
                     return None, None
                 change = (latest - old_val) / old_val * 100 if old_val > 0 else 0
@@ -284,7 +358,6 @@ class MarketSentimentDataSource:
                 loss = float(abs(np.mean(neg_deltas))) if len(neg_deltas) > 0 else 0.0
                 rs = gain / loss if loss > 0 else 100.0
                 rsi = 100 - (100 / (1 + rs))
-                # 防止 NaN/Inf
                 if np.isnan(rsi) or np.isinf(rsi):
                     rsi = 50.0
             else:
@@ -322,6 +395,12 @@ class MarketSentimentDataSource:
     def _normalize_rsi(self, rsi):
         return max(0, min(100, rsi)) if rsi is not None else None
 
+    def _normalize_community_sentiment(self, bullish_ratio: float) -> Optional[float]:
+        """将社区看多比例映射到0-100分"""
+        if bullish_ratio is None:
+            return None
+        return bullish_ratio * 100
+
     # ── 综合评分 ──────────────────────────────
 
     def _calculate_score(self, indicators: dict) -> float:
@@ -336,18 +415,186 @@ class MarketSentimentDataSource:
             return 50.0
         return round(total_score / total_weight, 1)
 
-    def _get_stage(self, score: float) -> dict:
-        for lo, hi, name, suggestion, position, direction in SCORE_LEVELS:
-            if lo <= score <= hi:
-                return {
-                    "name": name,
-                    "suggestion": suggestion,
-                    "position": position,
-                    "direction": direction,
-                }
-        return SCORE_LEVELS[-1][2:]
+    # ── 6阶段判定引擎（v0.4）──────────────────────
 
-    def _detect_special_signals(self, raw: dict, score: float) -> list:
+    def _determine_phase(
+        self,
+        score: float,
+        community_data: Optional[Dict] = None,
+        raw_data: Optional[Dict] = None,
+    ) -> Dict:
+        """
+        判定市场阶段：社区情绪为主，量化分数为辅
+
+        核心原则：舆情系统以社区情绪为核心判定依据
+        - 极端阶段（绝望冰点/人声鼎沸）必须社区+技术双重确认
+        - 社区方向（看多/看空）决定阶段方向
+        - 量化分数作为辅助校验，防止社区数据失真
+
+        优先级规则（从最具体到最通用）：
+        1. 绝望冰点: score≤15 AND RSI<30 AND 讨论极冷 AND 看空>60% AND 量降
+        2. 恐慌抛售: score≤35 AND 讨论激烈 AND 看空>70%
+        3. 人声鼎沸: score≥75 AND RSI>70 AND 讨论极热 AND 看多>80%
+        4. 暗度陈仓: score∈[20,45] AND 讨论冷 AND 聪明钱进场
+        5. 无人问津: score≤25 AND 讨论极冷
+        6. 人声渐起: 兜底（中间状态）
+
+        无社区数据时保守判断，不轻易判极端阶段。
+        """
+        # 提取社区指标（可能为空）
+        disc_vol = None
+        bull_ratio = None
+        bear_ratio = None
+        vol_trend = "stable"
+
+        if community_data and community_data.get("aggregate"):
+            agg = community_data["aggregate"]
+            disc_vol = agg.get("discussion_volume_score")
+            bull_ratio = agg.get("bullish_ratio")
+            bear_ratio = agg.get("bearish_ratio")
+            vol_trend = agg.get("volume_trend", "stable")
+
+        # 聪明钱指标：北向净流入或融资余额增加
+        smart_money_active = False
+        if raw_data:
+            north = raw_data.get("north_flow")
+            margin_chg = raw_data.get("margin_change")
+            if (north is not None and north > 0) or (margin_chg is not None and margin_chg > 0):
+                smart_money_active = True
+
+        # RSI 硬约束（极端阶段必须有技术面佐证）
+        rsi_value = raw_data.get("rsi") if raw_data else None
+        rsi_oversold = rsi_value is not None and rsi_value < 30
+        rsi_overbought = rsi_value is not None and rsi_value > 70
+
+        # ── 有社区数据时：规则引擎 ──
+        if disc_vol is not None and bull_ratio is not None:
+            # 1. 绝望冰点（必须 RSI 超卖 + 社区冻结 + 看空主导）
+            if score <= 15 and rsi_oversold and disc_vol <= 25 and bear_ratio > 0.60 and vol_trend == "declining":
+                return self._build_phase_result("despair_freezing")
+
+            # 2. 恐慌抛售（看空主导 + 讨论激烈）
+            if score <= 35 and disc_vol >= 50 and bear_ratio > 0.70:
+                return self._build_phase_result("panic_selling")
+
+            # 3. 人声鼎沸（必须 RSI 超买 + 社区极度看多 + 讨论极热）
+            if score >= 75 and rsi_overbought and disc_vol >= 75 and bull_ratio > 0.80:
+                return self._build_phase_result("climax")
+
+            # 4. 暗度陈仓（聪明钱进场 + 散户沉默）
+            if 20 <= score <= 45 and disc_vol <= 35 and smart_money_active:
+                return self._build_phase_result("secret_accumulation")
+
+            # 5. 无人问津（讨论极冷，但不要求RSI条件）
+            if score <= 25 and disc_vol <= 20:
+                return self._build_phase_result("nobody_cares")
+
+            # 6. 人声渐起（兜底：讨论有但不极端）
+            if 25 <= score <= 75 and disc_vol >= 20:
+                return self._build_phase_result("voices_rising")
+
+            # 部分条件匹配时做最佳匹配
+            return self._best_match_phase(score, disc_vol, bull_ratio, bear_ratio, smart_money_active, rsi_oversold, rsi_overbought)
+
+        # ── 无社区数据：保守降级映射 ──
+        return self._fallback_phase_by_score(score, smart_money_active, rsi_oversold, rsi_overbought)
+
+    def _best_match_phase(
+        self, score: float, disc_vol: float, bull_ratio: float, bear_ratio: float,
+        smart_money: bool, rsi_oversold: bool, rsi_overbought: bool
+    ) -> Dict:
+        """
+        部分条件匹配时的最佳匹配逻辑
+        社区方向决定阶段方向，分数作为辅助
+        """
+        # 高分 + RSI超买 + 高讨论 → 人声鼎沸（放宽看多比到75%）
+        if score >= 75 and rsi_overbought and disc_vol >= 65 and bull_ratio > 0.75:
+            return self._build_phase_result("climax")
+
+        # 低分 + RSI超卖 + 极低讨论 → 绝望冰点（放宽看空和量降条件）
+        if score <= 15 and rsi_oversold and disc_vol <= 30:
+            return self._build_phase_result("despair_freezing")
+
+        # 低分 + 高讨论 + 看空占优 → 恐慌抛售
+        if score <= 35 and disc_vol >= 50 and bear_ratio > bull_ratio:
+            return self._build_phase_result("panic_selling")
+
+        # 低中分 + 低讨论 + 聪明钱 → 暗度陈仓
+        if 20 <= score <= 45 and disc_vol <= 35 and smart_money:
+            return self._build_phase_result("secret_accumulation")
+
+        # 低分 + 极低讨论 → 无人问津
+        if score <= 25 and disc_vol <= 25:
+            return self._build_phase_result("nobody_cares")
+
+        # 中间分数 + 有讨论 → 人声渐起
+        if 20 <= score <= 75 and disc_vol >= 20:
+            return self._build_phase_result("voices_rising")
+
+        # 最终兜底
+        return self._fallback_phase_by_score(score, smart_money, rsi_oversold, rsi_overbought)
+
+    def _fallback_phase_by_score(self, score: float, smart_money: bool = False,
+                                  rsi_oversold: bool = False, rsi_overbought: bool = False) -> Dict:
+        """
+        纯分数降级映射（无社区数据时使用）
+        保守原则：没有社区数据时不轻易判极端阶段
+        """
+        if score <= 10:
+            # 必须RSI超卖才判绝望冰点，否则判无人问津
+            if rsi_oversold:
+                return self._build_phase_result("despair_freezing")
+            return self._build_phase_result("nobody_cares")
+        elif score <= 25:
+            if smart_money:
+                return self._build_phase_result("secret_accumulation")
+            return self._build_phase_result("nobody_cares")
+        elif score <= 35:
+            if smart_money:
+                return self._build_phase_result("secret_accumulation")
+            return self._build_phase_result("panic_selling")
+        elif score <= 45:
+            if smart_money:
+                return self._build_phase_result("secret_accumulation")
+            return self._build_phase_result("voices_rising")
+        elif score <= 75:
+            return self._build_phase_result("voices_rising")
+        else:
+            # 必须RSI超买才判人声鼎沸，否则保守判人声渐起
+            if rsi_overbought:
+                return self._build_phase_result("climax")
+            return self._build_phase_result("voices_rising")
+
+    def _build_phase_result(self, phase_id: str) -> Dict:
+        """根据 phase_id 构建阶段结果"""
+        for phase in MARKET_PHASES:
+            if phase["id"] == phase_id:
+                return {
+                    "id": phase["id"],
+                    "name": phase["name"],
+                    "icon": phase["icon"],
+                    "color": phase["color"],
+                    "description": phase["description"],
+                    "position": phase["position"],
+                    "direction": phase["direction"],
+                    "suggestion": phase["description"] + "，建议仓位 " + phase["position"],
+                }
+        # 默认返回人声渐起
+        default = MARKET_PHASES[2]
+        return {
+            "id": default["id"],
+            "name": default["name"],
+            "icon": default["icon"],
+            "color": default["color"],
+            "description": default["description"],
+            "position": default["position"],
+            "direction": default["direction"],
+            "suggestion": default["description"],
+        }
+
+    # ── 特殊信号 ──────────────────────────────
+
+    def _detect_special_signals(self, raw: dict, score: float, community_data: Optional[Dict] = None) -> list:
         signals = []
         if score >= 85:
             signals.append("顶部预警")
@@ -375,9 +622,23 @@ class MarketSentimentDataSource:
             elif change < -15:
                 signals.append("去杠杆加速")
 
+        # 社区相关特殊信号
+        if community_data and community_data.get("aggregate"):
+            agg = community_data["aggregate"]
+            if agg.get("discussion_volume_score", 0) >= 90:
+                signals.append("讨论极度狂热")
+            if agg.get("discussion_volume_score", 0) <= 10:
+                signals.append("讨论极度冷清")
+            if agg.get("bullish_ratio", 0) > 0.85:
+                signals.append("社区一致看多")
+            if agg.get("bearish_ratio", 0) > 0.85:
+                signals.append("社区一致看空")
+
         return signals
 
-    def _calc_confidence(self, score, special_signals, indicators) -> float:
+    # ── 置信度 ──────────────────────────────
+
+    def _calc_confidence(self, score, special_signals, indicators, community_data=None) -> float:
         available = sum(1 for v in indicators.values() if v is not None)
         total = len(WEIGHTS)
         coverage = available / total if total > 0 else 0
@@ -392,10 +653,17 @@ class MarketSentimentDataSource:
         # 特殊信号加成
         signal_boost = min(len(special_signals) * 0.05, 0.15)
 
+        # 社区数据加成
+        community_boost = 0
+        if community_data and community_data.get("status") in ("success", "partial"):
+            community_boost = 0.05
+
         # 数据覆盖度惩罚
         coverage_penalty = 0 if coverage >= 0.5 else (0.5 - coverage) * 0.3
 
-        return round(min(0.9, max(0.2, base + signal_boost - coverage_penalty)), 2)
+        return round(min(0.9, max(0.2, base + signal_boost + community_boost - coverage_penalty)), 2)
+
+    # ── 不确定性 ──────────────────────────────
 
     def _get_uncertainties(self, indicators: dict) -> list:
         missing = [k for k, v in indicators.items() if v is None]
@@ -416,6 +684,10 @@ class MarketSentimentDataSource:
             notes.append("估值百分位数据缺失")
         if "volume_ratio" in missing:
             notes.append("量比数据缺失")
+        if "discussion_volume" in missing:
+            notes.append("社区讨论热度数据缺失")
+        if "community_sentiment" in missing:
+            notes.append("社区情绪数据缺失")
         if not notes:
             notes.append("情绪极端不等于立即反转，可能持续一段时间")
         return notes
@@ -425,11 +697,12 @@ class MarketSentimentDataSource:
             "status": "error",
             "fetch_time": datetime.now().isoformat(),
             "score": 50.0,
-            "stage": {"name": "数据不足", "suggestion": reason, "position": "30-50%", "direction": "neutral"},
+            "stage": self._build_phase_result("voices_rising"),
             "direction": "neutral",
             "confidence": 0.3,
             "indicators": {},
             "raw_data": {},
             "special_signals": [],
             "uncertainties": [reason],
+            "community": None,
         }

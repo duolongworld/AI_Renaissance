@@ -524,18 +524,35 @@ function renderMarketSentiment(market) {
   const raw = market.raw_data_summary || {};
   const uncertainties = market.uncertainties || [];
 
-  // 温度颜色
-  let tempColor = "var(--cyan)";
-  let tempBg = "var(--cyan-dim)";
-  if (score <= 20) { tempColor = "var(--cyan)"; tempBg = "var(--cyan-dim)"; }
-  else if (score <= 35) { tempColor = "var(--green)"; tempBg = "var(--green-dim)"; }
-  else if (score <= 65) { tempColor = "var(--amber)"; tempBg = "var(--amber-dim)"; }
-  else if (score <= 80) { tempColor = "var(--red)"; tempBg = "var(--red-dim)"; }
-  else { tempColor = "var(--red)"; tempBg = "var(--red-dim)"; }
+  // 温度颜色 - 跟随6阶段配色
+  const PHASES = {
+    "nobody_cares":       { icon: "🕳️", color: "#4a5568", label: "无人问津" },
+    "secret_accumulation":{ icon: "🦉", color: "#2d3748", label: "暗度陈仓" },
+    "voices_rising":      { icon: "📈", color: "#ecc94b", label: "人声渐起" },
+    "climax":             { icon: "🔥", color: "#e53e3e", label: "人声鼎沸" },
+    "panic_selling":      { icon: "⚡", color: "#f6ad55", label: "恐慌抛售" },
+    "despair_freezing":   { icon: "🧊", color: "#63b3ed", label: "绝望冰点" },
+  };
 
-  // 阶段 emoji
-  const stageEmoji = score <= 20 ? "🧊" : score <= 35 ? "❄️" : score <= 45 ? "🌤️" :
-                     score <= 54 ? "⚖️" : score <= 65 ? "☀️" : score <= 80 ? "🔥" : "🌋";
+  const phaseId = market.phase || "";
+  const phase = PHASES[phaseId] || null;
+
+  let tempColor, tempBg, stageEmoji;
+  if (phase) {
+    tempColor = phase.color;
+    tempBg = phase.color + "20";
+    stageEmoji = phase.icon;
+  } else {
+    // 降级：纯分数映射
+    tempColor = "var(--cyan)"; tempBg = "var(--cyan-dim)";
+    if (score <= 20) { tempColor = "#63b3ed"; tempBg = "#63b3ed20"; }
+    else if (score <= 40) { tempColor = "#4a5568"; tempBg = "#4a556820"; }
+    else if (score <= 60) { tempColor = "#ecc94b"; tempBg = "#ecc94b20"; }
+    else if (score <= 80) { tempColor = "#f6ad55"; tempBg = "#f6ad5520"; }
+    else { tempColor = "#e53e3e"; tempBg = "#e53e3e20"; }
+    stageEmoji = score <= 15 ? "🧊" : score <= 25 ? "🕳️" : score <= 40 ? "🦉" :
+                 score <= 60 ? "📈" : score <= 80 ? "🔥" : "🌋";
+  }
 
   let html = `<div class="market-section">
     <div class="sec-title" style="font-size:15px;margin-bottom:12px">📊 大盘情绪温度</div>
@@ -579,9 +596,37 @@ function renderMarketSentiment(market) {
     </div>` : ""}
 
     ${uncertainties.length ? `<div style="font-size:11px;color:var(--text-3);margin-top:4px">⚠ ${uncertainties.slice(0,2).join(' · ')}</div>` : ""}
+
+    ${renderCommunitySection(market.community)}
   </div>`;
 
   return html;
+}
+
+// ── Community Discussion Section ────────────
+function renderCommunitySection(community) {
+  if (!community) return "";
+  const vol = community.discussion_volume_score || 0;
+  const bullRatio = community.bullish_ratio || 0.5;
+  const bearRatio = community.bearish_ratio || 0.5;
+  const trend = community.volume_trend || "stable";
+  const totalPosts = community.total_posts || 0;
+
+  const trendIcon = trend === "rising" ? "↑" : trend === "declining" ? "↓" : "→";
+  const trendColor = trend === "rising" ? "var(--green)" : trend === "declining" ? "var(--red)" : "var(--text-3)";
+  const trendLabel = trend === "rising" ? "升温" : trend === "declining" ? "降温" : "平稳";
+
+  return `
+  <div style="margin-top:10px;padding:10px 14px;background:var(--bg-3);border-radius:var(--radius);border:1px solid var(--border)">
+    <div style="font-size:11px;font-weight:600;color:var(--text-3);letter-spacing:.6px;margin-bottom:6px">社区讨论热度</div>
+    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:12px">
+      <span>热度 <strong style="color:var(--text-1)">${vol.toFixed(0)}/100</strong></span>
+      <span>帖子 <strong style="color:var(--text-1)">${totalPosts}</strong></span>
+      <span>趋势 <strong style="color:${trendColor}">${trendIcon} ${trendLabel}</strong></span>
+      <span>看多 <strong style="color:var(--green)">${(bullRatio*100).toFixed(0)}%</strong></span>
+      <span>看空 <strong style="color:var(--red)">${(bearRatio*100).toFixed(0)}%</strong></span>
+    </div>
+  </div>`;
 }
 
 // ── Industry Sentiment (行业景气热度) ────────────

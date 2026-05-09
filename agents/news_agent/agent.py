@@ -19,32 +19,12 @@ from typing import Dict, Any, List, Optional
 from agents.base import BaseAgent
 from agents.signal import Signal, bullish_signal, bearish_signal, neutral_signal
 from data_sources import EastMoneyGubaDataSource, MarketSentimentDataSource, IndustrySentimentDataSource
+from data_sources.keywords import BULLISH_KEYWORDS, BEARISH_KEYWORDS, calc_sentiment_ratio
 import math
 
 
-# ── 个股情绪分析关键词（从 market_emotion_discovery Skill 规则提取） ──────
-
-BULLISH_KEYWORDS = [
-    "利好", "大涨", "牛", "突破", "加仓", "看好", "买入",
-    "反弹", "低估", "抄底", "龙头", "强势", "放量", "涨停",
-    "新高", "主力", "加码", "上涨", "翻倍", "暴涨", "启动",
-    "涨", "增持", "回购", "绩优", "白马", "价值", "分红",
-    "业绩超预期", "订单", "扩产", "供不应求", "景气",
-]
-
-BEARISH_KEYWORDS = [
-    "利空", "大跌", "熊", "破位", "减仓", "看空", "卖出",
-    "暴跌", "高估", "泡沫", "跌停", "破发", "减持", "暴雷",
-    "做空", "恐慌", "下跌", "腰斩", "崩盘", "套牢", "割肉",
-    "跌", "亏损", "退市", "风险", "违规", "处罚", "造假",
-    "暴亏", "资金链", "违约", "ST", "退",
-]
-
-# 热门帖子权重倍数
-HOT_POST_WEIGHT = 1.5
-# 高阅读量阈值
-HIGH_READS_THRESHOLD = 1000
-HIGH_READS_WEIGHT = 1.2
+# ── 个股情绪分析关键词（共享模块 data_sources/keywords.py） ──────
+# BULLISH_KEYWORDS / BEARISH_KEYWORDS 已从共享模块导入
 
 # 置信度配置
 MAX_CONFIDENCE = 0.8
@@ -244,41 +224,13 @@ class NewsAgent(BaseAgent):
         bullish_keywords = set(BULLISH_KEYWORDS)
         bearish_keywords = set(BEARISH_KEYWORDS)
 
-        weighted_bullish = 0.0
-        weighted_bearish = 0.0
-        bullish_posts = []
-        bearish_posts = []
-        neutral_posts = []
-
-        for post in posts:
-            text = post.get("title", "")
-            if post.get("content"):
-                text = text + " " + post["content"]
-
-            weight = 1.0
-            if post.get("source_type") == "hot":
-                weight *= HOT_POST_WEIGHT
-            if post.get("reads", 0) >= HIGH_READS_THRESHOLD:
-                weight *= HIGH_READS_WEIGHT
-            if post.get("content"):
-                weight *= 1.3
-
-            bull_hits = sum(1 for kw in bullish_keywords if kw in text)
-            bear_hits = sum(1 for kw in bearish_keywords if kw in text)
-
-            if bull_hits > bear_hits:
-                weighted_bullish += weight
-                bullish_posts.append(post)
-            elif bear_hits > bull_hits:
-                weighted_bearish += weight
-                bearish_posts.append(post)
-            else:
-                neutral_posts.append(post)
-
-        total = weighted_bullish + weighted_bearish
-        bullish_ratio = weighted_bullish / total if total > 0 else 0.5
-        bearish_ratio = 1.0 - bullish_ratio
-        polarization = abs(bullish_ratio - bearish_ratio)
+        # 使用共享情绪计算函数
+        ratios = calc_sentiment_ratio(posts, bullish_keywords, bearish_keywords)
+        bullish_ratio = ratios["bullish_ratio"]
+        bearish_ratio = ratios["bearish_ratio"]
+        polarization = ratios["polarization"]
+        bullish_posts = ratios["bullish_posts"]
+        bearish_posts = ratios["bearish_posts"]
 
         if bullish_ratio > 0.75 and polarization > 0.4:
             direction = "bearish"
@@ -357,7 +309,7 @@ class NewsAgent(BaseAgent):
             "total_posts": len(posts),
             "bullish_count": len(bullish_posts),
             "bearish_count": len(bearish_posts),
-            "neutral_count": len(neutral_posts),
+            "neutral_count": ratios["neutral_count"],
             "evidence": evidence,
         }
 
@@ -478,6 +430,9 @@ class NewsAgent(BaseAgent):
             "market": {
                 "skill_name": "market_sentiment_tracker",
                 "score": market_score,
+                "phase": market_stage.get("id", ""),  # v0.4: 6阶段id
+                "phase_name": market_stage.get("name", "未知"),  # v0.4: 阶段中文名
+                "phase_icon": market_stage.get("icon", ""),  # v0.4: 阶段图标
                 "stage": market_stage.get("name", "未知"),
                 "direction": market_direction,
                 "confidence": market_confidence,
@@ -490,6 +445,7 @@ class NewsAgent(BaseAgent):
                     if v is not None and k in ("limit_up", "limit_down", "breadth", "north_flow", "margin", "margin_change", "rsi")
                 },
                 "uncertainties": market_uncertainties,
+                "community": market_result.get("community", {}).get("aggregate") if market_result.get("community") else None,
             },
             # ── 行业景气 ──
             "industry": {

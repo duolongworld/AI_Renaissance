@@ -11,6 +11,8 @@ from .eastmoney import EastMoneyDataSource
 from .eastmoney_guba import EastMoneyGubaDataSource
 from .market_sentiment import MarketSentimentDataSource
 from .industry_sentiment import IndustrySentimentDataSource
+from .community_sentiment import CommunitySentimentDataSource
+from .keywords import BULLISH_KEYWORDS, BEARISH_KEYWORDS, calc_sentiment_ratio
 
 __all__ = [
     "CninfoDataSource",
@@ -19,4 +21,8 @@ __all__ = [
     "EastMoneyGubaDataSource",
     "MarketSentimentDataSource",
     "IndustrySentimentDataSource",
+    "CommunitySentimentDataSource",
+    "BULLISH_KEYWORDS",
+    "BEARISH_KEYWORDS",
+    "calc_sentiment_ratio",
 ]
