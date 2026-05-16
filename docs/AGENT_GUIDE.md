@@ -2,6 +2,7 @@
 
 > 面向各专家组。每个专家组维护自己的 Agent 和 Skill。
 > 核心任务：实现 `analyze()` 方法，返回标准 `Signal`。
+> `BaseAgent` 已经是 AgentScope-native 基类；专家 Agent 不要直接继承 AgentScope 原生类。
 
 ---
 
@@ -263,11 +264,22 @@ guba_data = guba_source.get_posts("600519", pages=2, fetch_content=True)
 
 ## 八、如何测试
 
-### Agent 冒烟检查
+### AgentScope-native 边界验证
 
-在 AgentScope 正式接入前，CI 暂时用 `tests/test_agent_smoke.py` 做最低限度冒烟检查：注册的专家 Agent 能导入，`analyze("000001")` 能离线跑通，并返回当前标准 `Signal`。
+Orchestrator 通过 `BaseAgent` 继承的 AgentScope `AgentBase.__call__()` 调用专家，再把返回消息还原成 `Signal`。
+专家组仍然只需要维护 `analyze(stock_code) -> Signal`。AgentScope `reply()` 协议由 `BaseAgent` 统一实现，不要求各专家 Agent 单独处理 `Msg`，也不代表项目已经切到完整 AgentScope pipeline / memory / session。
 
-这只是过渡测试，不代表最终接入规范。AgentScope 接入后，这里应随新的 Agent 生命周期一起调整或删除。
+### 专家 Agent 契约检查
+
+CI 使用 `tests/test_expert_agent_contract.py` 做最低限度契约检查：注册的专家 Agent 能导入，`analyze("000001")` 能离线跑通，并返回当前标准 `Signal`。
+
+AgentScope 接入边界使用 `tests/test_agentscope_message_bridge.py` 检查：股票分析任务可以包装成 AgentScope `Msg`，项目标准 `Signal` 可以通过 `Msg.metadata` 往返传递。
+
+AgentScope 原生调用使用 `tests/test_base_agent_agentscope.py` 和 `tests/test_orchestrator_scope.py` 检查：现有 `BaseAgent` 专家可以通过 AgentScope `AgentBase.__call__()` 被调用，并最终还原为标准 `Signal`；Orchestrator 也可以通过 AgentScope `Msg` 返回仲裁结果。
+
+Orchestrator 仲裁契约使用 `tests/test_arbitration_contract.py` 检查基础 `SignalBundle` 可以稳定生成 `ArbitrationResult`。
+
+这些测试只保护运行契约，不验证业务判断是否正确。后续如果专家 Agent 的运行时切到完整 AgentScope pipeline，应保持这些契约继续成立。
 
 ### 直接运行
 

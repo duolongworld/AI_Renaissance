@@ -19,13 +19,13 @@ from uuid import uuid4
 
 from loguru import logger
 
-from agents.base import BaseAgent
+from agents.agentscope_message import (
+    AgentScopeMessageError,
+    msg_to_signal,
+    stock_task_to_msg,
+)
+from agents.base import AgentContractError, BaseAgent
 from agents.signal import Signal, SignalBundle
-
-try:
-    import agentscope as _agentscope  # type: ignore
-except Exception:  # pragma: no cover - 可选运行时依赖
-    _agentscope = None
 
 
 @dataclass
@@ -68,7 +68,6 @@ class StockAnalysisScope:
     started_at: str = field(default_factory=lambda: datetime.now().isoformat())
     finished_at: str = ""
     framework: str = "AgentScope"
-    agentscope_available: bool = False
     execution_results: List[AgentExecutionResult] = field(default_factory=list)
 
     @property
@@ -114,7 +113,6 @@ class StockAnalysisScope:
         return {
             "run_id": self.run_id,
             "framework": self.framework,
-            "agentscope_available": self.agentscope_available,
             "stock_code": self.stock_code,
             "started_at": self.started_at,
             "finished_at": self.finished_at,
@@ -132,11 +130,10 @@ class StockAnalysisScope:
 
 class AgentScopeOrchestrationRunner:
     """
-    OrchestratorAgent 接入 AgentScope 的边界层。
+    OrchestratorAgent 的专家扇出运行器。
 
-    AgentScope 作为声明式编排框架边界保留。当前项目里的专家 Agent
-    仍是同步 Python 类，因此第一阶段使用 asyncio.to_thread() 提供
-    AgentScope 风格的并发扇出，同时不改变专家 Agent 的归属和接口契约。
+    通过 BaseAgent 继承的 AgentBase.__call__() 调用专家，并保持项目
+    业务契约仍然是 analyze(stock_code) -> Signal。
     """
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
@@ -148,11 +145,9 @@ class AgentScopeOrchestrationRunner:
                 self.config.get("agent_timeout_seconds", 30.0),
             )
         )
-        self.agentscope_available = _agentscope is not None
         logger.info(
             "[AgentScopeRunner] 初始化完成 - "
-            f"timeout={self.agent_timeout_seconds}s, "
-            f"agentscope_available={self.agentscope_available}"
+            f"timeout={self.agent_timeout_seconds}s"
         )
 
     def run_stock(self, stock_code: str, agents: List[BaseAgent]) -> StockAnalysisScope:
@@ -160,7 +155,6 @@ class AgentScopeOrchestrationRunner:
         scope = StockAnalysisScope(
             stock_code=stock_code,
             config=self.config,
-            agentscope_available=self.agentscope_available,
         )
         results = self._run_coroutine_sync(self._run_agents(scope, agents))
         scope.finish(results)
@@ -185,7 +179,7 @@ class AgentScopeOrchestrationRunner:
         start_time = time.perf_counter()
         try:
             signal = await asyncio.wait_for(
-                asyncio.to_thread(agent.analyze, scope.stock_code),
+                self._analyze_agent(scope, agent),
                 timeout=self.agent_timeout_seconds,
             )
             duration = time.perf_counter() - start_time
@@ -227,15 +221,33 @@ class AgentScopeOrchestrationRunner:
             )
         except Exception as exc:
             duration = time.perf_counter() - start_time
+            status = (
+                "invalid"
+                if isinstance(exc, (AgentContractError, AgentScopeMessageError))
+                else "failed"
+            )
             return AgentExecutionResult(
                 agent_name=agent.name,
                 signal_type=agent.signal_type,
-                status="failed",
+                status=status,
                 started_at=started_at,
                 finished_at=datetime.now().isoformat(),
                 duration_seconds=duration,
                 error=str(exc),
             )
+
+    async def _analyze_agent(self, scope: StockAnalysisScope, agent: BaseAgent) -> Signal:
+        """Invoke one expert through its native AgentScope __call__."""
+        task_msg = stock_task_to_msg(
+            scope.stock_code,
+            context={
+                "scope_run_id": scope.run_id,
+                "agent_name": agent.name,
+                "signal_type": agent.signal_type,
+            },
+        )
+        result_msg = await agent(task_msg)
+        return msg_to_signal(result_msg)
 
     def _run_coroutine_sync(self, coroutine):
         """

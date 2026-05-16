@@ -2,20 +2,33 @@
 Agent基类 - 所有Agent的父类
 
 8 Agent + N Skill 架构下：
+  - 每个 Agent 原生继承 AgentScope AgentBase，可通过 Msg 调用
   - 每个 Agent 可通过 load_skill() 动态加载 Skill
   - 每个 Agent 有 signal_type 属性，标识输出信号类型
   - Orchestrator Agent 不加载 Skill，负责编排仲裁
 """
 
-from abc import ABC, abstractmethod
+import asyncio
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 from loguru import logger
+from agentscope.agent import AgentBase as AgentScopeAgentBase
+
+from agents.agentscope_message import (
+    AgentScopeMessageError,
+    extract_stock_code,
+    signal_to_msg,
+)
+from agents.signal import Signal
 
 
-class BaseAgent(ABC):
+class AgentContractError(RuntimeError):
+    """Raised when an Agent violates the project-level Signal contract."""
+
+
+class BaseAgent(AgentScopeAgentBase):
     """
-    所有Agent的基类
+    所有 Agent 的基类，同时也是 AgentScope-native Agent。
 
     子类需要实现:
     - name: Agent名称
@@ -31,10 +44,15 @@ class BaseAgent(ABC):
     signal_type: str = ""  # 如 "financial", "technical", "fundflow" 等
 
     def __init__(self, name: str, config: Optional[Dict[str, Any]] = None):
+        if self.__class__.analyze is BaseAgent.analyze:
+            raise TypeError(f"{self.__class__.__name__} must implement analyze()")
+
+        super().__init__()
         self.name = name
         self.config = config or {}
         self._skills: Dict[str, str] = {}  # skill_name -> skill_content
         self._skill_paths: Dict[str, Path] = {}  # skill_name -> skill_path
+        self._observed_messages: List[Any] = []
         logger.info(f"[{self.name}] Agent initialized (signal_type={self.signal_type})")
 
     # ── Skill 管理 ──────────────────────────────────────────
@@ -96,7 +114,6 @@ class BaseAgent(ABC):
 
     # ── 核心接口 ──────────────────────────────────────────
 
-    @abstractmethod
     def analyze(self, *args, **kwargs):
         """
         核心分析逻辑（子类必须实现）
@@ -104,7 +121,37 @@ class BaseAgent(ABC):
         Returns:
             Signal: 标准化的信号对象
         """
-        pass
+        raise NotImplementedError(f"{self.__class__.__name__}.analyze() is not implemented")
+
+    async def reply(self, msg: Any) -> Any:
+        """AgentScope 调用入口：Msg -> analyze(stock_code) -> Signal Msg。"""
+        try:
+            stock_code = extract_stock_code(msg)
+        except AgentScopeMessageError:
+            raise
+        except Exception as exc:
+            raise AgentScopeMessageError(f"invalid AgentScope task message: {exc}") from exc
+
+        signal = await asyncio.to_thread(self.analyze, stock_code)
+        if not isinstance(signal, Signal):
+            raise AgentContractError(
+                f"{self.name} returned {type(signal).__name__}, expected Signal",
+            )
+
+        return signal_to_msg(signal, name=self.name)
+
+    async def observe(self, msg: Any | List[Any] | None) -> None:
+        """记录 AgentScope 观察消息；当前项目不在 observe 中触发业务副作用。"""
+        if msg is None:
+            return
+        if isinstance(msg, list):
+            self._observed_messages.extend(msg)
+        else:
+            self._observed_messages.append(msg)
+
+    async def handle_interrupt(self, *args, **kwargs) -> Any:
+        """向上抛出取消，让 Orchestrator 将 wait_for 取消记录为 timeout。"""
+        raise asyncio.CancelledError()
 
     def pre_analyze(self, *args, **kwargs) -> Dict[str, Any]:
         """

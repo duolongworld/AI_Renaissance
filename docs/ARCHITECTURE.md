@@ -33,10 +33,11 @@
 ### Agent 基类（开发1组维护）
 
 `agents/base.py` — `BaseAgent` 提供：
+- 继承 AgentScope `AgentBase`，为专家 Agent 统一实现 `reply()` / `observe()` / `handle_interrupt()`
 - `signal_type` 类属性：标识 Agent 输出的信号类型
 - `load_skill()` / `load_skills_from_domain()`：动态加载 Skill
 - `list_skills()` / `get_skill()`：Skill 管理
-- `analyze()` 抽象方法：子类必须实现
+- `analyze()` 项目业务接口：子类必须实现并返回 `Signal`
 - `pre_analyze()` / `post_analyze()` / `run()`：模板方法模式
 
 ### Skill 注册机制（开发1组维护）
