@@ -17,7 +17,7 @@ New domain reasoning should go into analysis Skills first. Expert Agents should 
 
 ## Agent Rules
 
-- All expert Agents inherit `BaseAgent` from `agents/base.py`.
+- All expert Agents inherit `BaseAgent` from `agents/base.py`; `BaseAgent` provides the AgentScope-native Signal boundary for expert Agents.
 - All expert Agents return `Signal` from `agents/signal.py`.
 - Expert Agents should load their own analysis Skill domain.
 - Expert Agents may read `skills/data/` to understand how a data source is called and shaped, but runtime data access should call `data_sources/`.

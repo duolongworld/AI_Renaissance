@@ -12,8 +12,10 @@ Orchestrator Agent - 编排仲裁
 原 arbitration/engine.py 的仲裁逻辑迁移至此。
 """
 
+import asyncio
 from typing import Dict, List, Optional
 from agents.base import BaseAgent
+from agents.agentscope_message import arbitration_result_to_msg, extract_stock_code
 from agents.orchestrator.arbitration import ArbitrationEngine, ArbitrationResult
 from agents.orchestrator.arbitration_strategy import create_arbitration_strategy
 from agents.orchestrator.scope import AgentScopeOrchestrationRunner
@@ -45,6 +47,12 @@ class OrchestratorAgent(BaseAgent):
         """注册一个专家 Agent"""
         self._expert_agents.append(agent)
         self.log(f"注册专家 Agent：{agent.name} (signal_type={agent.signal_type})")
+
+    async def reply(self, msg):
+        """AgentScope 调用入口：Msg -> analyze(stock_code) -> ArbitrationResult Msg。"""
+        stock_code = extract_stock_code(msg)
+        result = await asyncio.to_thread(self.analyze, stock_code)
+        return arbitration_result_to_msg(result, name=self.name)
 
     def analyze(self, stock_code: str) -> ArbitrationResult:
         """

@@ -61,4 +61,4 @@ data_sources/data/
 Thumbs.db
 
 # Tests
-/tests/
+.pytest_cache/

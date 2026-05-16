@@ -231,7 +231,7 @@ agents/
 │   ├── __init__.py
 │   └── agent.py              # {Domain}Agent
 │
-├── base.py                   # BaseAgent（含 Skill 加载）
+├── base.py                   # BaseAgent（AgentScope-native，含 Skill 加载）
 ├── signal.py                 # Signal / SignalBundle
 └── registry.py               # SkillRegistry
 ```
