@@ -92,6 +92,18 @@ class FinancialAgent(BaseAgent):
                 if previous_data:
                     current_data["previous_period_data"] = previous_data
                     current_data["previous_report_date"] = previous_report_date
+                if self.config.get("include_single_quarter_periods", True):
+                    previous_previous_report_date = self._previous_report_date(previous_report_date)
+                    if previous_previous_report_date:
+                        try:
+                            previous_previous_data = self.data_source.get_financial_data(
+                                stock_code, report_date=previous_previous_report_date
+                            ) or {}
+                        except Exception:
+                            previous_previous_data = {}
+                        if previous_previous_data:
+                            current_data["previous_previous_period_data"] = previous_previous_data
+                            current_data["previous_previous_report_date"] = previous_previous_report_date
         return current_data
 
     def _current_report_date(self) -> Optional[str]:

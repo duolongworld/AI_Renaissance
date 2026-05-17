@@ -46,7 +46,8 @@ status: draft
 | `top_customer_concentration` / `top_supplier_concentration` | 前几大客户/供应商集中度 |
 | `related_party_customer_ratio` / `related_party_supplier_ratio` | 关联方交易占比 |
 | `peer_benchmark` | 同行标杆分位数，作为后续迭代计划，不作为当前主评分 |
-| `previous_period_data` | 上一报告期三表数据，用于资产负债表项目环比判断 |
+| `previous_period_data` | 上一报告期三表数据，用于资产负债表环比和利润表/现金流单季拆分 |
+| `previous_previous_period_data` | 上上报告期三表数据，用于从累计利润表/现金流量表拆出上一季度单季值 |
 
 缺失处理：
 
@@ -79,7 +80,7 @@ status: draft
 - segment/product line：缺产品线收入占比、增速、毛利率、合同资产/预收等结构化数据时写入 `data_gaps`。
 - 客户供应商：缺前五大客户/供应商、关联方交易占比时写入 `data_gaps`。
 - 同行标杆：当前仅写入 `iteration_plan`，后续接入可比公司池和指标分位数后再参与评分。
-- 环比趋势：当前只对资产负债表时点项目做环比，例如合同负债、应收、预付、存货、货币资金、固定资产、无形资产和非流动资产；利润表和现金流量表环比必须有单季口径或用累计数拆分，缺数据时写入 `data_gaps.sequential_trend`，不得用累计数直接硬算。
+- 环比趋势：资产负债表时点项目直接用当前报告期末对上一报告期末；利润表和现金流量表必须先用累计数拆单季，再计算营收、研发费用、毛利率、经营现金流环比。若缺少当前期、上一报告期或上上报告期累计数，写入 `data_gaps.sequential_trend`，不得用累计数直接硬算。
 - 指标释义：`meta.evidence[]` 必须带 `metric_label` 和 `metric_meaning`；`meta.additional_checks.*.metric_labels` 必须给出该检查项涉及指标的中文名和财务含义，方便 OrchestratorAgent 直接展示给非财务用户。
 
 ## 4. 判断规则
@@ -99,14 +100,21 @@ status: draft
 - 阶段性红旗：高研发商业化过渡期的亏损、经营现金流为负、营业利润为负且财务费用为正，默认标为 `medium/watch`，除非收入、合同负债、收现、应收和现金安全垫同步恶化。
 - 科技公司专用红旗：研发费用率高但收入无增长、研发费用增长显著快于收入增长、合同负债增长但收现未跟上、应收显著跑赢营收、毛利率恶化、经营现金流持续为负且现金安全垫不足。
 
-`confidence` 必须按 `references/confidence_rules.md` 从 evidence 数量、独立性、一致性、数据可靠性反推，不允许凭直觉填写。最终 confidence 取「七步链结论强度」与「证据强度反推值」的较低者。
+`confidence` 必须按 `references/confidence_rules.md` 从 evidence 数量、独立性、一致性、数据可靠性、跨期确认反推，不允许凭直觉填写。最终 confidence 取「结论支持强度」与「证据强度反推值」的较低者。
+
+结论支持强度不是简单按 `pass_count` 加分，而是判断七步状态是否支持当前 `direction`：
+
+- `bullish`：`pass` 是强支持，`fail` 是反证。
+- `bearish`：`fail` 是强支持，`pass` 是反证。
+- `neutral`：`pass` 和 `watch` 都可以构成支持，因为中性结论通常来自“部分链条成立、部分链条需要观察”；`unknown` 只给低支持。
+- 因此，一个证据闭环清楚的 `neutral` 也可以超过 `0.7`，表示“中性判断可信”，不是表示“看多”。
 
 同比和环比必须作为两条独立证据链进入 confidence：
 
 - 同比和环比同向验证收入兑现、订单前瞻、应收受控或资产扩张时，可以提高对当前结论的置信度。
 - 同比和环比同向验证预付款、其他应收、存货等风险时，也可以提高对风险判断的置信度，但不应直接提高 `direction`。
 - 同比和环比方向冲突时，应降低趋势确认分或保持中性，不得只按同比给高置信。
-- 利润表/现金流环比缺单季口径时，必须写入 `data_gaps.sequential_trend`，不得用累计数直接计算。
+- 利润表/现金流环比必须优先用单季口径；若数据源只给累计口径，则按 `Q1=Q1累计`、`Q2=H1-Q1`、`Q3=Q3累计-H1`、`Q4=年报-Q3累计` 拆分。缺少拆分所需报告期时，必须写入 `data_gaps.sequential_trend`，不得用累计数直接计算。
 
 ## 5. 标准输出
 

@@ -120,7 +120,16 @@ def _normalize_finance_data(raw: dict[str, Any]) -> dict[str, Any]:
     income_row = _first_statement_row(data.get("income"))
     cashflow_row = _first_statement_row(data.get("cashflow"))
     previous_period_data = data.get("previous_period_data") if isinstance(data.get("previous_period_data"), dict) else {}
+    previous_previous_period_data = (
+        data.get("previous_previous_period_data")
+        if isinstance(data.get("previous_previous_period_data"), dict)
+        else {}
+    )
     previous_balance_row = _first_statement_row(previous_period_data.get("balance"))
+    previous_income_row = _first_statement_row(previous_period_data.get("income"))
+    previous_cashflow_row = _first_statement_row(previous_period_data.get("cashflow"))
+    previous_previous_income_row = _first_statement_row(previous_previous_period_data.get("income"))
+    previous_previous_cashflow_row = _first_statement_row(previous_previous_period_data.get("cashflow"))
 
     if balance_row or income_row or cashflow_row:
         _set_default_value(data, "ticker", _first_value("unknown", balance_row, income_row, cashflow_row, key="SECUCODE"))
@@ -173,6 +182,15 @@ def _normalize_finance_data(raw: dict[str, Any]) -> dict[str, Any]:
     _set_default_qoq(data, "fixed_asset_qoq", balance_row, previous_balance_row, "FIXED_ASSET")
     _set_default_qoq(data, "intangible_asset_qoq", balance_row, previous_balance_row, "INTANGIBLE_ASSET")
     _set_default_qoq(data, "total_noncurrent_assets_qoq", balance_row, previous_balance_row, "TOTAL_NONCURRENT_ASSETS")
+    _set_single_quarter_qoq(
+        data,
+        income_row,
+        cashflow_row,
+        previous_income_row,
+        previous_cashflow_row,
+        previous_previous_income_row,
+        previous_previous_cashflow_row,
+    )
 
     industry = (data.get("industry") or data.get("industry_type") or "").lower()
     if industry in {"bank", "insurance", "broker", "银行", "保险", "券商"}:
@@ -182,6 +200,8 @@ def _normalize_finance_data(raw: dict[str, Any]) -> dict[str, Any]:
 
 
 def _first_statement_row(statement: Any) -> dict[str, Any]:
+    if isinstance(statement, list) and statement and isinstance(statement[0], dict):
+        return statement[0]
     if isinstance(statement, dict):
         rows = statement.get("data")
         if isinstance(rows, list) and rows and isinstance(rows[0], dict):
@@ -223,6 +243,145 @@ def _set_default_qoq(data: dict[str, Any], target_key: str, current_row: dict[st
         data[target_key] = qoq - 1.0
 
 
+def _set_single_quarter_qoq(
+    data: dict[str, Any],
+    income_row: dict[str, Any],
+    cashflow_row: dict[str, Any],
+    previous_income_row: dict[str, Any],
+    previous_cashflow_row: dict[str, Any],
+    previous_previous_income_row: dict[str, Any],
+    previous_previous_cashflow_row: dict[str, Any],
+) -> None:
+    current_report_date = _report_date_from_rows(data.get("period"), income_row, cashflow_row)
+    previous_report_date = _report_date_from_rows(data.get("previous_report_date"), previous_income_row, previous_cashflow_row)
+    previous_previous_report_date = _report_date_from_rows(
+        data.get("previous_previous_report_date"),
+        previous_previous_income_row,
+        previous_previous_cashflow_row,
+    )
+    current_quarter = _single_quarter_metrics(
+        income_row,
+        cashflow_row,
+        previous_income_row,
+        previous_cashflow_row,
+        current_report_date,
+    )
+    previous_quarter = _single_quarter_metrics(
+        previous_income_row,
+        previous_cashflow_row,
+        previous_previous_income_row,
+        previous_previous_cashflow_row,
+        previous_report_date,
+    )
+
+    if not current_quarter or not previous_quarter:
+        return
+
+    qoq = {
+        "revenue_qoq": _change_rate(current_quarter.get("revenue"), previous_quarter.get("revenue")),
+        "research_expense_qoq": _change_rate(current_quarter.get("research_expense"), previous_quarter.get("research_expense")),
+        "gross_margin_qoq": _change_rate(current_quarter.get("gross_margin"), previous_quarter.get("gross_margin")),
+        "operating_cash_flow_qoq": _change_rate(
+            current_quarter.get("operating_cash_flow"),
+            previous_quarter.get("operating_cash_flow"),
+        ),
+    }
+    for key, value in qoq.items():
+        if value is not None and key not in data:
+            data[key] = value
+
+    data["single_quarter_metrics"] = {
+        "current_report_date": current_report_date,
+        "previous_report_date": previous_report_date,
+        "previous_previous_report_date": previous_previous_report_date,
+        "current_quarter": {key: _round_optional(value) for key, value in current_quarter.items()},
+        "previous_quarter": {key: _round_optional(value) for key, value in previous_quarter.items()},
+        "qoq": {key: _round_optional(value) for key, value in qoq.items() if value is not None},
+    }
+
+
+def _single_quarter_metrics(
+    income_row: dict[str, Any],
+    cashflow_row: dict[str, Any],
+    base_income_row: dict[str, Any],
+    base_cashflow_row: dict[str, Any],
+    report_date: str | None,
+) -> dict[str, float] | None:
+    quarter_month = _quarter_end_month(report_date)
+    if quarter_month is None:
+        return None
+
+    metrics = {
+        "revenue": _single_quarter_value(income_row, base_income_row, "OPERATE_INCOME", quarter_month),
+        "operating_cost": _single_quarter_value(income_row, base_income_row, "OPERATE_COST", quarter_month),
+        "research_expense": _single_quarter_value(income_row, base_income_row, "RESEARCH_EXPENSE", quarter_month),
+        "operating_cash_flow": _single_quarter_value(cashflow_row, base_cashflow_row, "NETCASH_OPERATE", quarter_month),
+        "cash_received_from_sales": _single_quarter_value(cashflow_row, base_cashflow_row, "SALES_SERVICES", quarter_month),
+        "capex_cash_paid": _single_quarter_value(cashflow_row, base_cashflow_row, "CONSTRUCT_LONG_ASSET", quarter_month),
+    }
+    if metrics["revenue"] is not None and metrics["operating_cost"] is not None:
+        metrics["gross_margin"] = ratio(metrics["revenue"] - metrics["operating_cost"], metrics["revenue"])
+    else:
+        metrics["gross_margin"] = None
+
+    available = {key: value for key, value in metrics.items() if value is not None}
+    return available or None
+
+
+def _single_quarter_value(row: dict[str, Any], base_row: dict[str, Any], source_key: str, quarter_month: int) -> float | None:
+    value = _number_from_row(row, source_key)
+    if value is None:
+        return None
+    if quarter_month == 3:
+        return value
+    base_value = _number_from_row(base_row, source_key)
+    if base_value is None:
+        return None
+    return value - base_value
+
+
+def _number_from_row(row: dict[str, Any], source_key: str) -> float | None:
+    value = row.get(source_key)
+    if value in (None, ""):
+        return None
+    return float(value)
+
+
+def _report_date_from_rows(default: Any, *rows: dict[str, Any]) -> str | None:
+    for row in rows:
+        for key in ("REPORT_DATE", "REPORTDATE", "REPORT_DATE_NAME"):
+            value = row.get(key)
+            if value not in (None, "", "unknown"):
+                return str(value)[:10]
+    if default in (None, "", "unknown"):
+        return None
+    return str(default)[:10]
+
+
+def _quarter_end_month(report_date: str | None) -> int | None:
+    if not report_date:
+        return None
+    try:
+        month = int(str(report_date)[5:7])
+        day = int(str(report_date)[8:10])
+    except (ValueError, IndexError):
+        return None
+    if (month, day) in {(3, 31), (6, 30), (9, 30), (12, 31)}:
+        return month
+    return None
+
+
+def _change_rate(current_value: float | None, previous_value: float | None) -> float | None:
+    value = ratio(current_value, previous_value)
+    if value is None:
+        return None
+    return value - 1.0
+
+
+def _round_optional(value: Any) -> Any:
+    return round(value, 4) if isinstance(value, (float, int)) else value
+
+
 def metric_info(metric: str) -> dict[str, str]:
     label, meaning = METRIC_CATALOG.get(metric, (metric, "暂未配置中文释义。"))
     return {"metric_label": label, "metric_meaning": meaning}
@@ -244,6 +403,22 @@ def trend_confirmation_from_periods(data: dict[str, Any]) -> dict[str, Any]:
         conflicts.append({"item": item, "metrics": metrics, "note": note})
 
     revenue_growth = data.get("revenue_growth")
+    revenue_qoq = data.get("revenue_qoq")
+    if revenue_growth is not None and revenue_qoq is not None:
+        if revenue_growth > 0 and revenue_qoq > 0:
+            add_confirmation(
+                "positive",
+                "营收同比和单季环比同向增长",
+                ["revenue_growth", "revenue_qoq"],
+                "收入增长同时获得同比和单季环比验证。",
+            )
+        elif revenue_growth > 0 and revenue_qoq < -0.05:
+            add_conflict(
+                "营收同比增长但单季环比回落",
+                ["revenue_growth", "revenue_qoq"],
+                "同比增长可能受低基数或前期订单影响，最近一季收入动能需要复核。",
+            )
+
     contract_liability_growth = data.get("contract_liability_growth")
     contract_liability_qoq = data.get("contract_liability_qoq")
     if contract_liability_growth is not None and contract_liability_qoq is not None:
@@ -510,6 +685,10 @@ def evaluate_steps(data: dict[str, Any], tracker: DataTracker, stage_context: di
         "fixed_asset_qoq": data.get("fixed_asset_qoq"),
         "intangible_asset_qoq": data.get("intangible_asset_qoq"),
         "total_noncurrent_assets_qoq": data.get("total_noncurrent_assets_qoq"),
+        "revenue_qoq": data.get("revenue_qoq"),
+        "research_expense_qoq": data.get("research_expense_qoq"),
+        "gross_margin_qoq": data.get("gross_margin_qoq"),
+        "operating_cash_flow_qoq": data.get("operating_cash_flow_qoq"),
         "receivable_growth": data.get("receivable_growth"),
         "revenue_growth": data.get("revenue_growth"),
         "contract_liability_growth": data.get("contract_liability_growth"),
@@ -653,7 +832,7 @@ def evaluate_additional_checks(data: dict[str, Any], tracker: DataTracker) -> tu
             missing("forward_orders_capacity", field, "需要公告、年报 MD&A、订单公告或供应商长协数据源。")
     for field in ("revenue_qoq", "research_expense_qoq", "gross_margin_qoq", "operating_cash_flow_qoq"):
         if data.get(field) is None:
-            missing("sequential_trend", field, "利润表/现金流环比需要单季口径或用累计数拆分，当前不做硬算以避免误判。")
+            missing("sequential_trend", field, "利润表/现金流环比需要当前期、上一报告期和上上报告期累计数拆分单季；当前数据不足，未硬算。")
 
     segment_product = {
         "status": "not_implemented",
@@ -718,7 +897,14 @@ def evaluate_additional_checks(data: dict[str, Any], tracker: DataTracker) -> tu
     return checks, data_gaps, iteration_plan
 
 
-def confidence_from_evidence(step_results: dict[str, str], tracker: DataTracker, missing_core_tables: bool, data: dict[str, Any]) -> dict[str, Any]:
+def confidence_from_evidence(
+    step_results: dict[str, str],
+    tracker: DataTracker,
+    missing_core_tables: bool,
+    data: dict[str, Any],
+    direction: str,
+) -> dict[str, Any]:
+    trend_confirmation = trend_confirmation_from_periods(data)
     evidence_count_score = 2 if len(tracker.evidence) >= 6 else 1 if len(tracker.evidence) >= 3 else 0
     source_types = {item.get("source_type") for item in tracker.evidence}
     independence_score = 2 if len(source_types) >= 3 else 1 if len(source_types) >= 2 else 0
@@ -727,18 +913,23 @@ def confidence_from_evidence(step_results: dict[str, str], tracker: DataTracker,
     consistency_score = 2 if failed == 0 and watch <= 1 else 1 if failed <= 1 else 0
     reliable_sources = {"financial_report", "announcement", "data_source"}
     reliability_score = 2 if tracker.evidence and all(e.get("source_type") in reliable_sources for e in tracker.evidence) else 1
+    cross_period_score = (
+        2
+        if len(trend_confirmation["confirmations"]) >= 2 and not trend_confirmation["conflicts"]
+        else 1
+        if trend_confirmation["confirmations"] or trend_confirmation["conflicts"]
+        else 0
+    )
 
-    total = evidence_count_score + independence_score + consistency_score + reliability_score
-    cap = 0.4 if total <= 2 else 0.55 if total <= 4 else 0.7 if total <= 6 else 0.8 if total == 7 else 0.9
+    total = evidence_count_score + independence_score + consistency_score + reliability_score + cross_period_score
+    cap = 0.4 if total <= 2 else 0.55 if total <= 4 else 0.7 if total <= 6 else 0.8 if total <= 8 else 0.9
     if missing_core_tables:
         cap = min(cap, 0.4)
     if any(flag["level"] == "high" for flag in tracker.red_flags):
         cap = min(cap, 0.65)
 
-    pass_count = sum(1 for value in step_results.values() if value == "pass")
-    trend_confirmation = trend_confirmation_from_periods(data)
-    base_rule_strength = min(0.9, 0.35 + pass_count * 0.07)
-    rule_strength = min(0.9, max(0.2, base_rule_strength + trend_confirmation["adjustment"]))
+    conclusion_support_score = conclusion_support_from_steps(step_results, direction)
+    rule_strength = min(0.9, max(0.0, conclusion_support_score + trend_confirmation["adjustment"]))
     final_confidence = round(min(cap, rule_strength), 2)
 
     return {
@@ -746,14 +937,30 @@ def confidence_from_evidence(step_results: dict[str, str], tracker: DataTracker,
         "independence_score": independence_score,
         "consistency_score": consistency_score,
         "reliability_score": reliability_score,
+        "cross_period_score": cross_period_score,
         "total_score": total,
         "cap": cap,
-        "base_rule_strength": base_rule_strength,
+        "conclusion_support_score": conclusion_support_score,
         "trend_confirmation": trend_confirmation,
         "rule_strength_after_trend_confirmation": rule_strength,
         "final_confidence": final_confidence,
         "reason": "由 evidence 数量、独立性、一致性、可靠性、同比/环比跨期确认共同反推",
     }
+
+
+def conclusion_support_from_steps(step_results: dict[str, str], direction: str) -> float:
+    """Score how strongly the step statuses support the chosen conclusion."""
+    if not step_results:
+        return 0.0
+
+    score_map_by_direction = {
+        "bullish": {"pass": 1.0, "watch": 0.45, "unknown": 0.2, "fail": 0.0},
+        "bearish": {"fail": 1.0, "watch": 0.65, "unknown": 0.25, "pass": 0.25},
+        "neutral": {"watch": 0.85, "pass": 0.9, "unknown": 0.35, "fail": 0.25},
+    }
+    score_map = score_map_by_direction.get(direction, score_map_by_direction["neutral"])
+    support_score = sum(score_map.get(status, 0.0) for status in step_results.values()) / len(step_results)
+    return round(min(0.9, max(0.0, support_score)), 4)
 
 
 def choose_direction(step_results: dict[str, str], tracker: DataTracker) -> tuple[str, str, bool]:
@@ -808,7 +1015,7 @@ def build_signal(raw_data: dict[str, Any]) -> dict[str, Any]:
         tracker.add_red_flag("high", "三表缺失", "利润表、资产负债表、现金流量表任一缺失时必须降置信")
 
     direction, risk_level, needs_review = choose_direction(step_results, tracker)
-    confidence = confidence_from_evidence(step_results, tracker, missing_core_tables, data)
+    confidence = confidence_from_evidence(step_results, tracker, missing_core_tables, data, direction)
     unknown_count = sum(1 for value in step_results.values() if value == "unknown")
     insufficient_key_metrics = not tracker.evidence or unknown_count >= 4
     if insufficient_key_metrics:
@@ -853,6 +1060,7 @@ def build_signal(raw_data: dict[str, Any]) -> dict[str, Any]:
             "company_name": data.get("company_name", "unknown"),
             "business_stage": stage_context,
             "additional_checks": additional_checks,
+            "single_quarter_metrics": data.get("single_quarter_metrics", {}),
             "step_results": step_results,
             "red_flags": tracker.red_flags,
             "key_findings": signals,
