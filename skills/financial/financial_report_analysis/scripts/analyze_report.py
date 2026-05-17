@@ -232,6 +232,121 @@ def metric_labels(metrics: dict[str, Any]) -> dict[str, dict[str, str]]:
     return {metric: metric_info(metric) for metric in metrics}
 
 
+def trend_confirmation_from_periods(data: dict[str, Any]) -> dict[str, Any]:
+    """Use YoY and QoQ as separate evidence chains for confidence, not direction."""
+    confirmations: list[dict[str, Any]] = []
+    conflicts: list[dict[str, Any]] = []
+
+    def add_confirmation(kind: str, item: str, metrics: list[str], note: str) -> None:
+        confirmations.append({"kind": kind, "item": item, "metrics": metrics, "note": note})
+
+    def add_conflict(item: str, metrics: list[str], note: str) -> None:
+        conflicts.append({"item": item, "metrics": metrics, "note": note})
+
+    revenue_growth = data.get("revenue_growth")
+    contract_liability_growth = data.get("contract_liability_growth")
+    contract_liability_qoq = data.get("contract_liability_qoq")
+    if contract_liability_growth is not None and contract_liability_qoq is not None:
+        if contract_liability_growth >= 0.3 and contract_liability_qoq >= 0.05:
+            add_confirmation(
+                "positive",
+                "合同负债同比和环比同向增长",
+                ["contract_liability_growth", "contract_liability_qoq"],
+                "订单/预收前瞻同时获得同比和环比验证。",
+            )
+        elif contract_liability_growth >= 0.3 and contract_liability_qoq <= -0.05:
+            add_conflict(
+                "合同负债同比高增但环比回落",
+                ["contract_liability_growth", "contract_liability_qoq"],
+                "同比改善可能受低基数影响，最近一季订单/预收趋势需要复核。",
+            )
+
+    receivable_growth = data.get("receivable_growth")
+    receivable_qoq = data.get("receivable_qoq")
+    if revenue_growth is not None and receivable_growth is not None and receivable_qoq is not None:
+        if receivable_growth <= revenue_growth and receivable_qoq <= max(contract_liability_qoq or 0, 0.1):
+            add_confirmation(
+                "positive",
+                "应收未明显跑赢收入且环比受控",
+                ["receivable_growth", "receivable_qoq", "revenue_growth"],
+                "收入增长没有同步表现为应收账款异常堆积。",
+            )
+        elif receivable_growth <= revenue_growth and receivable_qoq >= 0.3:
+            add_conflict(
+                "应收同比受控但环比抬升较快",
+                ["receivable_growth", "receivable_qoq", "revenue_growth"],
+                "最近一季回款压力可能上升，需要跟踪账期和客户结构。",
+            )
+
+    pressure_threshold = None if revenue_growth is None else max(revenue_growth * 1.5, revenue_growth + 0.5)
+    prepayment_growth = data.get("prepayment_growth")
+    prepayment_qoq = data.get("prepayment_qoq")
+    if prepayment_growth is not None and prepayment_qoq is not None:
+        if pressure_threshold is not None and prepayment_growth > pressure_threshold and prepayment_qoq > 0.3:
+            add_confirmation(
+                "risk",
+                "预付款同比和环比共同抬升",
+                ["prepayment_growth", "prepayment_qoq", "revenue_growth"],
+                "供应链锁单、产能爬坡或资金占用风险获得跨期验证。",
+            )
+        elif pressure_threshold is not None and prepayment_growth > pressure_threshold and prepayment_qoq < -0.1:
+            add_conflict(
+                "预付款同比高增但环比回落",
+                ["prepayment_growth", "prepayment_qoq", "revenue_growth"],
+                "资金占用压力可能已边际缓解。",
+            )
+
+    other_receivables_growth = data.get("other_receivables_growth")
+    other_receivables_qoq = data.get("other_receivables_qoq")
+    if other_receivables_growth is not None and other_receivables_qoq is not None:
+        if pressure_threshold is not None and other_receivables_growth > pressure_threshold and other_receivables_qoq > 0.3:
+            add_confirmation(
+                "risk",
+                "其他应收同比和环比共同抬升",
+                ["other_receivables_growth", "other_receivables_qoq", "revenue_growth"],
+                "关联方往来、保证金或资金占用风险获得跨期验证。",
+            )
+        elif pressure_threshold is not None and other_receivables_growth > pressure_threshold and other_receivables_qoq < -0.1:
+            add_conflict(
+                "其他应收同比高增但环比回落",
+                ["other_receivables_growth", "other_receivables_qoq", "revenue_growth"],
+                "其他应收压力可能已边际缓解。",
+            )
+
+    asset_pairs = [
+        ("固定资产", "fixed_asset_growth", "fixed_asset_qoq"),
+        ("无形资产", "intangible_asset_growth", "intangible_asset_qoq"),
+        ("非流动资产", "total_noncurrent_assets_growth", "total_noncurrent_assets_qoq"),
+    ]
+    asset_confirmed = [
+        (label, yoy_metric, qoq_metric)
+        for label, yoy_metric, qoq_metric in asset_pairs
+        if data.get(yoy_metric) is not None and data.get(qoq_metric) is not None and data[yoy_metric] > 0.2 and data[qoq_metric] > 0.05
+    ]
+    if asset_confirmed:
+        add_confirmation(
+            "positive",
+            "长期资产同比和环比共同扩张",
+            [metric for _, yoy_metric, qoq_metric in asset_confirmed for metric in (yoy_metric, qoq_metric)],
+            "长期资产扩张趋势获得跨期验证，但仍需订单和产能利用率解释扩张质量。",
+        )
+    elif any(data.get(yoy_metric) is not None and data.get(qoq_metric) is not None and data[yoy_metric] > 0.2 and data[qoq_metric] < -0.05 for _, yoy_metric, qoq_metric in asset_pairs):
+        add_conflict(
+            "长期资产同比扩张但环比收缩",
+            [metric for _, yoy_metric, qoq_metric in asset_pairs for metric in (yoy_metric, qoq_metric) if data.get(yoy_metric) is not None and data.get(qoq_metric) is not None],
+            "资产扩张的近期持续性不足，需要结合产能和项目进度复核。",
+        )
+
+    raw_score = min(3, len(confirmations)) - min(2, len(conflicts))
+    adjustment = max(-0.06, min(0.06, raw_score * 0.03))
+    return {
+        "score": raw_score,
+        "adjustment": adjustment,
+        "confirmations": confirmations,
+        "conflicts": conflicts,
+    }
+
+
 def classify_business_stage(data: dict[str, Any]) -> dict[str, Any]:
     """Identify whether losses should be judged with a high-R&D commercialization lens."""
     rd_ratio = ratio(data.get("research_expense"), data.get("revenue"))
@@ -603,7 +718,7 @@ def evaluate_additional_checks(data: dict[str, Any], tracker: DataTracker) -> tu
     return checks, data_gaps, iteration_plan
 
 
-def confidence_from_evidence(step_results: dict[str, str], tracker: DataTracker, missing_core_tables: bool) -> dict[str, Any]:
+def confidence_from_evidence(step_results: dict[str, str], tracker: DataTracker, missing_core_tables: bool, data: dict[str, Any]) -> dict[str, Any]:
     evidence_count_score = 2 if len(tracker.evidence) >= 6 else 1 if len(tracker.evidence) >= 3 else 0
     source_types = {item.get("source_type") for item in tracker.evidence}
     independence_score = 2 if len(source_types) >= 3 else 1 if len(source_types) >= 2 else 0
@@ -621,7 +736,9 @@ def confidence_from_evidence(step_results: dict[str, str], tracker: DataTracker,
         cap = min(cap, 0.65)
 
     pass_count = sum(1 for value in step_results.values() if value == "pass")
-    rule_strength = min(0.9, 0.35 + pass_count * 0.07)
+    trend_confirmation = trend_confirmation_from_periods(data)
+    base_rule_strength = min(0.9, 0.35 + pass_count * 0.07)
+    rule_strength = min(0.9, max(0.2, base_rule_strength + trend_confirmation["adjustment"]))
     final_confidence = round(min(cap, rule_strength), 2)
 
     return {
@@ -631,8 +748,11 @@ def confidence_from_evidence(step_results: dict[str, str], tracker: DataTracker,
         "reliability_score": reliability_score,
         "total_score": total,
         "cap": cap,
+        "base_rule_strength": base_rule_strength,
+        "trend_confirmation": trend_confirmation,
+        "rule_strength_after_trend_confirmation": rule_strength,
         "final_confidence": final_confidence,
-        "reason": "由 evidence 数量、独立性、一致性、可靠性反推",
+        "reason": "由 evidence 数量、独立性、一致性、可靠性、同比/环比跨期确认共同反推",
     }
 
 
@@ -688,7 +808,7 @@ def build_signal(raw_data: dict[str, Any]) -> dict[str, Any]:
         tracker.add_red_flag("high", "三表缺失", "利润表、资产负债表、现金流量表任一缺失时必须降置信")
 
     direction, risk_level, needs_review = choose_direction(step_results, tracker)
-    confidence = confidence_from_evidence(step_results, tracker, missing_core_tables)
+    confidence = confidence_from_evidence(step_results, tracker, missing_core_tables, data)
     unknown_count = sum(1 for value in step_results.values() if value == "unknown")
     insufficient_key_metrics = not tracker.evidence or unknown_count >= 4
     if insufficient_key_metrics:

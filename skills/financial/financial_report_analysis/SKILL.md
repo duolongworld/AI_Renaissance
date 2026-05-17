@@ -101,6 +101,13 @@ status: draft
 
 `confidence` 必须按 `references/confidence_rules.md` 从 evidence 数量、独立性、一致性、数据可靠性反推，不允许凭直觉填写。最终 confidence 取「七步链结论强度」与「证据强度反推值」的较低者。
 
+同比和环比必须作为两条独立证据链进入 confidence：
+
+- 同比和环比同向验证收入兑现、订单前瞻、应收受控或资产扩张时，可以提高对当前结论的置信度。
+- 同比和环比同向验证预付款、其他应收、存货等风险时，也可以提高对风险判断的置信度，但不应直接提高 `direction`。
+- 同比和环比方向冲突时，应降低趋势确认分或保持中性，不得只按同比给高置信。
+- 利润表/现金流环比缺单季口径时，必须写入 `data_gaps.sequential_trend`，不得用累计数直接计算。
+
 ## 5. 标准输出
 
 只输出 Signal JSON，不输出 Markdown 报告。顶层字段应与 `agents.signal.Signal` 对齐，证据放入 `meta`。
