@@ -1,6 +1,6 @@
 {
   "direction": "neutral",
-  "confidence": 0.55,
+  "confidence": 0.68,
   "reasoning": "样例公司利润有经营现金流支撑，资本开支进入扩张期，但合同负债增速低于营收增速，未来需求真实性仍需跟踪。",
   "signals": [
     "现金利润比高于 1.0",
@@ -43,14 +43,14 @@
       "需求前瞻指标偏弱"
     ],
     "confidence_breakdown": {
-      "evidence_count_score": 0,
-      "independence_score": 0,
+      "evidence_count_score": 2,
+      "independence_score": 2,
       "consistency_score": 1,
       "reliability_score": 2,
-      "total_score": 3,
-      "cap": 0.55,
-      "final_confidence": 0.55,
-      "reason": "样例只保留单条证据用于展示结构，因此置信度按证据不足降档"
+      "total_score": 7,
+      "cap": 0.8,
+      "final_confidence": 0.68,
+      "reason": "三表证据充分，但需求前瞻指标存在背离"
     },
     "evidence": [
       {
