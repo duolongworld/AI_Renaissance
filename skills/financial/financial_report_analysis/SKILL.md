@@ -35,6 +35,19 @@ status: draft
 
 可选输入：同行对比、公告、研报、产业链数据、历史多期财务数据。
 
+增强输入（有则进入 `meta.additional_checks`，无则必须写入 `meta.data_gaps`，不得假设）：
+
+| 字段 | 用途 |
+|---|---|
+| `segments` / `product_lines` | 产品线收入占比、同比/环比、毛利率、新产品线斜率 |
+| `signed_orders` / `order_backlog` | 已签订单和订单储备，用于验证合同负债是否能兑现 |
+| `capacity_expansion_plan` / `capacity_utilization` | 产能扩张计划、产能利用率，验证 capex 和资产扩张质量 |
+| `supplier_long_term_agreements` | 供应商长协与保供能力 |
+| `top_customer_concentration` / `top_supplier_concentration` | 前几大客户/供应商集中度 |
+| `related_party_customer_ratio` / `related_party_supplier_ratio` | 关联方交易占比 |
+| `peer_benchmark` | 同行标杆分位数，作为后续迭代计划，不作为当前主评分 |
+| `previous_period_data` | 上一报告期三表数据，用于资产负债表项目环比判断 |
+
 缺失处理：
 
 - 三表任一缺失：输出 `direction: neutral`，`confidence <= 0.4`，`needs_human_review: true`。
@@ -57,6 +70,17 @@ status: draft
 | Step7 | 行业特殊口径 | 按行业调整阈值和特殊会计处理 |
 
 闭环判断：订单真实 -> 现金先回来 -> 应收不恶化 -> 存货/在建抬升 -> 资本开支放量 -> 债务可承受 -> 行业口径可解释。
+
+增强检查不改变顶层 `Signal` 字段，但必须进入 `meta.additional_checks`：
+
+- 往来账质量：预付款、其他应收、其他应付、存货是否显著跑赢收入/合同负债。
+- capex 与产能验证：capex、固定资产、在建工程、无形资产、非流动资产增速与收入、合同负债、预付款是否同向。
+- 前瞻订单与产能：先用合同负债和销售收现作为代理指标；缺已签订单、订单储备、产能扩张计划、供应商长协时写入 `data_gaps`。
+- segment/product line：缺产品线收入占比、增速、毛利率、合同资产/预收等结构化数据时写入 `data_gaps`。
+- 客户供应商：缺前五大客户/供应商、关联方交易占比时写入 `data_gaps`。
+- 同行标杆：当前仅写入 `iteration_plan`，后续接入可比公司池和指标分位数后再参与评分。
+- 环比趋势：当前只对资产负债表时点项目做环比，例如合同负债、应收、预付、存货、货币资金、固定资产、无形资产和非流动资产；利润表和现金流量表环比必须有单季口径或用累计数拆分，缺数据时写入 `data_gaps.sequential_trend`，不得用累计数直接硬算。
+- 指标释义：`meta.evidence[]` 必须带 `metric_label` 和 `metric_meaning`；`meta.additional_checks.*.metric_labels` 必须给出该检查项涉及指标的中文名和财务含义，方便 OrchestratorAgent 直接展示给非财务用户。
 
 ## 4. 判断规则
 
@@ -103,7 +127,11 @@ status: draft
     "step_results": {},
     "red_flags": [],
     "key_findings": [],
+    "business_stage": {},
+    "additional_checks": {},
     "evidence": [],
+    "data_gaps": [],
+    "iteration_plan": [],
     "risk_notes": [],
     "uncertainties": [],
     "needs_human_review": false

@@ -6,6 +6,7 @@ Skill 域: skills/financial/
 核心能力：财报质量七步验证链
 """
 
+from datetime import datetime
 from typing import Any, Optional
 
 from agents.base import BaseAgent
@@ -71,20 +72,60 @@ class FinancialAgent(BaseAgent):
 
     def _fetch_data(self, stock_code: str) -> dict[str, Any]:
         """通过数据层获取财务数据。"""
-        report_date = self.config.get("report_date")
+        report_date = self._current_report_date()
         if not self.data_source:
             return {}
         try:
-            return self.data_source.get_financial_data(stock_code, report_date=report_date) or {}
+            current_data = self.data_source.get_financial_data(stock_code, report_date=report_date) or {}
         except TypeError:
-            return self.data_source.get_financial_data(stock_code) or {}
+            current_data = self.data_source.get_financial_data(stock_code) or {}
+
+        if self.config.get("include_previous_period", True):
+            previous_report_date = self._previous_report_date(report_date)
+            if previous_report_date:
+                try:
+                    previous_data = self.data_source.get_financial_data(
+                        stock_code, report_date=previous_report_date
+                    ) or {}
+                except Exception:
+                    previous_data = {}
+                if previous_data:
+                    current_data["previous_period_data"] = previous_data
+                    current_data["previous_report_date"] = previous_report_date
+        return current_data
+
+    def _current_report_date(self) -> Optional[str]:
+        report_date = self.config.get("report_date")
+        if report_date:
+            return report_date
+        if hasattr(self.data_source, "_get_latest_report_date"):
+            return self.data_source._get_latest_report_date()
+        return None
+
+    def _previous_report_date(self, report_date: Optional[str]) -> Optional[str]:
+        if not report_date:
+            return None
+        try:
+            current = datetime.strptime(report_date[:10], "%Y-%m-%d")
+        except ValueError:
+            return None
+
+        previous_quarter = {
+            (3, 31): (current.year - 1, 12, 31),
+            (6, 30): (current.year, 3, 31),
+            (9, 30): (current.year, 6, 30),
+            (12, 31): (current.year, 9, 30),
+        }.get((current.month, current.day))
+        if not previous_quarter:
+            return None
+        return f"{previous_quarter[0]:04d}-{previous_quarter[1]:02d}-{previous_quarter[2]:02d}"
 
     def _prepare_skill_input(self, stock_code: str, raw_data: dict[str, Any]) -> dict[str, Any]:
         """把数据源输出包装成 financial-report-analysis 可消费的输入。"""
         data = dict(raw_data or {})
         data.setdefault("ticker", stock_code)
         data.setdefault("company_name", data.get("stock_name") or data.get("name") or "unknown")
-        data.setdefault("period", self.config.get("report_date", "unknown"))
+        data.setdefault("period", self._current_report_date() or "unknown")
         data.setdefault("source_type", "data_source")
         data.setdefault("source_name", getattr(self.data_source, "name", "unknown data source"))
 

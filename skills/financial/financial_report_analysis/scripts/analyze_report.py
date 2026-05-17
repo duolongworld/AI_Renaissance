@@ -37,6 +37,7 @@ class DataTracker:
                 "source_name": source_name,
                 "date": date,
                 "metric": metric,
+                **metric_info(metric),
                 "value": value,
                 "comparison": comparison,
                 "note": note,
@@ -45,6 +46,64 @@ class DataTracker:
 
     def add_red_flag(self, level: str, item: str, note: str) -> None:
         self.red_flags.append({"level": level, "item": item, "note": note})
+
+
+METRIC_CATALOG = {
+    "net_profit_parent": ("归母净利润", "归属于母公司股东的净利润，衡量当期最终盈利。"),
+    "revenue": ("营业收入", "公司主营业务和其他经营活动确认的收入。"),
+    "gross_margin": ("毛利率", "营业收入扣除营业成本后的毛利占收入比例，衡量产品盈利能力。"),
+    "operating_cash_flow": ("经营现金流净额", "经营活动产生的现金流量净额，衡量利润是否有现金支撑。"),
+    "operating_cash_flow_qoq": ("经营现金流环比", "经营现金流净额相对上一报告期的变化；需要单季口径或累计数拆分后才可靠。"),
+    "operating_cash_flow_to_net_profit": ("现金利润比", "经营现金流净额 / 归母净利润，用来验证利润含金量。"),
+    "cash_received_from_sales": ("销售收现", "销售商品、提供劳务收到的现金，衡量客户真实付款。"),
+    "cash_collection_ratio": ("销售收现率", "销售收现 / 营业收入，衡量收入兑现为现金的程度。"),
+    "capex_cash_paid": ("资本开支现金支出", "购建固定资产、无形资产和其他长期资产支付的现金。"),
+    "capex_to_depreciation": ("资本开支/折旧摊销", "资本开支现金支出 / 折旧摊销，衡量扩张投入是否覆盖资产消耗。"),
+    "finance_cost_to_operating_profit": ("财务费用/营业利润", "财务费用占营业利润比例，衡量利息和融资成本压力。"),
+    "goodwill_to_equity_parent": ("商誉/归母权益", "商誉占归母权益比例，衡量并购资产减值风险。"),
+    "research_expense": ("研发费用", "当期费用化研发投入。"),
+    "research_expense_qoq": ("研发费用环比", "研发费用相对上一报告期的变化；需要单季口径或累计数拆分后才可靠。"),
+    "research_expense_ratio": ("研发费用率", "研发费用 / 营业收入，衡量研发投入强度。"),
+    "research_expense_growth": ("研发费用同比增速", "研发费用相对去年同期的增长。"),
+    "cash_and_equivalents": ("货币资金", "账面货币资金，衡量现金安全垫。"),
+    "prepayment_growth": ("预付款同比增速", "预付款项相对去年同期的增长，可能反映供应链锁单或资金占用。"),
+    "other_receivables_growth": ("其他应收同比增速", "其他应收款相对去年同期的增长，需关注关联方往来和资金占用。"),
+    "other_payables_growth": ("其他应付同比增速", "其他应付款相对去年同期的增长，可能反映往来款或费用延后。"),
+    "inventory_growth": ("存货同比增速", "存货相对去年同期的增长，用来验证备货和需求匹配。"),
+    "fixed_asset_growth": ("固定资产同比增速", "固定资产相对去年同期的增长，反映产能/设备扩张。"),
+    "intangible_asset_growth": ("无形资产同比增速", "无形资产相对去年同期的增长，科技公司常与技术/并购资产相关。"),
+    "construction_in_progress_growth": ("在建工程同比增速", "在建工程相对去年同期的增长，反映尚未转固的建设投入。"),
+    "total_noncurrent_assets_growth": ("非流动资产同比增速", "非流动资产相对去年同期的增长，衡量长期资产扩张。"),
+    "receivable_growth": ("应收账款同比增速", "应收账款相对去年同期的增长，用来验证收入是否变成应收堆积。"),
+    "revenue_growth": ("营收同比增速", "营业收入相对去年同期的增长。"),
+    "revenue_qoq": ("营收环比", "营业收入相对上一报告期的变化；需要单季口径或累计数拆分后才可靠。"),
+    "contract_liability_growth": ("合同负债同比增速", "合同负债相对去年同期的增长，常作为预收和订单前瞻代理。"),
+    "contract_liability_qoq": ("合同负债环比", "合同负债相对上一报告期末的变化，观察订单前瞻是否继续加速。"),
+    "receivable_qoq": ("应收账款环比", "应收账款相对上一报告期末的变化，观察收入增长是否转成应收压力。"),
+    "prepayment_qoq": ("预付款环比", "预付款项相对上一报告期末的变化，观察供应链锁单或资金占用变化。"),
+    "other_receivables_qoq": ("其他应收环比", "其他应收款相对上一报告期末的变化，观察关联方往来和资金占用变化。"),
+    "other_payables_qoq": ("其他应付环比", "其他应付款相对上一报告期末的变化，观察往来款和费用延后变化。"),
+    "inventory_qoq": ("存货环比", "存货相对上一报告期末的变化，观察备货是否加速。"),
+    "cash_and_equivalents_qoq": ("货币资金环比", "货币资金相对上一报告期末的变化，观察现金安全垫变化。"),
+    "fixed_asset_qoq": ("固定资产环比", "固定资产相对上一报告期末的变化，观察产能资产变化。"),
+    "intangible_asset_qoq": ("无形资产环比", "无形资产相对上一报告期末的变化，观察技术/并购资产变化。"),
+    "total_noncurrent_assets_qoq": ("非流动资产环比", "非流动资产相对上一报告期末的变化，观察长期资产扩张。"),
+    "gross_margin_qoq": ("毛利率环比", "毛利率相对上一报告期的变化；需要单季收入和成本口径后才可靠。"),
+    "signed_orders": ("已签订单", "已签署合同或订单金额，用于验证合同负债和后续收入兑现。"),
+    "order_backlog": ("在手订单", "尚未交付或确认收入的订单储备，用于判断未来收入能见度。"),
+    "capacity_expansion_plan": ("产能扩张计划", "公告或管理层披露的扩产、产线建设、项目投产计划。"),
+    "supplier_long_term_agreements": ("供应商长协", "与关键供应商签署的长期供货协议，用于验证供给保障。"),
+    "segments": ("业务分部", "按业务、地区或产品拆分的收入和利润结构。"),
+    "product_lines": ("产品线", "按产品类别拆分的收入、增速、毛利率和订单结构。"),
+    "top_customer_concentration": ("前五大客户集中度", "前五大客户收入占比，衡量大客户依赖和订单集中风险。"),
+    "top_supplier_concentration": ("前五大供应商集中度", "前五大供应商采购占比，衡量供应链集中风险。"),
+    "related_party_customer_ratio": ("关联方客户占比", "关联方客户收入占比，用于排查收入真实性和交易公允性。"),
+    "related_party_supplier_ratio": ("关联方供应商占比", "关联方供应商采购占比，用于排查成本真实性和交易公允性。"),
+    "capacity_utilization": ("产能利用率", "实际产出或使用产能占设计产能比例，验证扩产是否被需求吸收。"),
+    "depreciation_amortization": ("折旧摊销", "固定资产折旧和无形资产摊销，反映资产消耗并用于计算资本开支覆盖。"),
+    "asset_liability_ratio": ("资产负债率", "总负债 / 总资产，衡量财务杠杆和偿债压力。"),
+    "rd_ratio": ("研发投入率", "研发投入或研发费用占营业收入比例，衡量科技公司的研发强度。"),
+}
 
 
 def ratio(numerator: float | int | None, denominator: float | int | None) -> float | None:
@@ -60,6 +119,8 @@ def _normalize_finance_data(raw: dict[str, Any]) -> dict[str, Any]:
     balance_row = _first_statement_row(data.get("balance"))
     income_row = _first_statement_row(data.get("income"))
     cashflow_row = _first_statement_row(data.get("cashflow"))
+    previous_period_data = data.get("previous_period_data") if isinstance(data.get("previous_period_data"), dict) else {}
+    previous_balance_row = _first_statement_row(previous_period_data.get("balance"))
 
     if balance_row or income_row or cashflow_row:
         _set_default_value(data, "ticker", _first_value("unknown", balance_row, income_row, cashflow_row, key="SECUCODE"))
@@ -78,6 +139,7 @@ def _normalize_finance_data(raw: dict[str, Any]) -> dict[str, Any]:
     _set_default_number(data, "revenue", income_row, "OPERATE_INCOME")
     _set_default_number(data, "operating_profit", income_row, "OPERATE_PROFIT")
     _set_default_number(data, "finance_expense", income_row, "FINANCE_EXPENSE")
+    _set_default_number(data, "operating_cost", income_row, "OPERATE_COST")
     _set_default_number(data, "goodwill", balance_row, "GOODWILL")
     _set_default_number(data, "equity_parent", balance_row, "TOTAL_PARENT_EQUITY")
     _set_default_number(data, "receivable_growth", balance_row, "ACCOUNTS_RECE_YOY", scale=0.01)
@@ -86,6 +148,31 @@ def _normalize_finance_data(raw: dict[str, Any]) -> dict[str, Any]:
     _set_default_number(data, "research_expense", income_row, "RESEARCH_EXPENSE")
     _set_default_number(data, "research_expense_growth", income_row, "RESEARCH_EXPENSE_YOY", scale=0.01)
     _set_default_number(data, "cash_and_equivalents", balance_row, "MONETARYFUNDS")
+    _set_default_number(data, "prepayment", balance_row, "PREPAYMENT")
+    _set_default_number(data, "prepayment_growth", balance_row, "PREPAYMENT_YOY", scale=0.01)
+    _set_default_number(data, "other_receivables", balance_row, "TOTAL_OTHER_RECE")
+    _set_default_number(data, "other_receivables_growth", balance_row, "TOTAL_OTHER_RECE_YOY", scale=0.01)
+    _set_default_number(data, "other_payables", balance_row, "TOTAL_OTHER_PAYABLE")
+    _set_default_number(data, "other_payables_growth", balance_row, "TOTAL_OTHER_PAYABLE_YOY", scale=0.01)
+    _set_default_number(data, "inventory", balance_row, "INVENTORY")
+    _set_default_number(data, "inventory_growth", balance_row, "INVENTORY_YOY", scale=0.01)
+    _set_default_number(data, "fixed_asset", balance_row, "FIXED_ASSET")
+    _set_default_number(data, "fixed_asset_growth", balance_row, "FIXED_ASSET_YOY", scale=0.01)
+    _set_default_number(data, "intangible_asset", balance_row, "INTANGIBLE_ASSET")
+    _set_default_number(data, "intangible_asset_growth", balance_row, "INTANGIBLE_ASSET_YOY", scale=0.01)
+    _set_default_number(data, "construction_in_progress", balance_row, "CIP")
+    _set_default_number(data, "construction_in_progress_growth", balance_row, "CIP_YOY", scale=0.01)
+    _set_default_number(data, "total_noncurrent_assets_growth", balance_row, "TOTAL_NONCURRENT_ASSETS_YOY", scale=0.01)
+    _set_default_qoq(data, "contract_liability_qoq", balance_row, previous_balance_row, "CONTRACT_LIAB")
+    _set_default_qoq(data, "receivable_qoq", balance_row, previous_balance_row, "ACCOUNTS_RECE")
+    _set_default_qoq(data, "prepayment_qoq", balance_row, previous_balance_row, "PREPAYMENT")
+    _set_default_qoq(data, "other_receivables_qoq", balance_row, previous_balance_row, "TOTAL_OTHER_RECE")
+    _set_default_qoq(data, "other_payables_qoq", balance_row, previous_balance_row, "TOTAL_OTHER_PAYABLE")
+    _set_default_qoq(data, "inventory_qoq", balance_row, previous_balance_row, "INVENTORY")
+    _set_default_qoq(data, "cash_and_equivalents_qoq", balance_row, previous_balance_row, "MONETARYFUNDS")
+    _set_default_qoq(data, "fixed_asset_qoq", balance_row, previous_balance_row, "FIXED_ASSET")
+    _set_default_qoq(data, "intangible_asset_qoq", balance_row, previous_balance_row, "INTANGIBLE_ASSET")
+    _set_default_qoq(data, "total_noncurrent_assets_qoq", balance_row, previous_balance_row, "TOTAL_NONCURRENT_ASSETS")
 
     industry = (data.get("industry") or data.get("industry_type") or "").lower()
     if industry in {"bank", "insurance", "broker", "银行", "保险", "券商"}:
@@ -126,6 +213,25 @@ def _set_default_number(data: dict[str, Any], target_key: str, row: dict[str, An
     data[target_key] = float(value) * scale
 
 
+def _set_default_qoq(data: dict[str, Any], target_key: str, current_row: dict[str, Any], previous_row: dict[str, Any], source_key: str) -> None:
+    if target_key in data:
+        return
+    current_value = current_row.get(source_key)
+    previous_value = previous_row.get(source_key)
+    qoq = ratio(current_value, previous_value)
+    if qoq is not None:
+        data[target_key] = qoq - 1.0
+
+
+def metric_info(metric: str) -> dict[str, str]:
+    label, meaning = METRIC_CATALOG.get(metric, (metric, "暂未配置中文释义。"))
+    return {"metric_label": label, "metric_meaning": meaning}
+
+
+def metric_labels(metrics: dict[str, Any]) -> dict[str, dict[str, str]]:
+    return {metric: metric_info(metric) for metric in metrics}
+
+
 def classify_business_stage(data: dict[str, Any]) -> dict[str, Any]:
     """Identify whether losses should be judged with a high-R&D commercialization lens."""
     rd_ratio = ratio(data.get("research_expense"), data.get("revenue"))
@@ -146,6 +252,8 @@ def classify_business_stage(data: dict[str, Any]) -> dict[str, Any]:
             and revenue_growth is not None
             and receivable_growth <= revenue_growth
         ),
+        "contract_liability_sequential_growth": data.get("contract_liability_qoq") is not None and data["contract_liability_qoq"] > 0,
+        "cash_buffer_sequential_stable": data.get("cash_and_equivalents_qoq") is not None and data["cash_and_equivalents_qoq"] >= -0.2,
     }
     commercialization_score = sum(commercialization_signals.values())
     stage = "rd_commercialization" if high_rd and commercialization_score >= 2 else "standard"
@@ -255,6 +363,10 @@ def evaluate_steps(data: dict[str, Any], tracker: DataTracker, stage_context: di
     for metric, value in {
         "net_profit_parent": data.get("net_profit_parent"),
         "revenue": data.get("revenue"),
+        "gross_margin": ratio(
+            None if data.get("revenue") is None or data.get("operating_cost") is None else data.get("revenue") - data.get("operating_cost"),
+            data.get("revenue"),
+        ),
         "operating_cash_flow": data.get("operating_cash_flow"),
         "operating_cash_flow_to_net_profit": ocf_to_profit,
         "cash_received_from_sales": data.get("cash_received_from_sales"),
@@ -267,6 +379,22 @@ def evaluate_steps(data: dict[str, Any], tracker: DataTracker, stage_context: di
         "research_expense_ratio": ratio(data.get("research_expense"), data.get("revenue")),
         "research_expense_growth": data.get("research_expense_growth"),
         "cash_and_equivalents": data.get("cash_and_equivalents"),
+        "prepayment_growth": data.get("prepayment_growth"),
+        "other_receivables_growth": data.get("other_receivables_growth"),
+        "other_payables_growth": data.get("other_payables_growth"),
+        "inventory_growth": data.get("inventory_growth"),
+        "fixed_asset_growth": data.get("fixed_asset_growth"),
+        "intangible_asset_growth": data.get("intangible_asset_growth"),
+        "construction_in_progress_growth": data.get("construction_in_progress_growth"),
+        "total_noncurrent_assets_growth": data.get("total_noncurrent_assets_growth"),
+        "contract_liability_qoq": data.get("contract_liability_qoq"),
+        "receivable_qoq": data.get("receivable_qoq"),
+        "prepayment_qoq": data.get("prepayment_qoq"),
+        "inventory_qoq": data.get("inventory_qoq"),
+        "cash_and_equivalents_qoq": data.get("cash_and_equivalents_qoq"),
+        "fixed_asset_qoq": data.get("fixed_asset_qoq"),
+        "intangible_asset_qoq": data.get("intangible_asset_qoq"),
+        "total_noncurrent_assets_qoq": data.get("total_noncurrent_assets_qoq"),
         "receivable_growth": data.get("receivable_growth"),
         "revenue_growth": data.get("revenue_growth"),
         "contract_liability_growth": data.get("contract_liability_growth"),
@@ -283,6 +411,196 @@ def evaluate_steps(data: dict[str, Any], tracker: DataTracker, stage_context: di
             )
 
     return results
+
+
+def evaluate_additional_checks(data: dict[str, Any], tracker: DataTracker) -> tuple[dict[str, Any], list[dict[str, str]], list[dict[str, str]]]:
+    """Evaluate optional forward-looking checks and explicitly mark missing data."""
+    data_gaps: list[dict[str, str]] = []
+    iteration_plan: list[dict[str, str]] = []
+
+    def missing(area: str, field: str, reason: str) -> None:
+        data_gaps.append({"area": area, "field": field, "reason": reason})
+
+    revenue_growth = data.get("revenue_growth")
+    contract_liability_growth = data.get("contract_liability_growth")
+    cash_collection = ratio(data.get("cash_received_from_sales"), data.get("revenue"))
+
+    working_capital = {
+        "status": "unknown",
+        "summary": "缺少足够往来账字段，暂不能判断资金占用或费用延后。",
+        "metrics": {
+            "prepayment_growth": data.get("prepayment_growth"),
+            "other_receivables_growth": data.get("other_receivables_growth"),
+            "other_payables_growth": data.get("other_payables_growth"),
+            "inventory_growth": data.get("inventory_growth"),
+            "prepayment_qoq": data.get("prepayment_qoq"),
+            "other_receivables_qoq": data.get("other_receivables_qoq"),
+            "other_payables_qoq": data.get("other_payables_qoq"),
+            "inventory_qoq": data.get("inventory_qoq"),
+        },
+    }
+    working_capital["metric_labels"] = metric_labels(working_capital["metrics"])
+    working_values = [value for value in working_capital["metrics"].values() if value is not None]
+    if working_values:
+        pressure = []
+        if data.get("prepayment_growth") is not None and revenue_growth is not None and data["prepayment_growth"] > max(revenue_growth * 1.5, revenue_growth + 0.5):
+            pressure.append("prepayment_outpaces_revenue")
+            tracker.add_red_flag("medium", "预付款增速显著高于营收", "需排查供应商预付、产能爬坡或资金占用")
+        if data.get("prepayment_qoq") is not None and data["prepayment_qoq"] > 0.5:
+            pressure.append("prepayment_qoq_jump")
+            tracker.add_red_flag("medium", "预付款环比大幅增长", "科技制造公司需解释是否为供应链锁单、产能爬坡或资金占用")
+        if data.get("other_receivables_growth") is not None and revenue_growth is not None and data["other_receivables_growth"] > max(revenue_growth * 1.5, revenue_growth + 0.5):
+            pressure.append("other_receivables_outpaces_revenue")
+            tracker.add_red_flag("medium", "其他应收增速显著高于营收", "其他应收可能隐藏关联方往来或资金占用")
+        if data.get("other_receivables_qoq") is not None and data["other_receivables_qoq"] > 0.5:
+            pressure.append("other_receivables_qoq_jump")
+            tracker.add_red_flag("medium", "其他应收环比大幅增长", "需复核关联方往来、保证金或资金占用")
+        if data.get("inventory_growth") is not None and contract_liability_growth is not None and data["inventory_growth"] > max(contract_liability_growth * 1.5, contract_liability_growth + 0.5):
+            pressure.append("inventory_outpaces_contract_liability")
+            tracker.add_red_flag("medium", "存货增速显著高于合同负债", "备货增长缺少订单前瞻支撑时需警惕滞销")
+        working_capital["status"] = "watch" if pressure else "pass"
+        working_capital["summary"] = "往来账存在需复核项。" if pressure else "预付、其他应收和存货未显示明显异常扩张。"
+        working_capital["pressure_items"] = pressure
+    else:
+        missing("working_capital_quality", "prepayment/other_receivables/other_payables/inventory", "当前数据源未提供可用往来账字段或增速。")
+
+    capacity = {
+        "status": "unknown",
+        "summary": "capex 与产能验证数据不足。",
+        "metrics": {
+            "capex_cash_paid": data.get("capex_cash_paid"),
+            "fixed_asset_growth": data.get("fixed_asset_growth"),
+            "intangible_asset_growth": data.get("intangible_asset_growth"),
+            "construction_in_progress_growth": data.get("construction_in_progress_growth"),
+            "total_noncurrent_assets_growth": data.get("total_noncurrent_assets_growth"),
+            "contract_liability_qoq": data.get("contract_liability_qoq"),
+            "fixed_asset_qoq": data.get("fixed_asset_qoq"),
+            "intangible_asset_qoq": data.get("intangible_asset_qoq"),
+            "total_noncurrent_assets_qoq": data.get("total_noncurrent_assets_qoq"),
+            "contract_liability_growth": contract_liability_growth,
+            "prepayment_growth": data.get("prepayment_growth"),
+        },
+    }
+    capacity["metric_labels"] = metric_labels(capacity["metrics"])
+    capacity_values = [value for value in capacity["metrics"].values() if value is not None]
+    if capacity_values:
+        support_count = sum(
+            bool(condition)
+            for condition in (
+                contract_liability_growth is not None and contract_liability_growth > 0,
+                data.get("contract_liability_qoq") is not None and data["contract_liability_qoq"] > 0,
+                revenue_growth is not None and revenue_growth > 0,
+                data.get("prepayment_growth") is not None and data["prepayment_growth"] > 0,
+            )
+        )
+        asset_growth_values = [
+            data.get("fixed_asset_growth"),
+            data.get("intangible_asset_growth"),
+            data.get("construction_in_progress_growth"),
+            data.get("total_noncurrent_assets_growth"),
+        ]
+        expanding_assets = any(value is not None and value > 0.2 for value in asset_growth_values)
+        if expanding_assets and support_count >= 2:
+            capacity["status"] = "pass"
+            capacity["summary"] = "资产扩张与营收、合同负债或预付款存在一定同向支撑。"
+        elif expanding_assets:
+            capacity["status"] = "watch"
+            capacity["summary"] = "资产扩张已出现，但订单、营收或供应链预付支撑不足。"
+            tracker.add_red_flag("medium", "资产扩张缺少前瞻支撑", "需结合订单、合同负债、产能利用率和预付款验证扩产质量")
+        else:
+            capacity["status"] = "watch"
+            capacity["summary"] = "未观察到明显固定资产/在建工程扩张，需结合产能利用率判断是否轻资产扩张。"
+    else:
+        missing("capacity_forward_validation", "capex/fixed_asset/cip/intangible_asset", "当前数据源未提供可用于产能交叉验证的资产扩张字段。")
+    if data.get("depreciation_amortization") is None:
+        missing("capacity_forward_validation", "depreciation_amortization", "东财三表接口未直接提供折旧摊销，无法计算 capex/折旧覆盖比。")
+    if data.get("capacity_utilization") is None:
+        missing("capacity_forward_validation", "capacity_utilization", "需要年报 MD&A 或公告原文提取产能利用率。")
+
+    forward_orders = {
+        "status": "partial",
+        "summary": "当前仅能用合同负债和销售收现作为订单兑现代理指标。",
+        "metrics": {
+            "contract_liability_growth": contract_liability_growth,
+            "contract_liability_qoq": data.get("contract_liability_qoq"),
+            "cash_collection_ratio": cash_collection,
+            "signed_orders": data.get("signed_orders"),
+            "order_backlog": data.get("order_backlog"),
+            "capacity_expansion_plan": data.get("capacity_expansion_plan"),
+            "supplier_long_term_agreements": data.get("supplier_long_term_agreements"),
+        },
+    }
+    forward_orders["metric_labels"] = metric_labels(forward_orders["metrics"])
+    if contract_liability_growth is not None and contract_liability_growth > 0.3 and cash_collection is not None and cash_collection >= 0.9:
+        forward_orders["summary"] = "合同负债和销售收现显示订单兑现加速，但仍缺少订单/产能计划原文验证。"
+    for field in ("signed_orders", "order_backlog", "capacity_expansion_plan", "supplier_long_term_agreements"):
+        if data.get(field) is None:
+            missing("forward_orders_capacity", field, "需要公告、年报 MD&A、订单公告或供应商长协数据源。")
+    for field in ("revenue_qoq", "research_expense_qoq", "gross_margin_qoq", "operating_cash_flow_qoq"):
+        if data.get(field) is None:
+            missing("sequential_trend", field, "利润表/现金流环比需要单季口径或用累计数拆分，当前不做硬算以避免误判。")
+
+    segment_product = {
+        "status": "not_implemented",
+        "summary": "当前未接入 segment/product line 数据，无法判断产品线收入占比、增速和毛利率变化。",
+        "metrics": {
+            "segments": data.get("segments"),
+            "product_lines": data.get("product_lines"),
+        },
+    }
+    segment_product["metric_labels"] = metric_labels(segment_product["metrics"])
+    if data.get("segments") or data.get("product_lines"):
+        segment_product["status"] = "data_available_unmodeled"
+        segment_product["summary"] = "已检测到 segment/product line 数据，但尚未实现结构化评分。"
+    else:
+        missing("segment_product_analysis", "segments/product_lines", "需要年报/季报原文或结构化产品线数据。")
+
+    customer_supplier = {
+        "status": "not_implemented",
+        "summary": "当前未接入前五大客户/供应商和关联方占比数据。",
+        "metrics": {
+            "top_customer_concentration": data.get("top_customer_concentration"),
+            "top_supplier_concentration": data.get("top_supplier_concentration"),
+            "related_party_customer_ratio": data.get("related_party_customer_ratio"),
+            "related_party_supplier_ratio": data.get("related_party_supplier_ratio"),
+        },
+    }
+    customer_supplier["metric_labels"] = metric_labels(customer_supplier["metrics"])
+    customer_supplier_values = [value for value in customer_supplier["metrics"].values() if value is not None]
+    if customer_supplier_values:
+        concentration_flags = []
+        if data.get("top_customer_concentration") is not None and data["top_customer_concentration"] >= 0.5:
+            concentration_flags.append("top_customer_concentration_high")
+            tracker.add_red_flag("medium", "客户集中度较高", "大客户依赖可能同时代表订单优势和回款风险")
+        if data.get("related_party_customer_ratio") is not None and data["related_party_customer_ratio"] >= 0.2:
+            concentration_flags.append("related_party_customer_ratio_high")
+            tracker.add_red_flag("medium", "关联方客户占比较高", "需排查收入真实性和交易公允性")
+        customer_supplier["status"] = "watch" if concentration_flags else "pass"
+        customer_supplier["summary"] = "客户/供应商结构存在需复核项。" if concentration_flags else "客户/供应商集中度未触发当前阈值。"
+        customer_supplier["pressure_items"] = concentration_flags
+    else:
+        missing("customer_supplier_quality", "top_customers/top_suppliers/related_party_ratios", "需要年报前五大客户/供应商或供应链数据。")
+
+    benchmark = {
+        "status": "iteration_plan",
+        "summary": "同行标杆横向比较必要，但暂不作为本轮重点。",
+        "metrics": ["gross_margin", "cash_collection_ratio", "rd_ratio", "capex_to_depreciation", "asset_liability_ratio"],
+    }
+    iteration_plan.append({
+        "area": "peer_benchmark",
+        "priority": "next_iteration",
+        "note": "需要可比公司池、行业分组和指标分位数后再进入评分。",
+    })
+
+    checks = {
+        "working_capital_quality": working_capital,
+        "capacity_forward_validation": capacity,
+        "forward_orders_capacity": forward_orders,
+        "segment_product_analysis": segment_product,
+        "customer_supplier_quality": customer_supplier,
+        "peer_benchmark": benchmark,
+    }
+    return checks, data_gaps, iteration_plan
 
 
 def confidence_from_evidence(step_results: dict[str, str], tracker: DataTracker, missing_core_tables: bool) -> dict[str, Any]:
@@ -365,6 +683,7 @@ def build_signal(raw_data: dict[str, Any]) -> dict[str, Any]:
 
     stage_context = classify_business_stage(data)
     step_results = evaluate_steps(data, tracker, stage_context)
+    additional_checks, data_gaps, iteration_plan = evaluate_additional_checks(data, tracker)
     if missing_core_tables:
         tracker.add_red_flag("high", "三表缺失", "利润表、资产负债表、现金流量表任一缺失时必须降置信")
 
@@ -413,11 +732,14 @@ def build_signal(raw_data: dict[str, Any]) -> dict[str, Any]:
             "risk_level": risk_level,
             "company_name": data.get("company_name", "unknown"),
             "business_stage": stage_context,
+            "additional_checks": additional_checks,
             "step_results": step_results,
             "red_flags": tracker.red_flags,
             "key_findings": signals,
             "confidence_breakdown": confidence,
             "evidence": tracker.evidence,
+            "data_gaps": data_gaps,
+            "iteration_plan": iteration_plan,
             "risk_notes": [flag["note"] for flag in tracker.red_flags],
             "uncertainties": [],
             "needs_human_review": needs_review,
