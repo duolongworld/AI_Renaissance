@@ -1,9 +1,4 @@
-import importlib
-
 import pytest
-
-from agents.signal import Signal
-from main import EXPERT_AGENTS
 
 
 class FakeNewsSource:
@@ -49,31 +44,23 @@ class FakeNewsSource:
         }
 
 
-def offline_config(signal_type: str):
-    if signal_type != "news":
-        return {}
-
-    fake_news_source = FakeNewsSource()
-    return {
-        "pages": 1,
-        "fetch_content": False,
-        "guba_data_source": fake_news_source,
-        "market_sentiment_source": fake_news_source,
-        "industry_sentiment_source": fake_news_source,
-    }
+@pytest.fixture
+def fake_news_source():
+    return FakeNewsSource()
 
 
-@pytest.mark.parametrize("agent_name,agent_info", EXPERT_AGENTS.items())
-def test_registered_expert_agent_can_run_offline(agent_name, agent_info):
-    module = importlib.import_module(agent_info["module"])
-    agent_class = getattr(module, agent_info["class"])
-    agent = agent_class(config=offline_config(agent_info["signal_type"]))
+@pytest.fixture
+def offline_config(fake_news_source):
+    def build(signal_type: str):
+        if signal_type != "news":
+            return {}
 
-    signal = agent.analyze("000001")
+        return {
+            "pages": 1,
+            "fetch_content": False,
+            "guba_data_source": fake_news_source,
+            "market_sentiment_source": fake_news_source,
+            "industry_sentiment_source": fake_news_source,
+        }
 
-    assert isinstance(signal, Signal)
-    assert signal.stock_code == "000001"
-    assert signal.signal_type == agent_info["signal_type"]
-    assert signal.direction in {"bullish", "bearish", "neutral"}
-    assert 0.0 <= signal.confidence <= 1.0
-    assert signal.reasoning
+    return build

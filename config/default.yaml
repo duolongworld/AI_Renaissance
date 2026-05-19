@@ -3,3 +3,5 @@ confidence_threshold: 0.6
 bullish_weight: 1.0
 bearish_weight: 1.0
 risk_coefficient: 0.2
+
+agent_timeout_seconds: 120
