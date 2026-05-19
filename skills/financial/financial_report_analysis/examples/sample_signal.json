@@ -1,0 +1,74 @@
+{
+  "direction": "neutral",
+  "confidence": 0.68,
+  "reasoning": "样例公司利润有经营现金流支撑，资本开支进入扩张期，但合同负债增速低于营收增速，未来需求真实性仍需跟踪。",
+  "signals": [
+    "现金利润比高于 1.0",
+    "capex/折旧覆盖比达标",
+    "合同负债增速低于营收增速"
+  ],
+  "source": "financial-report-analysis",
+  "signal_type": "financial",
+  "stock_code": "SZ000000",
+  "weight": 1.0,
+  "meta": {
+    "output_version": "0.1",
+    "skill_name": "financial-report-analysis",
+    "owner_group": "专家1组（财务）",
+    "target": "SZ000000",
+    "period": "2026Q1",
+    "time_horizon": "short",
+    "risk_level": "medium",
+    "company_name": "样例公司",
+    "step_results": {
+      "red_flag_scan": "pass",
+      "profit_quality": "pass",
+      "cash_flow_match": "pass",
+      "demand_authenticity": "watch",
+      "capex": "pass",
+      "debt_rate_sensitivity": "watch",
+      "expansion_quality": "watch",
+      "industry_adjustment": "pass"
+    },
+    "red_flags": [
+      {
+        "level": "medium",
+        "item": "合同负债增速低于营收增速",
+        "note": "未来收入兑现节奏需继续观察"
+      }
+    ],
+    "key_findings": [
+      "利润质量达标",
+      "扩张投入真实",
+      "需求前瞻指标偏弱"
+    ],
+    "confidence_breakdown": {
+      "evidence_count_score": 2,
+      "independence_score": 2,
+      "consistency_score": 1,
+      "reliability_score": 2,
+      "total_score": 7,
+      "cap": 0.8,
+      "final_confidence": 0.68,
+      "reason": "三表证据充分，但需求前瞻指标存在背离"
+    },
+    "evidence": [
+      {
+        "source_type": "financial_report",
+        "source_name": "样例公司 2026Q1 季报",
+        "date": "2026-04-30",
+        "metric": "operating_cash_flow_to_net_profit",
+        "value": 1.18,
+        "comparison": "高于 1.0",
+        "note": "计算：经营现金流净额 / 归母净利润"
+      }
+    ],
+    "risk_notes": [
+      "合同负债增速低于营收增速，后续收入兑现节奏需跟踪"
+    ],
+    "uncertainties": [
+      "样例未包含同行对比数据"
+    ],
+    "needs_human_review": false
+  }
+}
