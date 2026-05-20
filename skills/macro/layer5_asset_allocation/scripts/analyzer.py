@@ -11,7 +11,6 @@ from utils.constants import (
     BETA_BENCHMARK_WEIGHTS,
     RISK_BUDGET_CONSTRAINTS,
     INDUSTRY_CYCLE_MAPPING,
-    CYCLE_QUADRANT,
 )
 from utils.signal_utils import (
     build_layer_signal,

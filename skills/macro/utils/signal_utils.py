@@ -5,7 +5,7 @@
 """
 
 from typing import Dict, List, Any, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from dataclasses import asdict
 
 from agents.signal import Signal, Direction
@@ -474,8 +474,8 @@ def _get_current_period() -> str:
     """获取当前时间段字符串（本周）。"""
     now = datetime.now()
     # 计算本周一
-    monday = now - datetime.timedelta(days=now.weekday())
-    sunday = monday + datetime.timedelta(days=6)
+    monday = now - timedelta(days=now.weekday())
+    sunday = monday + timedelta(days=6)
     return f"{monday.strftime('%Y-%m-%d')}至{sunday.strftime('%Y-%m-%d')}"
 
 

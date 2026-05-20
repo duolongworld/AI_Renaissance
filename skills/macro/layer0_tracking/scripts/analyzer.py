@@ -7,6 +7,7 @@ Layer 0: 双经济体追踪分析脚本
 from typing import Dict, List, Any, Tuple, Optional
 import pandas as pd
 import numpy as np
+from datetime import datetime
 
 from utils.constants import (
     Z_SCORE_THRESHOLDS,
@@ -14,6 +15,162 @@ from utils.constants import (
     InteractionLevel,
 )
 from utils.signal_utils import build_layer_signal, determine_signal_direction
+
+
+# =============================================================================
+# 政策打分卡（框架原文 V3.x 第1117-1130行）
+# 5项×0-2分，满分10分；≥7=强转向，5-6=边际宽松，≤4=无转向
+# =============================================================================
+
+_POLICY_SCORING_RULES = {
+    "media_wording": {
+        # 官方媒体措辞变化（新华社/人民日报）
+        "strong_positive": ["超常规", "历史性", "前所未有"],   # +2
+        "positive": ["积极", "有力", "加大力度", "充分发力"],    # +1
+        "neutral": [],                                          # 0
+        "negative": ["稳健", "审慎"],                           # -1
+        "strong_negative": [],                                  # -2
+    },
+    "state_council": {
+        # 国常会频次与议题
+        "strong_positive": [],   # +2：连续2次以上聚焦经济
+        "positive": [],          # +1：频次增加
+        "neutral": [],           # 0：常规频次
+    },
+    "pboc_statement": {
+        # 央行货政报告措辞
+        "strong_positive": ["充分发力", "超常规"],  # +2
+        "positive": ["加大力度"],                   # +1
+        "neutral": ["稳健"],                        # 0
+        "negative": ["审慎", "克制"],               # -1
+    },
+    "top_meeting": {
+        # 高层会议信号
+        "strong_positive": ["超常规"],              # +2
+        "positive": ["政治局会议提及"],              # +1
+        "neutral": [],                              # 0
+    },
+    "policy_implementation": {
+        # 政策落地节奏
+        "strong_positive": [],   # +2：连续2次以上落地
+        "positive": [],          # +1：单次落地
+        "neutral": [],           # 0：无新政策
+    },
+}
+
+_POLICY_TRIGGER_THRESHOLDS = {
+    "strong_turn": 7,    # 总分≥7：强转向预期
+    "marginal": 5,       # 5-6：边际宽松
+    # ≤4：无转向
+}
+
+
+def calculate_policy_score_from_text(
+    media_keywords: Optional[List[str]] = None,
+    state_council_freq_change: int = 0,   # 相对正常的频次变化：+2/+1/0/-1
+    pboc_keywords: Optional[List[str]] = None,
+    top_meeting_signal: str = "none",       # "super" / "mentioned" / "none"
+    implementation_count: int = 0,          # 当期落地政策次数：0/1/2+
+) -> Dict[str, Any]:
+    """
+    根据政策文本/数据计算政策预期打分卡。
+
+    Args:
+        media_keywords: 官方媒体近期的政策相关关键词列表
+        state_council_freq_change: 国常会频次相对变化（+2/+1/0/-1）
+        pboc_keywords: 央行货政报告/公告关键词列表
+        top_meeting_signal: 高层会议信号（"super"/"mentioned"/"none"）
+        implementation_count: 当期新政策落地次数（0/1/2+）
+
+    Returns:
+        {
+            "total_score": int,          # 0-10
+            "level": str,                 # "strong_turn"/"marginal"/"no_turn"
+            "adjustment": int,            # 调节幅度：+1/0/-1
+            "items": {
+                "media_wording": int,
+                "state_council": int,
+                "pboc_statement": int,
+                "top_meeting": int,
+                "implementation": int,
+            }
+        }
+    """
+    scores = {}
+
+    # 1. 官方媒体措辞
+    if media_keywords:
+        kw_str = "".join(media_keywords)
+        if any(k in kw_str for k in _POLICY_SCORING_RULES["media_wording"]["strong_positive"]):
+            scores["media_wording"] = 2
+        elif any(k in kw_str for k in _POLICY_SCORING_RULES["media_wording"]["positive"]):
+            scores["media_wording"] = 1
+        elif any(k in kw_str for k in _POLICY_SCORING_RULES["media_wording"]["negative"]):
+            scores["media_wording"] = -1
+        else:
+            scores["media_wording"] = 0
+    else:
+        scores["media_wording"] = 0
+
+    # 2. 国常会频次
+    if state_council_freq_change >= 2:
+        scores["state_council"] = 2
+    elif state_council_freq_change == 1:
+        scores["state_council"] = 1
+    elif state_council_freq_change <= -1:
+        scores["state_council"] = -1
+    else:
+        scores["state_council"] = 0
+
+    # 3. 央行措辞
+    if pboc_keywords:
+        kw_str = "".join(pboc_keywords)
+        if any(k in kw_str for k in _POLICY_SCORING_RULES["pboc_statement"]["strong_positive"]):
+            scores["pboc_statement"] = 2
+        elif any(k in kw_str for k in _POLICY_SCORING_RULES["pboc_statement"]["positive"]):
+            scores["pboc_statement"] = 1
+        elif any(k in kw_str for k in _POLICY_SCORING_RULES["pboc_statement"]["negative"]):
+            scores["pboc_statement"] = -1
+        else:
+            scores["pboc_statement"] = 0
+    else:
+        scores["pboc_statement"] = 0
+
+    # 4. 高层会议信号
+    if top_meeting_signal == "super":
+        scores["top_meeting"] = 2
+    elif top_meeting_signal == "mentioned":
+        scores["top_meeting"] = 1
+    else:
+        scores["top_meeting"] = 0
+
+    # 5. 政策落地节奏
+    if implementation_count >= 2:
+        scores["implementation"] = 2
+    elif implementation_count == 1:
+        scores["implementation"] = 1
+    else:
+        scores["implementation"] = 0
+
+    total = sum(scores.values())
+    total = max(0, min(10, total))  # 限制在0-10
+
+    if total >= _POLICY_TRIGGER_THRESHOLDS["strong_turn"]:
+        level = "strong_turn"
+        adjustment = 1
+    elif total >= _POLICY_TRIGGER_THRESHOLDS["marginal"]:
+        level = "marginal"
+        adjustment = 0
+    else:
+        level = "no_turn"
+        adjustment = -1
+
+    return {
+        "total_score": total,
+        "level": level,
+        "adjustment": adjustment,
+        "items": scores,
+    }
 
 
 def analyze_bilateral_tracking(
@@ -156,14 +313,27 @@ def _calculate_china_dimensions(
             "indicators": indicators["inflation"],
         }
     
-    # 政策维度
+    # 政策维度（使用框架原文打分卡 V3.x）
     if "policy" in indicators and indicators["policy"]:
-        # 政策宽松程度评分（需要LLM辅助解读）
+        p = indicators["policy"]
+        # 优先使用量化打分卡结果
+        policy_score_result = p.get("score_result")
+        if policy_score_result:
+            raw = policy_score_result["total_score"]
+            z_score = (raw - 5) / 2.5  # 以5为均值、2.5为标准差的标准化
+            direction_map = {"strong_turn": "easy", "marginal": "easy", "no_turn": "neutral"}
+            direction = direction_map.get(policy_score_result["level"], "neutral")
+        else:
+            # 降级：使用宽松信号标记
+            raw = None
+            z_score = 0
+            direction = "easy" if p.get("easing_signal") else "neutral"
         dimensions["policy"] = {
-            "raw": None,  # 需要定性评估
-            "z_score": 0,  # TODO: 需要政策打分卡
-            "direction": "easy" if indicators["policy"].get("easing_signal") else "neutral",
-            "indicators": indicators["policy"],
+            "raw": raw,
+            "z_score": z_score,
+            "direction": direction,
+            "indicators": p,
+            "score_detail": policy_score_result,
         }
     
     # 流动性维度
@@ -309,6 +479,24 @@ def _calculate_cross_border_signals(
             "direction": determine_signal_direction(cn_growth_z - us_growth_z),
         }
     
+    # 地缘政治评分（通道6专用）
+    if "geopolitical_score" in cross_metrics:
+        geo_score = cross_metrics["geopolitical_score"]
+        signals["geopolitical"] = {
+            "raw": geo_score,
+            "z_score": (geo_score - 5.0) / 2.5,  # 以5为均值、2.5为标准差
+            "direction": "negative" if geo_score > 5.0 else "neutral",
+        }
+    
+    # 全球PMI（通道5备用数据）
+    if "global_pmi" in cross_metrics:
+        g_pmi = cross_metrics["global_pmi"]
+        signals["global_pmi"] = {
+            "raw": g_pmi,
+            "z_score": _estimate_z_score(g_pmi, mean=50, std=2),
+            "direction": "positive" if g_pmi > 50 else "negative",
+        }
+    
     return signals
 
 
@@ -325,50 +513,80 @@ def _check_transmission_channels(
     for channel in TRANSMISSION_CHANNELS:
         channel_id = channel["id"]
         channel_name = channel["name"]
-        
-        # TODO: 根据各通道的触发条件判断
-        # 这里使用简化逻辑
-        
+
+        # 框架原文分级阈值（requirement.md 第79-90行）：
+        #   通道1/5: 0.5σ 触发（更敏感）
+        #   通道2/3/4: 1.0σ 触发
+        #   通道6: 地缘事件评分超过阈值
+        _CHANNEL_TRIGGER_THRESHOLDS = {
+            1: 0.5,   # 利差→资本流→A股
+            2: 1.0,   # 美元→大宗→PPI→周期股
+            3: 1.0,   # 美联储→风险偏好→港股
+            4: 1.0,   # 中国信贷→全球大宗
+            5: 0.5,   # 全球PMI→中国出口
+            6: None,  # 地缘事件，独立打分
+        }
+
         if channel_id == 1:  # 利差→资本流→A股
-            spread_z = cross_signals.get("cn_us_10y_sspread", {}).get("z_score", 0)
-            triggered = abs(spread_z) > Z_SCORE_THRESHOLDS["direction_neutral"]
+            spread_z = cross_signals.get("cn_us_10y_spread", {}).get("z_score", 0)
+            threshold = _CHANNEL_TRIGGER_THRESHOLDS[1]
+            triggered = abs(spread_z) > threshold
             strength = min(abs(spread_z) / 2.0, 1.0) if triggered else 0
-        
+            # 利差走阔（正z）→ 北向流入 → 正向；利差收窄（负z）→ 负向
+            direction = "positive" if spread_z > 0 else ("negative" if spread_z < 0 else "neutral")
+
         elif channel_id == 2:  # 美元→大宗→PPI→周期股
             dxy_z = cross_signals.get("dxy", {}).get("z_score", 0)
-            triggered = abs(dxy_z) > Z_SCORE_THRESHOLDS["direction_neutral"]
+            threshold = _CHANNEL_TRIGGER_THRESHOLDS[2]
+            triggered = abs(dxy_z) > threshold
             strength = min(abs(dxy_z) / 2.0, 1.0) if triggered else 0
-        
+            # 美元强势（正z）→ 大宗承压 → 负向A股周期股
+            direction = "negative" if dxy_z > 0 else ("positive" if dxy_z < 0 else "neutral")
+
         elif channel_id == 3:  # 美联储→风险偏好→港股
-            us_policy_z = us_5d.get("policy", {}).get("z_score", 0)
-            triggered = abs(us_policy_z) > Z_SCORE_THRESHOLDS["direction_neutral"]
-            strength = min(abs(us_policy_z) / 2.0, 1.0) if triggered else 0
-        
+            # 美国实际利率 = TIPS收益率（近似用市场定价维度）
+            us_real_rate_z = us_5d.get("market_pricing", {}).get("z_score", 0)
+            threshold = _CHANNEL_TRIGGER_THRESHOLDS[3]
+            triggered = abs(us_real_rate_z) > threshold
+            strength = min(abs(us_real_rate_z) / 2.0, 1.0) if triggered else 0
+            direction = "negative" if us_real_rate_z > 0 else ("positive" if us_real_rate_z < 0 else "neutral")
+
         elif channel_id == 4:  # 中国信贷→全球大宗
-            cn_liquidity_z = china_5d.get("liquidity", {}).get("z_score", 0)
-            triggered = abs(cn_liquidity_z) > Z_SCORE_THRESHOLDS["direction_neutral"]
-            strength = min(abs(cn_liquidity_z) / 2.0, 1.0) if triggered else 0
-        
+            # 社融脉冲（近似用流动性维度 z-score）
+            cn_credit_z = china_5d.get("liquidity", {}).get("z_score", 0)
+            threshold = _CHANNEL_TRIGGER_THRESHOLDS[4]
+            triggered = abs(cn_credit_z) > threshold
+            strength = min(abs(cn_credit_z) / 2.0, 1.0) if triggered else 0
+            # 社融扩张（正z）→ 全球大宗正需求 → 正向
+            direction = "positive" if cn_credit_z > 0 else ("negative" if cn_credit_z < 0 else "neutral")
+
         elif channel_id == 5:  # 全球PMI→中国出口
             global_growth_z = us_5d.get("growth", {}).get("z_score", 0)
-            triggered = abs(global_growth_z) > Z_SCORE_THRESHOLDS["direction_neutral"]
+            threshold = _CHANNEL_TRIGGER_THRESHOLDS[5]
+            triggered = abs(global_growth_z) > threshold
             strength = min(abs(global_growth_z) / 2.0, 1.0) if triggered else 0
-        
+            # 全球PMI高（正z）→ 中国出口正增长 → 正向
+            direction = "positive" if global_growth_z > 0 else ("negative" if global_growth_z < 0 else "neutral")
+
         elif channel_id == 6:  # 地缘政治→风险溢价
-            # 地缘政治需要外部输入，暂时标记为未触发
-            triggered = False
-            strength = 0
-        
+            # 地缘政治事件评分（从外部传入）
+            geopolitical_score = cross_signals.get("geopolitical", {}).get("raw", 0)
+            triggered = geopolitical_score > 5.0  # 框架：评分超过阈值
+            strength = geopolitical_score / 10.0 if triggered else 0
+            direction = "negative" if triggered else "neutral"
+
         else:
             triggered = False
             strength = 0
-        
+            direction = "neutral"
+
         channels.append({
             "id": channel_id,
             "name": channel_name,
             "triggered": triggered,
             "strength": strength,
-            "direction": "positive" if strength > 0 else "neutral",
+            "direction": direction,
+            "threshold_used": _CHANNEL_TRIGGER_THRESHOLDS.get(channel_id),
         })
     
     return channels

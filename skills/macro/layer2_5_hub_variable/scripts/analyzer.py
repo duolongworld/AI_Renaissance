@@ -119,89 +119,126 @@ def calculate_cnh_direction(
 ) -> Dict[str, Any]:
     """
     计算USD/CNH方向得分。
-    
-    驱动力权重：
-    - 利差驱动 0.30
-    - 经常账户 0.20
-    - 风险偏好 0.20
-    - 政策意图 0.30
+
+    框架原文（requirement.md 第639-653行）：
+    - 利差驱动 0.30：中美10Y利差 → 利差走阔→升值，收窄/倒挂→贬值压力
+    - 经常账户 0.20：贸易顺差 → 顺差扩大→升值支撑，收窄→贬值压力
+    - 风险偏好 0.20：VIX/全球避险 → 避险升温→美元强→CNH贬值
+    - 政策意图 0.30：央行中间价偏离度、外储变化 → 强于市场→维稳，外储降→干预消耗
+
+    每个因子先做z-score标准化，再用框架权重加权。
+    正向z-score = 升值压力；负向z-score = 贬值压力。
     """
     if not data:
         return {"score": 0, "direction": "neutral", "confidence": 0}
-    
-    # 利差驱动
+
+    # --- 1. 利差驱动因子 z-score ---
+    # 框架：利差走阔 → CNH升值（z > 0）；利差收窄/倒挂 → CNH贬值（z < 0）
     cn_yield = data.get("china_10y_yield")
     us_yield = data.get("us_10y_yield")
     if cn_yield is not None and us_yield is not None:
         spread = cn_yield - us_yield
-        # 利差收窄/倒挂 -> 贬值压力（得分正向）
-        rate_score = -spread  # 负spread = 贬值
+        # 使用预设均值0、标准差1.5作为估算（实际应滚动计算）
+        rate_z = _estimate_z_score(spread, mean=0, std=1.5)
     else:
-        rate_score = 0
-    
-    # 经常账户
+        rate_z = 0.0
+
+    # --- 2. 经常账户因子 z-score ---
+    # 框架：顺差扩大 → 升值（z > 0）
     trade_surplus = data.get("trade_surplus")
     if trade_surplus is not None:
-        # 顺差扩大 -> 升值支撑（得分负向）
-        ca_score = -min(trade_surplus / 1000, 1)  # 归一化
+        # 预设均值500亿美元，标准差200亿美元
+        ca_z = _estimate_z_score(trade_surplus, mean=500, std=200)
     else:
-        ca_score = 0
-    
-    # 风险偏好（简化版）
-    cnh_cny_spread = data.get("cnh_cny_spread")
-    if cnh_cny_spread is not None:
-        # 价差扩大 -> 贬值压力
-        risk_score = min(cnh_cny_spread / 0.1, 1) * 2  # 归一化并放大
+        ca_z = 0.0
+
+    # --- 3. 风险偏好因子 z-score ---
+    # 框架：VIX高 → 避险 → 美元强 → CNH贬值（与VIX正相关，取负）
+    vix = data.get("vix")
+    if vix is not None:
+        # 预设均值15，标准差8
+        risk_z = -_estimate_z_score(vix, mean=15, std=8)
     else:
-        risk_score = 0
-    
-    # 政策意图（简化版，需要LLM解读）
-    # 这里用外储变化作为代理
-    forex_change = data.get("forex_reserve_change")
-    if forex_change is not None:
-        # 外储下降 -> 贬值压力
-        policy_score = -min(forex_change / 100, 1) * 2
+        # 降级：使用CNH-CNY价差
+        cnh_cny = data.get("cnh_cny_spread")
+        if cnh_cny is not None:
+            # 价差扩大 → 贬值压力（取负）
+            risk_z = -_estimate_z_score(cnh_cny, mean=0.02, std=0.03)
+        else:
+            risk_z = 0.0
+
+    # --- 4. 政策意图因子 z-score ---
+    # 框架：中间价强于市场→维稳（升值）；外储下降→干预消耗（贬值）
+    pboc_mid_deviation = data.get("pboc_mid_rate_deviation")
+    if pboc_mid_deviation is not None:
+        # 正偏离 → 升值压力
+        policy_z = _estimate_z_score(pboc_mid_deviation, mean=0, std=0.01)
     else:
-        policy_score = 0
-    
-    # 加权求和
+        # 降级：使用外储变化（预设均值0，标准差100亿美元）
+        forex_change = data.get("forex_reserve_change")
+        if forex_change is not None:
+            # 外储下降 → 贬值（取负）
+            policy_z = -_estimate_z_score(forex_change, mean=0, std=100)
+        else:
+            policy_z = 0.0
+
+    # --- 加权求和 ---
+    w = CNH_DIRECTION_WEIGHTS
+    total_w = w["interest_rate_spread"] + w["current_account"] + w["risk_appetite"] + w["policy_intent"]
     score = (
-        rate_score * CNH_DIRECTION_WEIGHTS["interest_rate_spread"] +
-        ca_score * CNH_DIRECTION_WEIGHTS["current_account"] +
-        risk_score * CNH_DIRECTION_WEIGHTS["risk_appetite"] +
-        policy_score * CNH_DIRECTION_WEIGHTS["policy_intent"]
-    ) / (
-        CNH_DIRECTION_WEIGHTS["interest_rate_spread"] +
-        CNH_DIRECTION_WEIGHTS["current_account"] +
-        CNH_DIRECTION_WEIGHTS["risk_appetite"] +
-        CNH_DIRECTION_WEIGHTS["policy_intent"]
-    )
-    
-    # 方向判定
+        rate_z * w["interest_rate_spread"] +
+        ca_z * w["current_account"] +
+        risk_z * w["risk_appetite"] +
+        policy_z * w["policy_intent"]
+    ) / total_w
+
+    # --- 方向判定（框架原文第653行） ---
     if score > 1.0:
         direction = "升值确认"
         direction_signal = "bullish"
     elif score < -1.0:
         direction = "贬值确认"
         direction_signal = "bearish"
-    elif abs(score) <= 0.5:
+    elif score > 0.5:
+        direction = "偏升值"
+        direction_signal = "bullish"
+    elif score < -0.5:
+        direction = "偏贬值"
+        direction_signal = "bearish"
+    else:
         direction = "震荡/无方向"
         direction_signal = "neutral"
-    else:
-        direction = "偏升值" if score > 0 else "偏贬值"
-        direction_signal = "neutral"
-    
+
+    # 数据完整性置信度
+    available = sum(1 for v in [cn_yield, us_yield, trade_surplus, vix, pboc_mid_deviation, forex_change] if v is not None)
+    confidence = available / 6.0
+
     return {
         "score": score,
+        "z_score": score,  # score本身就是z-score
         "direction": direction,
         "direction_signal": direction_signal,
+        "confidence": confidence,
         "components": {
-            "rate_score": rate_score,
-            "ca_score": ca_score,
-            "risk_score": risk_score,
-            "policy_score": policy_score,
+            "rate_z": round(rate_z, 3),
+            "ca_z": round(ca_z, 3),
+            "risk_z": round(risk_z, 3),
+            "policy_z": round(policy_z, 3),
+        },
+        "weights_used": {
+            "interest_rate_spread": w["interest_rate_spread"],
+            "current_account": w["current_account"],
+            "risk_appetite": w["risk_appetite"],
+            "policy_intent": w["policy_intent"],
         },
     }
+
+
+def _estimate_z_score(value: float, mean: float, std: float) -> float:
+    """估算z-score（简化版，未使用真实历史滚动窗口）。"""
+    if std == 0:
+        return 0.0
+    return (value - mean) / std
 
 
 def calculate_commodity_signals(
@@ -304,58 +341,71 @@ def determine_macro_triangle(
 ) -> Dict[str, Any]:
     """
     定位全球宏观三角：美元、大宗、美债。
-    
-    | 宏观环境 | 含义 | 最优资产 |
-    |----------|------|----------|
-    | 全球紧缩 | 强美元 + 弱大宗 + 高美债 | 中债长端、防御股 |
-    | 全球宽松 | 弱美元 + 强大宗 + 低美债 | 周期股、大宗股、港股 |
-    | 滞胀型 | 强美元 + 强大宗 + 高美债 | 黄金、短债 |
-    | 通缩型 | 弱美元 + 弱大宗 + 低美债 | 利率债、高股息 |
+
+    框架原文（requirement.md 第670-677行 & 第1040-1047行）：
+    根据三个变量的 z-score 符号组合定位宏观环境。
+
+    | 宏观环境 | 美元 | 大宗 | 美债 | 最优资产 |
+    |----------|------|------|------|----------|
+    | 全球紧缩 | 强(z>0) | 弱(z<0) | 高(z>0) | 中债长端、防御股 |
+    | 全球宽松 | 弱(z<0) | 强(z>0) | 低(z<0) | 周期股、大宗股、港股 |
+    | 滞胀型   | 强(z>0) | 强(z>0) | 高(z>0) | 黄金、短债 |
+    | 通缩型   | 弱(z<0) | 弱(z<0) | 低(z<0) | 利率债、高股息 |
     """
-    # 简化判定逻辑
-    # 美元方向
-    usd_strength = 1 if cnh_direction.get("score", 0) < -0.5 else (-1 if cnh_direction.get("score", 0) > 0.5 else 0)
-    
-    # 大宗方向
-    commodity_score = 0
-    if commodity_data:
-        copper_gold = commodity_data.get("copper_gold_ratio", 0)
-        if copper_gold > 0.18:  # 铜金比高 = 增长乐观 = 大宗强
-            commodity_score = 1
-        elif copper_gold < 0.12:
-            commodity_score = -1
-    
-    # 美债方向
-    us_yield = interest_data.get("us_10y_yield", 3.0)
-    if us_yield > 4.0:
-        us_rate_level = 1  # 高利率
-    elif us_yield < 2.5:
-        us_rate_level = -1  # 低利率
+    # 1. 美元方向（z-score符号）
+    # cnh_direction.score > 0 → 升值压力 → 美元弱 → -1
+    # cnh_direction.score < 0 → 贬值压力 → 美元强 → +1
+    usd_score = cnh_direction.get("score", 0)
+    usd_sign = 1 if usd_score < -0.5 else (-1 if usd_score > 0.5 else 0)
+
+    # 2. 大宗商品方向（使用铜金比 z-score）
+    # commodity_data 只含 raw 比值，在函数内部计算 z-score
+    if commodity_data and "copper_gold_ratio" in commodity_data:
+        copper_gold_z = estimate_ratio_zscore(commodity_data["copper_gold_ratio"], "copper_gold")
+        commodity_sign = 1 if copper_gold_z > 0.5 else (-1 if copper_gold_z < -0.5 else 0)
     else:
-        us_rate_level = 0
-    
-    # 判定宏观三角
-    if usd_strength == 1 and commodity_score == -1 and us_rate_level == 1:
+        copper_gold_z = None
+        commodity_sign = 0
+
+    # 3. 美债收益率方向（z-score符号）
+    # 预设均值3.0%，标准差1.0%
+    us_yield = interest_data.get("us_10y_yield")
+    if us_yield is not None:
+        us_yield_z = _estimate_z_score(us_yield, mean=3.0, std=1.0)
+        yield_sign = 1 if us_yield_z > 0.5 else (-1 if us_yield_z < -0.5 else 0)
+    else:
+        yield_sign = 0
+
+    # 4. 三变量符号组合查表
+    if usd_sign == 1 and commodity_sign == -1 and yield_sign == 1:
         triangle = GlobalMacroTriangle.GLOBAL_TIGHTENING.value
         best_assets = ["中债长端", "防御股", "黄金"]
-    elif usd_strength == -1 and commodity_score == 1 and us_rate_level == -1:
+        macro_meaning = "全球流动性收紧，外资流出新兴市场"
+    elif usd_sign == -1 and commodity_sign == 1 and yield_sign == -1:
         triangle = GlobalMacroTriangle.GLOBAL_EASING.value
         best_assets = ["周期股", "大宗股", "港股"]
-    elif usd_strength == 1 and commodity_score == 1 and us_rate_level == 1:
+        macro_meaning = "全球宽松共振，外资流入新兴市场"
+    elif usd_sign == 1 and commodity_sign == 1 and yield_sign == 1:
         triangle = GlobalMacroTriangle.STAGFLATION.value
         best_assets = ["黄金", "短债"]
-    elif usd_strength == -1 and commodity_score == -1 and us_rate_level == -1:
+        macro_meaning = "滞胀环境，避险资产最优"
+    elif usd_sign == -1 and commodity_sign == -1 and yield_sign == -1:
         triangle = GlobalMacroTriangle.DEFLATION.value
         best_assets = ["利率债", "高股息"]
+        macro_meaning = "通缩环境，债券和高股息资产受益"
     else:
-        triangle = "mixed"  # 混合状态
+        triangle = "mixed"
         best_assets = []
-    
+        macro_meaning = "宏观环境信号不一致，保持中性配置"
+
     return {
         "triangle": triangle,
-        "usd_strength": usd_strength,
-        "commodity_score": commodity_score,
-        "us_rate_level": us_rate_level,
+        "usd_sign": usd_sign,
+        "commodity_sign": commodity_sign,
+        "yield_sign": yield_sign,
+        "usd_score": round(usd_score, 3),
+        "us_yield_z": round(us_yield_z, 3) if us_yield is not None else None,
+        "macro_meaning": macro_meaning,
         "best_assets": best_assets,
     }
 
