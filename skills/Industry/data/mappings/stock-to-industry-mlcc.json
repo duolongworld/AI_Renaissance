@@ -1,0 +1,60 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "mapping_type": "stock-to-industry",
+    "industry_name": "MLCC",
+    "industry_description": "多层陶瓷电容器全产业链：陶瓷粉体、MLCC制造及下游军工/消费电子应用",
+    "preset_chain": "mlcc",
+    "data_source": "A股上市公司",
+    "last_updated": "2026-05-14",
+    "weight_sum": 1.0
+  },
+  "metadata.known_aliases": {
+    "三环集团": "300408.SZ",
+    "风华高科": "000636.SZ"
+  },
+  "mappings": {
+    "300408.SZ": {
+      "name": "三环集团",
+      "weight": 0.3,
+      "chain_position": "中游",
+      "notes": "MLCC龙头",
+      "industry": "MLCC"
+    },
+    "000636.SZ": {
+      "name": "风华高科",
+      "weight": 0.25,
+      "chain_position": "中游",
+      "notes": "老牌MLCC厂商",
+      "industry": "MLCC"
+    },
+    "603678.SH": {
+      "name": "火炬电子",
+      "weight": 0.15,
+      "chain_position": "下游",
+      "notes": "军工MLCC",
+      "industry": "MLCC"
+    },
+    "603267.SH": {
+      "name": "鸿远电子",
+      "weight": 0.12,
+      "chain_position": "下游",
+      "notes": "军工MLCC",
+      "industry": "MLCC"
+    },
+    "300726.SZ": {
+      "name": "宏达电子",
+      "weight": 0.1,
+      "chain_position": "下游",
+      "notes": "军工电子",
+      "industry": "MLCC"
+    },
+    "300285.SZ": {
+      "name": "国瓷材料",
+      "weight": 0.08,
+      "chain_position": "上游",
+      "notes": "陶瓷粉体",
+      "industry": "MLCC"
+    }
+  }
+}

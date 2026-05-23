@@ -1,0 +1,103 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "mapping_type": "stock-to-industry",
+    "industry_name": "光伏",
+    "industry_description": "光伏全产业链：硅料、硅片、电池片、组件、逆变器及辅材",
+    "preset_chain": "solar-pv",
+    "data_source": "A股上市公司",
+    "last_updated": "2026-05-14",
+    "weight_sum": 1.0
+  },
+  "metadata.known_aliases": {
+    "隆基绿能": "601012.SH",
+    "通威股份": "600438.SH",
+    "阳光电源": "300274.SZ"
+  },
+  "mappings": {
+    "601012.SH": {
+      "name": "隆基绿能",
+      "weight": 0.15,
+      "chain_position": "中游",
+      "notes": "硅片+组件龙头",
+      "industry": "光伏"
+    },
+    "600438.SH": {
+      "name": "通威股份",
+      "weight": 0.12,
+      "chain_position": "上游",
+      "notes": "硅料龙头",
+      "industry": "光伏"
+    },
+    "002459.SZ": {
+      "name": "晶澳科技",
+      "weight": 0.1,
+      "chain_position": "下游",
+      "notes": "组件",
+      "industry": "光伏"
+    },
+    "688599.SH": {
+      "name": "天合光能",
+      "weight": 0.08,
+      "chain_position": "下游",
+      "notes": "组件",
+      "industry": "光伏"
+    },
+    "002129.SZ": {
+      "name": "TCL中环",
+      "weight": 0.08,
+      "chain_position": "中游",
+      "notes": "硅片",
+      "industry": "光伏"
+    },
+    "300274.SZ": {
+      "name": "阳光电源",
+      "weight": 0.12,
+      "chain_position": "下游",
+      "notes": "逆变器龙头",
+      "industry": "光伏"
+    },
+    "688223.SH": {
+      "name": "晶科能源",
+      "weight": 0.08,
+      "chain_position": "下游",
+      "notes": "组件",
+      "industry": "光伏"
+    },
+    "688303.SH": {
+      "name": "大全能源",
+      "weight": 0.05,
+      "chain_position": "上游",
+      "notes": "硅料",
+      "industry": "光伏"
+    },
+    "603806.SH": {
+      "name": "福斯特",
+      "weight": 0.06,
+      "chain_position": "辅材",
+      "notes": "EVA胶膜",
+      "industry": "光伏"
+    },
+    "601865.SH": {
+      "name": "福莱特",
+      "weight": 0.06,
+      "chain_position": "辅材",
+      "notes": "光伏玻璃",
+      "industry": "光伏"
+    },
+    "600732.SH": {
+      "name": "爱旭股份",
+      "weight": 0.05,
+      "chain_position": "中游",
+      "notes": "电池片",
+      "industry": "光伏"
+    },
+    "002865.SZ": {
+      "name": "钧达股份",
+      "weight": 0.05,
+      "chain_position": "中游",
+      "notes": "电池片",
+      "industry": "光伏"
+    }
+  }
+}

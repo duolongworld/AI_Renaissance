@@ -1,0 +1,89 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "mapping_type": "stock-to-industry",
+    "industry_name": "机器人",
+    "industry_description": "工业机器人、谐波减速器、伺服系统、本体制造及集成应用",
+    "preset_chain": "robotics",
+    "data_source": "A股上市公司",
+    "last_updated": "2026-05-14",
+    "weight_sum": 1.0
+  },
+  "metadata.known_aliases": {
+    "绿的谐波": "688017.SH",
+    "双环传动": "002472.SZ",
+    "汇川技术": "300124.SZ"
+  },
+  "mappings": {
+    "688017.SH": {
+      "name": "绿的谐波",
+      "weight": 0.15,
+      "chain_position": "上游",
+      "notes": "谐波减速器龙头",
+      "industry": "机器人"
+    },
+    "002472.SZ": {
+      "name": "双环传动",
+      "weight": 0.12,
+      "chain_position": "上游",
+      "notes": "RV减速器+精密齿轮",
+      "industry": "机器人"
+    },
+    "300124.SZ": {
+      "name": "汇川技术",
+      "weight": 0.15,
+      "chain_position": "中游",
+      "notes": "伺服系统+控制器龙头",
+      "industry": "机器人"
+    },
+    "002747.SZ": {
+      "name": "埃斯顿",
+      "weight": 0.12,
+      "chain_position": "中游",
+      "notes": "工业机器人本体龙头",
+      "industry": "机器人"
+    },
+    "300024.SZ": {
+      "name": "机器人",
+      "weight": 0.08,
+      "chain_position": "中游",
+      "notes": "新松机器人",
+      "industry": "机器人"
+    },
+    "300607.SZ": {
+      "name": "拓斯达",
+      "weight": 0.08,
+      "chain_position": "下游",
+      "notes": "注塑机+机器人集成",
+      "industry": "机器人"
+    },
+    "688165.SH": {
+      "name": "埃夫特",
+      "weight": 0.06,
+      "chain_position": "下游",
+      "notes": "工业机器人",
+      "industry": "机器人"
+    },
+    "002896.SZ": {
+      "name": "中大力德",
+      "weight": 0.06,
+      "chain_position": "上游",
+      "notes": "减速器",
+      "industry": "机器人"
+    },
+    "603728.SH": {
+      "name": "鸣志电器",
+      "weight": 0.1,
+      "chain_position": "上游",
+      "notes": "步进电机+伺服电机",
+      "industry": "机器人"
+    },
+    "688320.SH": {
+      "name": "禾川科技",
+      "weight": 0.08,
+      "chain_position": "中游",
+      "notes": "伺服系统",
+      "industry": "机器人"
+    }
+  }
+}

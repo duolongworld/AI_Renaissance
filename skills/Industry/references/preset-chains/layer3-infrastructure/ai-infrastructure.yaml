@@ -1,0 +1,112 @@
+chain_name: ai-infrastructure
+industry_name: AI基础设施层
+source: 黄仁勋AI五层蛋糕结构投研报告
+tags: [AI, 基础设施, 服务器, PCB, 液冷, 数据中心]
+
+upstream:
+  nodes:
+    - name: 高速PCB/CCL
+      key_players: ["建滔积层板", "生益科技", "沪电股份", "胜宏科技"]
+      key_metrics:
+        - 覆铜板价格(M7/M8/M9)
+        - HDI板出货量
+        - IC载板产能利用率
+      price_benchmark: "M9材料认证周期6-8周，2026H1无法完成规模化切换"
+      profit_pool: "PCB利润池 15-20%"
+      barrier: "材料认证+工艺：M9树脂配方+层压工艺"
+      bargain_power: "中等 — 材料供应商分散，但认证周期长"
+    - name: 连接器/线缆
+      key_players: ["安费诺", "莫仕", "立讯精密", "中航光电"]
+      key_metrics:
+        - 高速背板连接器出货量
+        - 224G信号完整性验证进度
+        - AOC/DAC线缆价格
+      profit_pool: "连接器利润池 8-12%"
+      barrier: "信号完整性：224G需重新设计连接器"
+      bargain_power: "中等 — 标准化程度高"
+    - name: 散热材料
+      key_players: ["双鸿", "奇鋐", "中石科技"]
+      key_metrics:
+        - 导热界面材料(TIM)出货量
+        - 均热板(VC)价格
+        - 液冷管路系统订单
+      profit_pool: "散热材料利润池 5-8%"
+      barrier: "材料导热系数：240kW+需新型TIM"
+      bargain_power: "弱 — 材料标准化，竞争激烈"
+
+midstream:
+  nodes:
+    - name: AI服务器整机
+      key_players: ["工业富联", "超微(SMCI)", "浪潮信息", "华勤技术"]
+      key_metrics:
+        - GPU服务器出货量(8卡/16卡)
+        - 液冷服务器占比
+        - 英伟达GB200交付进度
+      profit_pool: "服务器利润池 20-25%"
+      barrier: "系统集成+认证：需英伟达认证，设计壁垒高"
+      bargain_power: "强 — 头部集中，二三线难追赶"
+    - name: 网络设备
+      key_players: ["Arista(ANET)", "思科", "华为", "锐捷网络"]
+      key_metrics:
+        - 数据中心交换机出货量(51.2T/102.4T)
+        - 端口速率升级节奏
+        - 智能网卡(DPU)部署量
+      profit_pool: "网络设备利润池 15-20%"
+      barrier: "软件+硬件协同：网络操作系统生态"
+      bargain_power: "Arista强 — 云厂商首选，但思科追赶"
+    - name: 存储系统
+      key_players: ["三星", "西部数据", "Solidigm", "德明利"]
+      key_metrics:
+        - 企业级SSD出货量
+        - NVMe-oF部署量
+        - QLC SSD良率
+      profit_pool: "存储利润池 10-15%"
+      barrier: "可靠性：企业级SSD需长寿命验证"
+      bargain_power: "中等 — 三星/美光/海力士三强"
+
+downstream:
+  nodes:
+    - name: 超大规模数据中心
+      key_players: ["微软", "谷歌", "亚马逊", "Meta"]
+      key_metrics:
+        - 数据中心开工数量
+        - 土地/电力获取进度
+        - PUE能效比
+      capex_benchmark: "四大巨头2026年CAPEX合计$6500亿+"
+      profit_pool: "云厂商利润池 30-40%"
+      barrier: "资本+土地+电力：三重资源壁垒"
+      bargain_power: "对中游强(集中采购)，对上游电力弱"
+    - name: AI工厂运营
+      key_players: ["CoreWeave", "Lambda Labs", "Together AI", "百度智能云"]
+      key_metrics:
+        - GPU利用率(%)
+        - 推理延迟(ms)
+        - MaaS平台收入
+      profit_pool: "AI工厂利润池 10-15%"
+      barrier: "软件优化：推理优化决定盈利模型"
+      bargain_power: "弱 — 受上游GPU价格制约"
+    - name: 边缘AI部署
+      key_players: ["高通", "英伟达Jetson", "地平线", "瑞芯微"]
+      key_metrics:
+        - 边缘AI芯片出货量
+        - 5G MEC部署量
+        - 终端推理算力(TOPS)
+      profit_pool: "边缘AI利润池 5-10%"
+      barrier: "功耗vs算力平衡：边缘场景功耗受限"
+      bargain_power: "弱 — 碎片化市场"
+
+value_allocation:
+  upstream_share: "15-20%"
+  midstream_share: "30-35%"
+  downstream_share: "45-50%"
+  bargain_power: "中游设备商(工业富联/Arista)有工程壁垒，但云厂商CAPEX是景气度锚点"
+
+investment_thesis: |
+  基础设施层是AI工厂，从"仓库"变成"产线"。
+  核心矛盾：算力需求爆发式增长 vs 物理基础设施建设的线性扩张。
+  三层机会：
+  1. 上游材料：高速PCB/CCL是结构性升级，M9认证周期长
+  2. 中游设备：AI服务器整机设计壁垒高，英伟达GB200放量是核心催化剂
+  3. 下游运营：云厂商CAPEX是景气度锚点，但电力瓶颈制约实际落地
+  关键变化：不是简单堆服务器，而是涵盖土地、电力、液冷、网络、建筑的庞大物理系统。
+  投资特性：工程壁垒极高，头部集中，二三线难以追赶。

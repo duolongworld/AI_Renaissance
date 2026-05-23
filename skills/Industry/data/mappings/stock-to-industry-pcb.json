@@ -1,0 +1,188 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-05-14",
+  "industry": "PCB",
+  "description": "PCB(印制电路板)产业链A股映射表。覆盖上游覆铜板/原材料→中游PCB制造(多层板/HDI/IC载板)→下游设备/应用。",
+  "total_stocks": 16,
+  "upstream_count": 2,
+  "midstream_count": 13,
+  "downstream_count": 1,
+  "weight_sum": 1.0,
+
+  "mappings": {
+    "600183.SH": {
+      "name": "生益科技",
+      "industry": "PCB",
+      "sub_sector": "覆铜板(CCL)/上游材料",
+      "chain_position": "上游",
+      "preset_matched": "pcb",
+      "weight_in_industry": 0.12,
+      "key_products": ["FR-4覆铜板", "高频高速CCL(M8/M9)", "IC载板用CCL", "超薄铜箔"],
+      "notes": "全球覆铜板第二、国内第一。大陆唯一通过英伟达M9级认证CCL企业，AI服务器CCL市占率超30%。PCB产业链'卖铲人'，受益所有PCB厂扩产。"
+    },
+    "603186.SH": {
+      "name": "华正新材",
+      "industry": "PCB",
+      "sub_sector": "覆铜板(CCL)/高频高速基材",
+      "chain_position": "上游",
+      "preset_matched": "pcb",
+      "weight_in_industry": 0.03,
+      "key_products": ["覆铜板(CCL)", "高频高速PCB基材", "IC载板材料"],
+      "notes": "高端覆铜板供应商，高频高速CCL是高速光模块/AI服务器PCB的核心基材。"
+    },
+
+    "002938.SZ": {
+      "name": "鹏鼎控股",
+      "industry": "PCB",
+      "sub_sector": "PCB制造/全球龙头/FPC+HDI",
+      "chain_position": "中游",
+      "preset_matched": "pcb",
+      "weight_in_industry": 0.15,
+      "key_products": ["FPC柔性电路板", "HDI高密度板", "SLP类载板", "AI服务器PCB"],
+      "notes": "全球PCB龙头(2021年营收333亿)，苹果供应链核心。淮安110亿投建高端PCB基地，发力HDI/MSAP。AI服务器PCB需求爆发直接受益。"
+    },
+    "002916.SZ": {
+      "name": "深南电路",
+      "industry": "PCB",
+      "sub_sector": "PCB制造/IC载板/高多层板",
+      "chain_position": "中游",
+      "preset_matched": "pcb",
+      "weight_in_industry": 0.13,
+      "key_products": ["高多层PCB", "IC载板", "AI服务器PCB", "通信PCB"],
+      "notes": "国内IC载板龙头，全球前3潜力。2026Q1营收65.96亿(+37.9%)，净利8.5亿(+73%)。AI订单占比超50%，订单排至2027年。"
+    },
+    "002463.SZ": {
+      "name": "沪电股份",
+      "industry": "PCB",
+      "sub_sector": "PCB制造/高端PCB/AI服务器",
+      "chain_position": "中游",
+      "preset_matched": "pcb",
+      "weight_in_industry": 0.12,
+      "key_products": ["高端PCB", "AI服务器PCB", "高速运算服务器PCB", "汽车电子PCB"],
+      "notes": "用户知识库标的。2026Q1营收62.14亿(+53.91%)，净利12.42亿(+62.9%)。年内四次扩产总投资177亿，高速运算服务器/AI需求放量。"
+    },
+    "300476.SZ": {
+      "name": "胜宏科技",
+      "industry": "PCB",
+      "sub_sector": "PCB制造/AI服务器/HDI",
+      "chain_position": "中游",
+      "preset_matched": "pcb",
+      "weight_in_industry": 0.11,
+      "key_products": ["AI服务器PCB", "高阶HDI", "高多层PCB", "显卡PCB"],
+      "notes": "AI服务器PCB弹性之王，英伟达GB200/GB300 HDI板核心供应商。2025年营收192.92亿(+79.77%)，净利43.12亿(+273.52%)。200亿扩产计划激进。"
+    },
+    "002384.SZ": {
+      "name": "东山精密",
+      "industry": "PCB",
+      "sub_sector": "PCB+FPC/光电双主业",
+      "chain_position": "中游",
+      "preset_matched": "pcb",
+      "weight_in_industry": 0.08,
+      "key_products": ["FPC柔性电路板", "高端PCB", "InP PIC光芯片(索尔斯)", "1.6T LPO方案"],
+      "notes": "用户知识库标的。PCB+FPC+光电三主业。FPC全球前三，PCB营收200亿+。子公司索尔斯布局光芯片，InP PIC+MZM调制器1.6T LPO方案实现反超。"
+    },
+    "603228.SH": {
+      "name": "景旺电子",
+      "industry": "PCB",
+      "sub_sector": "PCB制造/多层板/HDI",
+      "chain_position": "中游",
+      "preset_matched": "pcb",
+      "weight_in_industry": 0.07,
+      "key_products": ["多层PCB", "HDI板", "FPC", "汽车电子PCB"],
+      "notes": "PCB国内前五，汽车电子PCB通过IATF16949认证。泰国基地追加投资7亿扩产，海外布局加速。"
+    },
+    "002436.SZ": {
+      "name": "兴森科技",
+      "industry": "PCB",
+      "sub_sector": "PCB制造/IC载板/样板",
+      "chain_position": "中游",
+      "preset_matched": "pcb",
+      "weight_in_industry": 0.05,
+      "key_products": ["IC载板", "PCB样板", "半导体测试板"],
+      "notes": "IC载板国产替代核心标的，国内IC载板自给率不足10%时深度受益。PCB样板龙头，半导体测试板技术领先。"
+    },
+    "603920.SH": {
+      "name": "世运电路",
+      "industry": "PCB",
+      "sub_sector": "PCB制造/汽车电子/工控",
+      "chain_position": "中游",
+      "preset_matched": "pcb",
+      "weight_in_industry": 0.03,
+      "key_products": ["汽车电子PCB", "工控PCB", "多层PCB"],
+      "notes": "汽车电子PCB特色标的，特斯拉/比亚迪供应链。受益新能源汽车PCB需求。"
+    },
+    "001389.SZ": {
+      "name": "广合科技",
+      "industry": "PCB",
+      "sub_sector": "PCB制造/服务器PCB",
+      "chain_position": "中游",
+      "preset_matched": "pcb",
+      "weight_in_industry": 0.03,
+      "key_products": ["服务器PCB", "数据中心PCB", "通信PCB"],
+      "notes": "服务器PCB专精特新，服务器PCB产品占比较高。扩产逻辑从消费电子转向AI服务器高端PCB。"
+    },
+    "688183.SH": {
+      "name": "生益电子",
+      "industry": "PCB",
+      "sub_sector": "PCB制造/高多层/HDI",
+      "chain_position": "中游",
+      "preset_matched": "pcb",
+      "weight_in_industry": 0.03,
+      "key_products": ["高多层PCB", "HDI板", "通信设备PCB"],
+      "notes": "生益科技子公司，高多层PCB技术领先。募资26亿投向HDI生产基地及高多层算力电路板项目。"
+    },
+    "002913.SZ": {
+      "name": "奥士康",
+      "industry": "PCB",
+      "sub_sector": "PCB制造/数据中心/汽车",
+      "chain_position": "中游",
+      "preset_matched": "pcb",
+      "weight_in_industry": 0.02,
+      "key_products": ["数据中心PCB", "汽车电子PCB", "多层PCB"],
+      "notes": "数据中心+汽车电子双驱动PCB供应商。"
+    },
+    "002815.SZ": {
+      "name": "崇达技术",
+      "industry": "PCB",
+      "sub_sector": "PCB制造/小批量/多品种",
+      "chain_position": "中游",
+      "preset_matched": "pcb",
+      "weight_in_industry": 0.02,
+      "key_products": ["小批量PCB", "高多层PCB", "HDI板"],
+      "notes": "小批量多品种PCB龙头，柔性制造能力强。"
+    },
+    "603386.SH": {
+      "name": "骏亚科技",
+      "industry": "PCB",
+      "sub_sector": "PCB制造/消费电子/工控",
+      "chain_position": "中游",
+      "preset_matched": "pcb",
+      "weight_in_industry": 0.01,
+      "key_products": ["消费电子PCB", "工控PCB", "多层PCB"],
+      "notes": "消费电子PCB为主，受益消费复苏。"
+    },
+
+    "002008.SZ": {
+      "name": "大族数控",
+      "industry": "PCB",
+      "sub_sector": "PCB设备/钻孔设备",
+      "chain_position": "下游",
+      "preset_matched": "pcb",
+      "weight_in_industry": 0.02,
+      "key_products": ["PCB钻孔设备", "PCB激光设备", "PCB检测"],
+      "notes": "PCB专用设备龙头，钻孔设备市占率领先。受益PCB扩产潮的设备需求。"
+    }
+  },
+
+  "metadata": {
+    "data_sources": [
+      "CPCA中国电子电路行业协会排名",
+      "前瞻产业研究院PCB行业报告",
+      "同花顺行情数据",
+      "券商研报聚合"
+    ],
+    "verification_date": "2026-05-14",
+    "verification_method": "kimi_search交叉验证 + CPCA排名确认",
+    "next_update_trigger": "新上市公司纳入或重大业务转型"
+  }
+}

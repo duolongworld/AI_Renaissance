@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>产业链分析 | {{stock_name}} ({{stock_code}})</title>
+<style>
+  :root {
+    --bg-primary: #0b0f19; --bg-card: #111827; --border: #1f2937;
+    --text-primary: #f1f5f9; --text-secondary: #94a3b8; --text-muted: #64748b;
+    --green: #10b981; --red: #ef4444; --yellow: #f59e0b; --blue: #3b82f6;
+    --purple: #a855f7; --cyan: #06b6d4;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg-primary); color:var(--text-primary);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:14px; padding:24px; }
+  .container { max-width:1100px; margin:0 auto; }
+  .header { background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:24px 28px; margin-bottom:24px; }
+  .header-top { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; }
+  .stock-info h1 { font-size:24px; font-weight:700; margin-bottom:4px; }
+  .stock-info .meta { font-size:13px; color:var(--text-secondary); }
+  .generated-at { font-size:11px; color:var(--text-muted); text-align:right; }
+  .section-title { font-size:18px; font-weight:700; margin:28px 0 16px; padding-bottom:10px; border-bottom:1px solid var(--border); }
+  .card { background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:24px; margin-bottom:20px; }
+  .card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px; }
+  .card-title { font-size:17px; font-weight:700; }
+  .card-badge { font-size:11px; font-weight:600; padding:4px 10px; border-radius:6px; }
+  .badge-blue { background:rgba(59,130,246,0.15); color:var(--blue); }
+  .badge-green { background:rgba(16,185,129,0.15); color:var(--green); }
+  .badge-yellow { background:rgba(245,158,11,0.15); color:var(--yellow); }
+  .badge-red { background:rgba(239,68,68,0.15); color:var(--red); }
+  .badge-gray { background:rgba(148,163,184,0.12); color:var(--text-muted); }
+  .data-grid { display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; }
+  .data-card { padding:16px; border-radius:10px; border:1px solid var(--border); }
+  .data-card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .data-card-name { font-size:13px; font-weight:600; color:var(--text-primary); }
+  .data-card-source { font-size:10px; color:var(--text-muted); }
+  .data-card-value { font-size:28px; font-weight:800; color:var(--text-primary); margin:4px 0; }
+  .data-card-unit { font-size:14px; font-weight:500; color:var(--text-secondary); }
+  .data-card-note { font-size:12px; color:var(--text-secondary); margin-top:6px; line-height:1.5; }
+  .source-tag { font-size:10px; font-weight:600; padding:2px 8px; border-radius:4px; display:inline-block; }
+  .source-earnings { background:rgba(59,130,246,0.15); color:var(--blue); }
+  .source-industry { background:rgba(168,85,247,0.15); color:var(--purple); }
+  .source-news { background:rgba(16,185,129,0.15); color:var(--green); }
+  .analysis-box { padding:14px 16px; border-radius:10px; font-size:13px; line-height:1.7; margin-top:12px; background:rgba(59,130,246,0.05); border-left:3px solid var(--blue); }
+  .chain-cards { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-bottom:12px; }
+  .chain-card { padding:16px; border-radius:10px; border-left:4px solid; }
+  .chain-card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .chain-card-title { font-size:14px; font-weight:600; }
+  .chain-card-profit { font-size:11px; color:var(--text-muted); }
+  .chain-card-body { font-size:12px; color:var(--text-secondary); line-height:1.7; }
+  .chain-card-row { margin:4px 0; }
+  .chain-summary { padding:12px; border-radius:8px; background:rgba(245,158,11,0.05); border:1px solid rgba(245,158,11,0.2); font-size:13px; color:var(--text-secondary); margin-bottom:12px; }
+  .chain-target { padding:12px; border-radius:8px; background:rgba(59,130,246,0.05); border:1px solid rgba(59,130,246,0.2); font-size:13px; color:var(--text-secondary); }
+  .state-grid { display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; margin:16px 0; }
+  .state-item { padding:14px 8px; border-radius:10px; text-align:center; border:1px solid var(--border); }
+  .state-item-current { border:2px solid var(--green); background:rgba(16,185,129,0.08); }
+  .state-name { font-size:12px; color:var(--text-secondary); margin-bottom:4px; }
+  .state-label { font-size:10px; color:var(--yellow); }
+  .footer { text-align:center; margin-top:32px; padding-top:16px; border-top:1px solid var(--border); font-size:11px; color:var(--text-muted); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { padding:10px 12px; border-bottom:1px solid var(--border); text-align:left; }
+  th { color:var(--text-muted); font-weight:600; font-size:12px; }
+  @media (max-width:768px) {
+    .data-grid { grid-template-columns:1fr; }
+    .chain-cards { grid-template-columns:1fr; }
+    .state-grid { grid-template-columns:repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-top">
+      <div class="stock-info">
+        <h1>{{stock_name}} <span style="font-size:16px;color:var(--text-muted);font-weight:500;">{{stock_code}}</span></h1>
+        <div class="meta">{{industry_name}} · {{chain_position}} · {{sub_sector}}</div>
+      </div>
+      <div class="generated-at">{{data_source_line}}<br/>生成时间 {{generated_at}}</div>
+    </div>
+  </div>
+
+  <!-- A1: 产业链景气度 — 基于真实数据的生命周期判断 -->
+  <div class="section-title">产业链景气度</div>
+  <div class="card" style="border-left:4px solid {{lifecycle_color}};">
+    <div class="card-header">
+      <div class="card-title">生命周期阶段判定</div>
+      <div class="card-badge" style="background:{{lifecycle_color_bg}};color:{{lifecycle_color}};">{{lifecycle_stage}}</div>
+    </div>
+    <div style="display:flex;gap:16px;align-items:flex-start;">
+      <div style="min-width:120px;">
+        <div style="font-size:42px;font-weight:800;color:{{lifecycle_color}};line-height:1;">{{lifecycle_stage_short}}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">{{lifecycle_subtitle}}</div>
+      </div>
+      <div style="flex:1;">
+        <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;margin-bottom:12px;">{{lifecycle_desc}}</p>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+          {{lifecycle_indicators}}
+        </div>
+      </div>
+    </div>
+    <div class="analysis-box">
+      <strong style="color:var(--blue);">分析要点：</strong><br/>{{lifecycle_analysis_points}}
+    </div>
+  </div>
+
+  <!-- A2: 产业链拐点 — 基于真实数据的五态判定 -->
+  <div class="section-title">产业链拐点判定</div>
+  <div class="card" style="border-left:4px solid {{state_color}};">
+    <div class="card-header">
+      <div class="card-title">五态判定 — 基于多信号匹配</div>
+      <div class="card-badge" style="background:{{state_color_bg}};color:{{state_color}};">{{state_name}}</div>
+    </div>
+    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">
+      匹配信号: <strong style="color:var(--text-primary);">{{matched_signals}}</strong>
+    </p>
+    <div class="state-grid">
+      <div class="state-item"><div class="state-name">拐点前</div></div>
+      <div class="state-item"><div class="state-name">拐点初</div></div>
+      <div class="state-item state-item-current"><div class="state-name">拐点确认</div><div class="state-label">当前</div></div>
+      <div class="state-item"><div class="state-name">拐点晚期</div></div>
+      <div class="state-item"><div class="state-name">拐点后</div></div>
+    </div>
+    <div style="margin-top:16px;">
+      <div style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;">核心信号参数（真实数据）</div>
+      <div class="data-grid">
+        {{inflection_data_cards}}
+      </div>
+    </div>
+    <div class="analysis-box">
+      <strong style="color:var(--blue);">判定逻辑：</strong><br/>{{inflection_logic}}
+    </div>
+  </div>
+
+  <!-- A3: 产业链结构 -->
+  <div class="section-title">产业链结构</div>
+  {{industry_chain_structure}}
+
+  <!-- A4: 产业链数据监测 — 行业真实数据 -->
+  <div class="section-title">产业链数据监测（行业级真实数据）</div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">{{industry_name}}行业核心指标</div>
+    </div>
+    <table>
+      <thead>
+        <tr><th>指标</th><th>数值</th><th>来源</th><th>时间</th><th>分析</th></tr>
+      </thead>
+      <tbody>
+        {{industry_data_rows}}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- A5: System B — 个股分析（无评分，只给分析） -->
+  <div class="section-title">个股分析 — {{stock_name}}</div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">核心判断</div>
+      <div class="card-badge badge-green">{{system_b_type}}</div>
+    </div>
+    <div style="font-size:13px;color:var(--text-secondary);line-height:1.8;">
+      <p style="margin-bottom:12px;"><strong>类型判定依据：</strong> {{system_b_type_reason}}</p>
+      <p style="margin-bottom:12px;"><strong>核心矛盾：</strong> {{system_b_core_contradiction}}</p>
+      <p style="margin-bottom:12px;"><strong>关键跟踪指标：</strong></p>
+      <ul style="margin-left:20px;color:var(--text-secondary);">
+        {{system_b_tracking_metrics}}
+      </ul>
+      <p style="margin-top:12px;"><strong>风险点：</strong></p>
+      <ul style="margin-left:20px;color:var(--text-secondary);">
+        {{system_b_risks}}
+      </ul>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    {{data_source_footer}}<br/>
+    <strong>本报告不含任何算法评分，所有数字均来自公开财报或行业研报。</strong>
+  </div>
+
+</div>
+</body>
+</html>
