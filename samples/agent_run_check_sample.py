@@ -41,7 +41,7 @@ AGENT_SPECS = {
     "financial": AgentSpec("financial", "财务", "agents.financial.agent", "FinancialAgent", False),
     "technical": AgentSpec("technical", "技术", "agents.technical.agent", "TechnicalAgent", False),
     "fundflow": AgentSpec("fundflow", "资金", "agents.fundflow.agent", "FundflowAgent", False),
-    "macro": AgentSpec("macro", "宏观", "agents.macro.agent", "MacroAgent", False),
+    "macro": AgentSpec("macro", "宏观", "agents.macro.agent", "MacroAgent", True),
     "industry": AgentSpec("industry", "行业", "agents.industry.agent", "IndustryAgent", False),
     "news": AgentSpec("news", "舆情", "agents.news_agent.agent", "NewsAgent", True),
     "risk": AgentSpec("risk", "风险", "agents.risk.agent", "RiskAgent", False),

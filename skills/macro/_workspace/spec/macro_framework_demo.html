@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>宏观组分析框架 Demo — 2024-06-28 实际运行结果</title>
+<style>
+:root {
+  --bg:#0b1120; --card:#111827; --border:#1e293b;
+  --text:#e2e8f0; --dim:#64748b;
+  --blue:#3b82f6; --purple:#8b5cf6; --green:#10b981;
+  --cyan:#06b6d4; --pink:#ec4899; --orange:#f59e0b; --red:#ef4444;
+  --gold:#eab308;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+s { text-decoration:none; color:var(--dim); font-size:0.82em; }
+body { background:var(--bg); color:var(--text); font-family:'Segoe UI','Microsoft YaHei',sans-serif; line-height:1.5; }
+
+/* 顶部 */
+.demo-header {
+  text-align:center; padding:20px 16px 10px;
+  border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(59,130,246,0.04) 0%,transparent 100%);
+}
+.demo-header h1 {
+  font-size:1.4em;
+  background:linear-gradient(90deg,#3b82f6,#8b5cf6,#06b6d4);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.demo-header .sub { color:var(--dim); font-size:0.82em; margin-top:4px; }
+.demo-badge {
+  display:inline-block; padding:3px 12px; border-radius:10px; font-size:0.75em;
+  font-weight:700; margin-top:8px; border:1px solid currentColor;
+}
+.demo-badge.run { background:rgba(16,185,129,0.1); color:var(--green); border-color:rgba(16,185,129,0.3); }
+.demo-badge.mock { background:rgba(245,158,11,0.1); color:var(--orange); border-color:rgba(245,158,11,0.3); }
+
+/* 执行摘要 */
+.exec-summary {
+  max-width:1600px; margin:16px auto 0; padding:0 12px;
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px;
+}
+.es-card {
+  background:var(--card); border:1px solid var(--border); border-radius:10px;
+  padding:14px 16px; text-align:center;
+}
+.es-label { font-size:0.7em; color:var(--dim); font-weight:600; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px; }
+.es-value { font-size:1.3em; font-weight:800; }
+.es-sub { font-size:0.7em; color:var(--dim); margin-top:2px; }
+.es-bullish { color:var(--green); }
+.es-bearish { color:var(--red); }
+.es-neutral { color:var(--dim); }
+.es-high { color:var(--green); }
+.es-med { color:var(--orange); }
+.es-low { color:var(--red); }
+
+/* 分层流程总览 */
+.chain-nav {
+  max-width:1600px; margin:14px auto; padding:0 12px;
+  background:var(--card); border:1px solid var(--border); border-radius:10px;
+  padding:10px 14px;
+}
+.chain-nav-title { font-size:0.78em; color:var(--dim); font-weight:700; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px; }
+.chain-nav-items { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+.cn-item {
+  padding:4px 10px; border-radius:6px; font-size:0.78em; font-weight:700;
+  cursor:pointer; transition:all 0.2s; border:1px solid transparent;
+}
+.cn-item:hover { transform:translateY(-1px); }
+.cn-arrow { color:var(--dim); font-size:0.75em; }
+.cn-item.l0 { background:rgba(59,130,246,0.15); color:var(--blue); }
+.cn-item.l1 { background:rgba(139,92,246,0.15); color:var(--purple); }
+.cn-item.l2 { background:rgba(236,72,153,0.15); color:var(--pink); }
+.cn-item.l25 { background:rgba(245,158,11,0.15); color:var(--orange); }
+.cn-item.l3 { background:rgba(16,185,129,0.15); color:var(--green); }
+.cn-item.l4 { background:rgba(6,182,212,0.15); color:var(--cyan); }
+.cn-item.l45 { background:rgba(168,85,247,0.15); color:#a855f7; }
+.cn-item.l5 { background:rgba(249,115,22,0.15); color:#f97316; }
+.cn-item.active { box-shadow:0 0 0 2px currentColor; }
+
+/* 容器 */
+.container { max-width:1600px; margin:0 auto; padding:0 12px 60px; }
+
+/* 层级通用 */
+.lc { border-radius:12px; background:var(--card); border:1px solid var(--border); margin-bottom:4px; overflow:hidden; }
+.lc .lhd {
+  display:flex; align-items:center; gap:10px; padding:10px 14px;
+  border-bottom:1px solid var(--border);
+}
+.ln {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:32px; height:32px; border-radius:7px; font-size:0.78em; font-weight:800; flex-shrink:0;
+}
+.lt { font-size:0.9em; font-weight:700; flex:1; }
+.ltag { font-size:0.7em; padding:2px 8px; border-radius:8px; font-weight:600; }
+
+/* 层级色彩 */
+.l0 { border-color:rgba(59,130,246,0.25); }
+.l0 .lhd { background:rgba(59,130,246,0.06); }
+.l0 .ln { background:rgba(59,130,246,0.18); color:var(--blue); }
+.l0 .ltag { background:rgba(59,130,246,0.12); color:var(--blue); }
+
+.l1 { border-color:rgba(139,92,246,0.25); }
+.l1 .lhd { background:rgba(139,92,246,0.06); }
+.l1 .ln { background:rgba(139,92,246,0.18); color:var(--purple); }
+.l1 .ltag { background:rgba(139,92,246,0.12); color:var(--purple); }
+
+.l2 { border-color:rgba(236,72,153,0.25); }
+.l2 .lhd { background:rgba(236,72,153,0.06); }
+.l2 .ln { background:rgba(236,72,153,0.18); color:var(--pink); }
+.l2 .ltag { background:rgba(236,72,153,0.12); color:var(--pink); }
+
+.l25 { border-color:rgba(245,158,11,0.25); }
+.l25 .lhd { background:rgba(245,158,11,0.06); }
+.l25 .ln { background:rgba(245,158,11,0.18); color:var(--orange); }
+.l25 .ltag { background:rgba(245,158,11,0.12); color:var(--orange); }
+
+.l3 { border-color:rgba(16,185,129,0.25); }
+.l3 .lhd { background:rgba(16,185,129,0.06); }
+.l3 .ln { background:rgba(16,185,129,0.18); color:var(--green); }
+.l3 .ltag { background:rgba(16,185,129,0.12); color:var(--green); }
+
+.l4 { border-color:rgba(6,182,212,0.25); }
+.l4 .lhd { background:rgba(6,182,212,0.06); }
+.l4 .ln { background:rgba(6,182,212,0.18); color:var(--cyan); }
+.l4 .ltag { background:rgba(6,182,212,0.12); color:var(--cyan); }
+
+.l45 { border-color:rgba(168,85,247,0.25); }
+.l45 .lhd { background:rgba(168,85,247,0.06); }
+.l45 .ln { background:rgba(168,85,247,0.18); color:#a855f7; }
+.l45 .ltag { background:rgba(168,85,247,0.12); color:#a855f7; }
+
+.l5 { border-color:rgba(249,115,22,0.25); }
+.l5 .lhd { background:rgba(249,115,22,0.06); }
+.l5 .ln { background:rgba(249,115,22,0.18); color:#f97316; }
+.l5 .ltag { background:rgba(249,115,22,0.12); color:#f97316; }
+
+/* 主体三栏 */
+.lc-body { display:flex; align-items:stretch; }
+.input-col { width:22%; min-width:160px; padding:10px 10px 10px 12px; border-right:1px solid var(--border); }
+.process-col { flex:1; padding:10px; }
+.output-col { width:24%; min-width:180px; padding:10px 12px 10px 10px; border-left:1px solid var(--border); }
+
+/* 区块标题 */
+.col-title { font-size:0.65em; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; opacity:0.4; margin-bottom:6px; }
+
+/* 区块标签 */
+.tag-new { display:inline-block; font-size:0.62em; font-weight:700; padding:1px 5px; border-radius:3px; background:rgba(59,130,246,0.13); color:var(--blue); margin-bottom:4px; }
+.tag-up { display:inline-block; font-size:0.62em; font-weight:700; padding:1px 5px; border-radius:3px; background:rgba(139,92,246,0.13); color:var(--purple); margin-bottom:4px; }
+
+/* 数据行 */
+.data-row {
+  font-size:0.72em; padding:2px 5px; border-radius:4px;
+  background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.05);
+  margin-bottom:3px; line-height:1.4;
+}
+.data-row .dk { color:var(--dim); font-size:0.9em; }
+.data-row .dv { color:var(--text); font-weight:600; }
+
+/* 结论框 */
+.conclusion-box {
+  background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06);
+  border-radius:8px; padding:10px 12px; margin-bottom:8px;
+}
+.conclusion-title { font-size:0.7em; font-weight:700; color:var(--dim); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px; }
+.conclusion-text { font-size:0.88em; line-height:1.5; }
+
+/* 进程框 */
+.process-box {
+  background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04);
+  border-radius:8px; padding:10px 12px; margin-bottom:8px;
+}
+.process-title { font-size:0.82em; font-weight:700; margin-bottom:4px; }
+.process-in { font-size:0.72em; color:var(--dim); margin-bottom:3px; }
+.process-out { font-size:0.72em; color:var(--green); font-weight:600; }
+
+/* 信号卡片 */
+.signal-card {
+  display:flex; align-items:center; gap:8px; padding:8px 10px;
+  border-radius:8px; margin-bottom:6px; border:1px solid;
+}
+.signal-bullish { background:rgba(16,185,129,0.06); border-color:rgba(16,185,129,0.2); }
+.signal-bearish { background:rgba(239,68,68,0.06); border-color:rgba(239,68,68,0.2); }
+.signal-neutral { background:rgba(100,116,139,0.06); border-color:rgba(100,116,139,0.2); }
+.sig-icon { font-size:1.1em; }
+.sig-content { flex:1; }
+.sig-name { font-size:0.8em; font-weight:700; }
+.sig-meta { font-size:0.7em; color:var(--dim); }
+.sig-strength { font-size:0.78em; font-weight:800; padding:2px 8px; border-radius:6px; }
+.ss-high { background:rgba(16,185,129,0.15); color:var(--green); }
+.ss-mid { background:rgba(245,158,11,0.15); color:var(--orange); }
+.ss-low { background:rgba(100,116,139,0.15); color:var(--dim); }
+
+/* 权重柱 */
+.weight-bar-wrap { margin-bottom:8px; }
+.wb-label { display:flex; justify-content:space-between; font-size:0.78em; margin-bottom:3px; }
+.wb-name { color:var(--text); font-weight:600; }
+.wb-pct { font-weight:800; }
+.wb-bar-bg { height:8px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden; }
+.wb-bar-fill { height:100%; border-radius:4px; transition:width 1s ease; }
+.bar-green { background:linear-gradient(90deg,#10b981,#059669); }
+.bar-orange { background:linear-gradient(90deg,#f59e0b,#d97706); }
+.bar-red { background:linear-gradient(90deg,#ef4444,#dc2626); }
+.bar-purple { background:linear-gradient(90deg,#8b5cf6,#7c3aed); }
+.bar-cyan { background:linear-gradient(90deg,#06b6d4,#0891b2); }
+.bar-yellow { background:linear-gradient(90deg,#eab308,#ca8a04); }
+
+/* 待接入 */
+.tbd-tag {
+  display:inline-block; padding:2px 8px; border-radius:6px; font-size:0.7em;
+  font-weight:700; background:rgba(245,158,11,0.1); color:var(--orange);
+  border:1px solid rgba(245,158,11,0.25); margin:2px 2px;
+}
+
+/* 象限展示 */
+.quadrant-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0;
+}
+.quad-cell {
+  border-radius:8px; padding:8px 10px; text-align:center;
+  border:1px solid rgba(255,255,255,0.06);
+}
+.quad-active { border-width:2px; }
+.quad-inactive { opacity:0.4; }
+.q-name { font-size:0.95em; font-weight:800; }
+.q-score { font-size:0.72em; color:var(--dim); margin-top:2px; }
+.q-dir { font-size:0.78em; font-weight:700; margin-top:2px; }
+
+/* 最终结果高亮框 */
+.final-result-box {
+  border:2px solid rgba(239,68,68,0.4); border-radius:12px;
+  background:rgba(239,68,68,0.05); padding:16px 20px; margin:16px auto; max-width:1600px;
+}
+.final-result-box h2 { font-size:1.1em; color:var(--red); margin-bottom:10px; }
+.fdr-row { display:flex; gap:20px; flex-wrap:wrap; margin-bottom:8px; }
+.fdr-item { }
+.fdr-label { font-size:0.7em; color:var(--dim); font-weight:700; text-transform:uppercase; margin-bottom:2px; }
+.fdr-value { font-size:1em; font-weight:800; }
+
+/* 箭头分隔 */
+.arrow-row { display:flex; justify-content:center; align-items:center; height:24px; margin:2px 0; }
+.arrow-row svg { display:block; }
+
+/* 图例 */
+.legend { display:flex; justify-content:center; gap:16px; margin-top:10px; flex-wrap:wrap; font-size:0.78em; }
+.legend-item { display:flex; align-items:center; gap:5px; }
+.legend-dot { width:10px; height:10px; border-radius:2px; }
+
+/* 折叠 */
+.lc { transition:all 0.3s; }
+.lc.collapsed .lc-body { display:none; }
+.lc.collapsed .arrow-row { display:none; }
+.toggle-btn {
+  margin-left:auto; background:none; border:1px solid var(--border);
+  color:var(--dim); border-radius:5px; padding:2px 8px; cursor:pointer;
+  font-size:0.75em; transition:all 0.2s;
+}
+.toggle-btn:hover { background:rgba(255,255,255,0.05); color:var(--text); }
+
+@media (max-width:900px) {
+  .lc-body { flex-direction:column; }
+  .input-col, .output-col { width:100%; border:none; border-bottom:1px solid var(--border); }
+  .exec-summary { grid-template-columns:repeat(2,1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- 头部 -->
+<div class="demo-header">
+  <h1>宏观组分析框架 — 运行 Demo</h1>
+  <div class="sub">数据来源：2024-06-28 历史真实宏观数据 · Mock 数据集</div>
+  <div style="margin-top:8px;">
+    <span class="demo-badge run">✓ 全链路执行成功</span>
+    <span class="demo-badge mock">📦 数据状态：Mock</span>
+    <span class="demo-badge" style="background:rgba(6,182,212,0.1);color:var(--cyan);border-color:rgba(6,182,212,0.3);">
+      执行时间：2026-05-21
+    </span>
+  </div>
+</div>
+
+<!-- 执行摘要 -->
+<div class="exec-summary">
+  <div class="es-card">
+    <div class="es-label">中国周期象限</div>
+    <div class="es-value es-bearish">衰退</div>
+    <div class="es-sub">CAI −0.23σ + 通胀 −0.13σ</div>
+  </div>
+  <div class="es-card">
+    <div class="es-label">美国周期象限</div>
+    <div class="es-value es-bullish">过热</div>
+    <div class="es-sub">CAI +0.21σ + 通胀 +0.60σ</div>
+  </div>
+  <div class="es-card">
+    <div class="es-label">周期一致性</div>
+    <div class="es-value es-neutral">分化</div>
+    <div class="es-sub">以美国周期定大方向 → 中性</div>
+  </div>
+  <div class="es-card">
+    <div class="es-label">中国债务周期</div>
+    <div class="es-value" style="color:var(--blue);">稳定</div>
+    <div class="es-sub">美国：周期中段</div>
+  </div>
+  <div class="es-card">
+    <div class="es-label">反身性压力</div>
+    <div class="es-value es-med">🟡 中等</div>
+    <div class="es-sub">50分 · 范式稳定 · 扩散期</div>
+  </div>
+  <div class="es-card">
+    <div class="es-label">最终决策</div>
+    <div class="es-value es-bearish">看空 80%</div>
+    <div class="es-sub">偏重债券防御</div>
+  </div>
+</div>
+
+<!-- 层级导航 -->
+<div class="chain-nav">
+  <div class="chain-nav-title">数据流向 · 8层流水线</div>
+  <div class="chain-nav-items">
+    <span class="cn-item l0 active" onclick="scrollToLayer('layer0')">L0 双经济体</span>
+    <span class="cn-arrow">→</span>
+    <span class="cn-item l1" onclick="scrollToLayer('layer1')">L1 CAI/FCI</span>
+    <span class="cn-arrow">→</span>
+    <span class="cn-item l2" onclick="scrollToLayer('layer2')">L2 周期定位</span>
+    <span class="cn-arrow">→</span>
+    <span class="cn-item l25" onclick="scrollToLayer('layer25')">L2.5 枢纽变量</span>
+    <span class="cn-arrow">→</span>
+    <span class="cn-item l3" onclick="scrollToLayer('layer3')">L3 市场定价</span>
+    <span class="cn-arrow">→</span>
+    <span class="cn-item l4" onclick="scrollToLayer('layer4')">L4 预期差</span>
+    <span class="cn-arrow">→</span>
+    <span class="cn-item l45" onclick="scrollToLayer('layer45')">L4.5 反身性</span>
+    <span class="cn-arrow">→</span>
+    <span class="cn-item l5" onclick="scrollToLayer('layer5')">L5 资产配置</span>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ========== L0: 双经济体追踪 ========== -->
+<div class="lc l0" id="layer0">
+  <div class="lhd">
+    <div class="ln">L0</div>
+    <div class="lt">双经济体追踪 — 原始数据读入</div>
+    <div class="ltag">输入层</div>
+    <button class="toggle-btn" onclick="toggleLayer(this)">收起</button>
+  </div>
+  <div class="lc-body">
+    <div class="input-col">
+      <div class="col-title">📥 原始数据（Mock）</div>
+      <div class="data-row"><span class="dk">NBS PMI：</span><span class="dv">49.5</span> <s>制造业（偏弱）</s></div>
+      <div class="data-row"><span class="dk">财新 PMI：</span><span class="dv">51.8</span> <s>制造业（扩张）</s></div>
+      <div class="data-row"><span class="dk">CPI：</span><span class="dv">0.2%</span> <s>通胀偏低</s></div>
+      <div class="data-row"><span class="dk">PPI：</span><span class="dv">−0.8%</span> <s>工业通缩</s></div>
+      <div class="data-row"><span class="dk">1Y LPR：</span><span class="dv">3.45%</span> <s>基准利率</s></div>
+      <div class="data-row"><span class="dk">DR007：</span><span class="dv">1.75%</span> <s>银行间流动性</s></div>
+      <div class="data-row"><span class="dk">10Y 国债：</span><span class="dv">2.23%</span> <s>长端利率</s></div>
+      <div class="data-row"><span class="dk">社融 YOY：</span><span class="dv">8.1%</span> <s>信用扩张</s></div>
+      <div class="data-row"><span class="dk">ERP（沪深300）：</span><span class="dv">5.2%</span> <s>股权风险溢价</s></div>
+      <div class="data-row" style="border-color:rgba(139,92,246,0.15);"><span class="dk">ISM PMI（美）：</span><span class="dv" style="color:var(--purple);">48.5</span> <s>偏弱</s></div>
+      <div class="data-row"><span class="dk">非农（美）：</span><span class="dv" style="color:var(--purple);">206k</span> <s>就业强劲</s></div>
+      <div class="data-row"><span class="dk">核心PCE（美）：</span><span class="dv" style="color:var(--purple);">2.6%</span> <s>通胀粘性</s></div>
+      <div class="data-row"><span class="dk">FFR：</span><span class="dv" style="color:var(--purple);">5.25%</span> <s>美联储利率</s></div>
+      <div class="data-row"><span class="dk">10Y UST：</span><span class="dv" style="color:var(--purple);">4.29%</span> <s>美债长端</s></div>
+      <div class="data-row"><span class="dk">中美利差：</span><span class="dv" style="color:var(--red);">−2.06%</span> <s>倒挂严重</s></div>
+      <div class="data-row"><span class="dk">USD/CNH：</span><span class="dv">7.27</span> <s>人民币偏弱</s></div>
+      <div class="data-row"><span class="dk">VIX：</span><span class="dv" style="color:var(--green);">12.4</span> <s>市场平静</s></div>
+      <div class="data-row"><span class="dk">铜金比：</span><span class="dv">143.63</span> <s>全球需求偏弱</s></div>
+    </div>
+    <div class="process-col">
+      <div class="col-title">🔍 分析结论</div>
+      <div class="conclusion-box" style="border-left:3px solid var(--blue);">
+        <div class="conclusion-title">🇨🇳 中国经济状态</div>
+        <div class="conclusion-text">
+          制造业PMI 49.5%低于荣枯线，中小企业偏弱；CPI仅0.2%、PPI −0.8%显示通缩压力显著；
+          货币政策维持宽松（LPR调降预期升温），社融增速8.1%尚可。
+          <br><br>
+          <span style="color:var(--red); font-weight:700;">关键词：增长偏弱 + 低通胀 → 衰退象限特征明显</span>
+        </div>
+      </div>
+      <div class="conclusion-box" style="border-left:3px solid var(--purple);">
+        <div class="conclusion-title">🇺🇸 美国经济状态</div>
+        <div class="conclusion-text">
+          ISM PMI 48.5%低于荣枯线，制造业收缩；但非农就业依然强劲（206k）；
+          核心PCE 2.6%仍高于目标，美联储按兵不动，点阵图将降息预期从3次降至1次。
+          <br><br>
+          <span style="color:var(--orange); font-weight:700;">关键词：增长承压 + 通胀粘性 → 过热象限（通胀主导）</span>
+        </div>
+      </div>
+      <div class="conclusion-box" style="border-left:3px solid var(--red);">
+        <div class="conclusion-title">🌐 中美交互判断</div>
+        <div class="conclusion-text">
+          中美10Y利差 −2.06%，严重倒挂；USD/CNH 7.27，人民币面临贬值压力；
+          中美周期严重分化（中国衰退、美国过热），货币政策反向。
+          <br><br>
+          <span style="color:var(--orange); font-weight:700;">周期分化严重 → L2处理：信号有效性下调至中性</span>
+        </div>
+      </div>
+    </div>
+    <div class="output-col">
+      <div class="col-title" style="color:var(--green);">📤 传入 L1</div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--green);">中国5维度面板</span>
+        <br><s>PMI/工业增加值/社融/零售/出口</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--green);">美国5维度面板</span>
+        <br><s>ISM PMI/非农/PCE/零售/产出</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--green);">跨国指标</span>
+        <br><s>利差 −2.06% / 美元指数 / USD/CNH 7.27 / VIX 12.4</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--green);">大宗商品</span>
+        <br><s>铜金比 143.63 / 油金比 0.0098</s>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Arrow -->
+<div class="arrow-row">
+  <svg width="14" height="22" viewBox="0 0 14 22">
+    <polygon points="7,0 14,11 7,22 0,11" fill="#3b82f6" opacity="0.5"/>
+    <polygon points="7,4 11,11 7,18 3,11" fill="#3b82f6"/>
+  </svg>
+</div>
+
+<!-- ========== L1: CAI/FCI ========== -->
+<div class="lc l1" id="layer1">
+  <div class="lhd">
+    <div class="ln">L1</div>
+    <div class="lt">CAI/FCI 计算 — 经济状态数值化</div>
+    <div class="ltag">状态识别</div>
+    <button class="toggle-btn" onclick="toggleLayer(this)">收起</button>
+  </div>
+  <div class="lc-body">
+    <div class="input-col">
+      <div class="col-title">📥 来自 L0</div>
+      <div class="data-row"><span class="dk">中国面板：</span><span class="dv">9个指标</span></div>
+      <div class="data-row"><span class="dk">美国面板：</span><span class="dv">9个指标</span></div>
+      <div class="data-row"><span class="dk">跨国指标：</span><span class="dv">利差/美元/VIX</span></div>
+      <div class="col-title" style="margin-top:10px;">⚙️ 计算逻辑</div>
+      <div class="process-in">各指标 z-score 标准化 → 按权重加权求和</div>
+      <div class="process-in">CAI 权重：增长类0.4 + 通胀类0.2 + 金融类0.2 + 消费类0.2</div>
+    </div>
+    <div class="process-col">
+      <div class="col-title">🔍 分析结论</div>
+      <div class="conclusion-box" style="border-left:3px solid var(--purple);">
+        <div class="conclusion-title">🇨🇳 中国 CAI = −0.225σ → 中性偏弱</div>
+        <div class="conclusion-text">
+          z-score 标准化后：PMI、零售、出口贡献偏弱，PPI 负值拖低整体；
+          金融条件指数（FCI）= +2.2σ 显示金融条件偏紧（债市走强信号），
+          两者分化说明实体弱但流动性宽松。
+          <br><br>
+          <span style="color:var(--dim);">数据覆盖率：59%（社融、出口数据缺失）→ 置信度下调</span>
+        </div>
+      </div>
+      <div class="conclusion-box" style="border-left:3px solid var(--blue);">
+        <div class="conclusion-title">🇺🇸 美国 CAI = +0.210σ → 中性偏强</div>
+        <div class="conclusion-text">
+          非农就业持续强劲是主要正贡献，ISM PMI 偏弱是负贡献；
+          核心PCE 2.6%仍处高位，通胀得分 = +0.60σ 偏高。
+          FCI = +0.463σ → 金融条件偏紧（加息效果显现）。
+        </div>
+      </div>
+      <div class="conclusion-box" style="border-left:3px solid var(--orange);">
+        <div class="conclusion-title">📊 中美 CAI 差值 = −0.435σ</div>
+        <div class="conclusion-text">
+          中国增长落后美国 0.435σ；增长差值为负意味着全球需求天平向美国倾斜，
+          对中国出口、新兴市场有负面影响，传导路径：美元强势 + 资本外流。
+        </div>
+      </div>
+    </div>
+    <div class="output-col">
+      <div class="col-title" style="color:var(--green);">📤 传入 L2 / L3</div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--green);">CN CAI z-score</span>
+        <br><s>−0.225σ · 中性</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--green);">CN FCI z-score</span>
+        <br><s>+2.20σ · 偏紧</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--green);">CN 通胀 z-score</span>
+        <br><s>−0.133σ · 低通胀</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--green);">US CAI z-score</span>
+        <br><s>+0.210σ · 中性</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--green);">US FCI z-score</span>
+        <br><s>+0.463σ · 中性</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--green);">US 通胀 z-score</span>
+        <br><s>+0.600σ · 偏高</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--green);">CN-US CAI 差值</span>
+        <br><s>−0.435σ · 中国落后</s>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Arrow -->
+<div class="arrow-row">
+  <svg width="14" height="22" viewBox="0 0 14 22">
+    <polygon points="7,0 14,11 7,22 0,11" fill="#8b5cf6" opacity="0.5"/>
+    <polygon points="7,4 11,11 7,18 3,11" fill="#8b5cf6"/>
+  </svg>
+</div>
+
+<!-- ========== L2: 周期定位 ========== -->
+<div class="lc l2" id="layer2">
+  <div class="lhd">
+    <div class="ln">L2</div>
+    <div class="lt">周期定位 — 四象限判定 + 政策调节 + 债务周期</div>
+    <div class="ltag">周期定位</div>
+    <button class="toggle-btn" onclick="toggleLayer(this)">收起</button>
+  </div>
+  <div class="lc-body">
+    <div class="input-col">
+      <div class="col-title">📥 来自 L1</div>
+      <div class="data-row"><span class="dk">CN CAI：</span><span class="dv" style="color:var(--red);">−0.225σ</span></div>
+      <div class="data-row"><span class="dk">CN 通胀：</span><span class="dv" style="color:var(--red);">−0.133σ</span></div>
+      <div class="data-row"><span class="dk">US CAI：</span><span class="dv" style="color:var(--green);">+0.210σ</span></div>
+      <div class="data-row"><span class="dk">US 通胀：</span><span class="dv" style="color:var(--orange);">+0.600σ</span></div>
+      <div class="col-title" style="margin-top:8px;">🌐 政策指标</div>
+      <div class="data-row"><span class="dk">货币政策：</span><span class="dv" style="color:var(--green);">宽松</span></div>
+      <div class="data-row"><span class="dk">财政政策：</span><span class="dv">中性</span></div>
+      <div class="data-row"><span class="dk">地产政策：</span><span class="dv">中性</span></div>
+    </div>
+    <div class="process-col">
+      <div class="col-title">🔍 分析结论</div>
+
+      <!-- 象限判定 -->
+      <div class="process-box" style="border-left:3px solid var(--pink);">
+        <div class="process-title">📍 象限判定逻辑</div>
+        <div class="process-in">CAI > 0 且 通胀 > 0 → 过热；CAI < 0 且 通胀 < 0 → 衰退</div>
+        <div class="process-in">CAI > 0 且 通胀 < 0 → 复苏；CAI < 0 且 通胀 > 0 → 滞胀</div>
+      </div>
+
+      <!-- 四象限视觉 -->
+      <div class="quadrant-grid">
+        <div class="quad-cell quad-inactive">
+          <div class="q-name">📈 过热</div>
+          <div class="q-score">CAI>0, 通胀>0</div>
+          <div class="q-dir">→ 大宗/资源</div>
+        </div>
+        <div class="quad-cell quad-active" style="border-color:rgba(236,72,153,0.4);">
+          <div class="q-name" style="color:var(--pink);">🇨🇳 衰退</div>
+          <div class="q-score">CAI=−0.225, 通胀=−0.133</div>
+          <div class="q-dir" style="color:var(--pink);">→ 债券/黄金/高股息</div>
+        </div>
+        <div class="quad-cell quad-inactive">
+          <div class="q-name">📊 复苏</div>
+          <div class="q-score">CAI>0, 通胀<0</div>
+          <div class="q-dir">→ A股/成长</div>
+        </div>
+        <div class="quad-cell quad-inactive">
+          <div class="q-name">⚠️ 滞胀</div>
+          <div class="q-score">CAI<0, 通胀>0</div>
+          <div class="q-dir">→ 现金/黄金</div>
+        </div>
+      </div>
+
+      <div class="conclusion-box" style="border-left:3px solid var(--pink);">
+        <div class="conclusion-title">🇨🇳 中国：衰退象限（象限III）</div>
+        <div class="conclusion-text">
+          CAI −0.225σ + 通胀 −0.133σ → 落在第三象限；
+          信号强度：不变（|CAI| < 1.0σ）；
+          政策调节得分：0.4分（宽松货币+中性财政+中性地产）；
+          受益资产：<strong>长久期国债、利率债、高股息</strong>；
+          受损资产：<strong>权益、大宗商品、周期股</strong>。
+        </div>
+      </div>
+
+      <div class="conclusion-box" style="border-left:3px solid var(--orange);">
+        <div class="conclusion-title">🇺🇸 美国：过热象限（象限I）</div>
+        <div class="conclusion-text">
+          CAI +0.210σ + 通胀 +0.600σ → 落在第一象限；
+          受益资产：<strong>大宗商品、上游资源、通胀保值债</strong>；
+          受损资产：<strong>长久期国债、成长股</strong>。
+        </div>
+      </div>
+
+      <div class="conclusion-box" style="border-left:3px solid var(--red);">
+        <div class="conclusion-title">⚠️ 中美周期分化 → 最终方向：中性</div>
+        <div class="conclusion-text">
+          中国：衰退（ bearish） | 美国：过热（bullish）→ 周期一致性：<strong>分化</strong>
+          <br>
+          分化处理规则：信号有效性下调至≤5分；大方向以美国为主（降低1档）；
+          最终大方向：<strong>中性</strong>（偏防御）。
+          <br>
+          <span style="color:var(--dim);">债务周期：中国=稳定 | 美国=周期中段 → 无特殊调节</span>
+        </div>
+      </div>
+    </div>
+    <div class="output-col">
+      <div class="col-title" style="color:var(--green);">📤 传入 L2.5 / L5</div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--pink);">中国象限</span>
+        <br><s>recession（衰退）· 信号强度：不变</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--orange);">美国象限</span>
+        <br><s>overheating（过热）· 信号强度：不变</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--red);">周期一致性</span>
+        <br><s>分化 → 最终方向：neutral（中性）</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--cyan);">政策得分</span>
+        <br><s>0.4 · 偏宽松（调节信号强度）</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--blue);">债务周期</span>
+        <br><s>CN=stable（稳定）US=middle（中段）</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--green);">置信度</span>
+        <br><s>75%</s>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Arrow -->
+<div class="arrow-row">
+  <svg width="14" height="22" viewBox="0 0 14 22">
+    <polygon points="7,0 14,11 7,22 0,11" fill="#ec4899" opacity="0.5"/>
+    <polygon points="7,4 11,11 7,18 3,11" fill="#ec4899"/>
+  </svg>
+</div>
+
+<!-- ========== L2.5: 枢纽变量 ========== -->
+<div class="lc l25" id="layer25">
+  <div class="lhd">
+    <div class="ln">L2.5</div>
+    <div class="lt">枢纽变量分析 — 汇率 · 大宗 · 宏观三角</div>
+    <div class="ltag" style="background:rgba(16,185,129,0.12);color:var(--green);border-color:rgba(16,185,129,0.25);">✓ 框架完整 · 数据缺项</div>
+    <button class="toggle-btn" onclick="toggleLayer(this)">收起</button>
+  </div>
+  <div class="lc-body">
+    <div class="input-col">
+      <div class="col-title">📥 原始数据</div>
+      <div class="data-row"><span class="dk">USD/CNH：</span><span class="dv">7.27</span></div>
+      <div class="data-row"><span class="dk">铜金比：</span><span class="dv">143.63</span></div>
+      <div class="data-row"><span class="dk">油金比：</span><span class="dv">0.00977</span></div>
+      <div class="data-row"><span class="dk">中美利差：</span><span class="dv" style="color:var(--red);">−2.06%</span></div>
+      <div class="data-row"><span class="dk">VIX：</span><span class="dv">12.4</span></div>
+      <div class="col-title" style="margin-top:10px;">⚙️ 脚本逻辑状态</div>
+      <div style="font-size:0.78em; padding:8px; background:rgba(16,185,129,0.05); border-radius:6px; border:1px solid rgba(16,185,129,0.15); color:var(--dim); line-height:1.6;">
+        <strong style="color:var(--green);">✓ 框架逻辑已完整实现</strong>（analyzer.py 全部函数已编写），问题在于数据端：
+        <ul style="margin:4px 0 0 14px; line-height:1.8;">
+          <li>trade_surplus（贸易顺差）缺失 → 经常账户因子 fallback=0</li>
+          <li>pboc_mid_deviation（中间价偏离度）缺失 → 政策意图因子 fallback=0</li>
+          <li>铜金比 mock=143，预设均值=0.15 → <strong style="color:var(--orange);">量纲不一致</strong>导致 z-score 失真</li>
+          <li>agent 拼接 layer25_output 时取 hub_signals 字段 → 实际应取 commodity_signals / cnh_direction</li>
+        </ul>
+      </div>
+    </div>
+    <div class="process-col">
+      <div class="col-title">🔍 分析结论（基于脚本真实计算）</div>
+      <div class="conclusion-box" style="border-left:3px solid var(--green); background:rgba(16,185,129,0.03);">
+        <div class="conclusion-title">✓ USD/CNH 方向得分（脚本已计算）</div>
+        <div class="conclusion-text">
+          <strong>利差因子：</strong>中美10Y利差 −2.06% → rate_z ≈ −1.37σ → 贬值压力
+          <br>
+          <strong>经常账户：</strong>trade_surplus=None → ca_z = 0（缺失数据）
+          <br>
+          <strong>风险偏好：</strong>VIX=12.4 → risk_z ≈ +0.33σ → 轻微升值支撑
+          <br>
+          <strong>政策意图：</strong>pboc_mid_deviation=None → policy_z = 0（缺失数据）
+          <br><br>
+          加权综合得分 ≈ −1.37 × 0.3 / 1.0 ≈ <strong style="color:var(--orange);">−0.41</strong>
+          （因缺失两个因子，实际置信度仅约 33%）
+          <br>
+          → 方向：<strong>偏贬值</strong>（−0.5 临界附近）
+        </div>
+      </div>
+      <div class="conclusion-box" style="border-left:3px solid var(--cyan);">
+        <div class="conclusion-title">✓ 大宗商品信号（仅铜金比可算）</div>
+        <div class="conclusion-text">
+          copper_gold_ratio=143.63 / 预设均值=0.15 → z-score ≈ +4779σ
+          <br>
+          <span style="color:var(--orange);">⚠️ mock 数据量纲错误（应为 0.14 左右，预设才合理），导致 z-score 极度失真</span>
+          <br>
+          框架本意：铜金比低 → 全球增长偏弱；铜金比高 → 工业需求强劲。
+          修正后结论：铜金比处于偏低历史区间 → 全球增长预期偏谨慎（需补全其他5个比值）。
+        </div>
+      </div>
+      <div class="conclusion-box" style="border-left:3px solid var(--purple);">
+        <div class="conclusion-title">⚠️ 宏观三角（判定条件过于严格）</div>
+        <div class="conclusion-text">
+          框架要求 USD/大宗/美债三维度符号"完美组合"才能命中四种环境之一：
+          <br>
+          实际数据 usd_sign=1 / commodity_sign=1 / yield_sign=1 → 命中"<strong>滞胀</strong>" ✓
+          <br>
+          <span style="color:var(--dim);">但因铜金比量纲错误，commodity_sign=1 的结论本身不可靠。
+          框架判定条件应增加容错机制，避免单一因子量纲错误导致整体失效。</span>
+        </div>
+      </div>
+      <div class="conclusion-box" style="border-left:3px solid var(--orange);">
+        <div class="conclusion-title">⚠️ agent 层数据拼接问题</div>
+        <div class="conclusion-text">
+          脚本返回了完整的 <code>cnh_direction</code>、<code>commodity_signals</code>、<code>macro_triangle</code>，
+          但 agent 取 <code>layer25_result.get("layer_output", {})["hub_signals"]</code> → 返回空数组 []。
+          <br>
+          <strong>修复方向：</strong>agent 应直接从 <code>layer25_result</code> 提取嵌套字段，或脚本在 <code>layer_output</code> 中打包 <code>hub_signals</code> 键。
+        </div>
+      </div>
+    </div>
+    <div class="output-col">
+      <div class="col-title" style="color:var(--green);">📤 脚本实际输出</div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--green);">cnh_direction</span>
+        <br><s>score≈−0.41 · 偏贬值</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--green);">commodity_signals</span>
+        <br><s>铜金比 z≈+4779（量纲错误⚠️）</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(245,158,11,0.15);">
+        <span class="dv" style="color:var(--orange);">macro_triangle</span>
+        <br><s>框架命中滞胀（结论待验证）</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--green);">channel_alerts</span>
+        <br><s>美元→大宗通道 · 无触发</s>
+      </div>
+      <div class="col-title" style="margin-top:10px; color:var(--orange);">⚠️ agent 层缺失</div>
+      <div class="data-row" style="border-color:rgba(245,158,11,0.15);">
+        <span class="dv" style="color:var(--orange);">layer_output.hub_signals</span>
+        <br><s>⚠️ 空数组（拼接路径错误）</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(245,158,11,0.15);">
+        <span class="dv" style="color:var(--orange);">L4 Type D/E 信号</span>
+        <br><s>依赖 hub_signals → 无法生成</s>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Arrow -->
+<div class="arrow-row">
+  <svg width="14" height="22" viewBox="0 0 14 22">
+    <polygon points="7,0 14,11 7,22 0,11" fill="#f59e0b" opacity="0.5"/>
+    <polygon points="7,4 11,11 7,18 3,11" fill="#f59e0b"/>
+  </svg>
+</div>
+
+<!-- ========== L3: 市场定价 ========== -->
+<div class="lc l3" id="layer3">
+  <div class="lhd">
+    <div class="ln">L3</div>
+    <div class="lt">市场定价提取 — 反推市场隐含预期</div>
+    <div class="ltag">⚠️ 待接入数据</div>
+    <button class="toggle-btn" onclick="toggleLayer(this)">收起</button>
+  </div>
+  <div class="lc-body">
+    <div class="input-col">
+      <div class="col-title">📥 来自 L1 + 外部数据</div>
+      <div class="data-row"><span class="dk">沪深300 ERP：</span><span class="dv">5.2%</span></div>
+      <div class="data-row"><span class="dk">S&P500 ERP：</span><span class="dv">2.1%</span></div>
+      <div class="data-row"><span class="dk">中国10Y：</span><span class="dv">2.23%</span></div>
+      <div class="data-row"><span class="dk">中国2Y：</span><span class="dv">1.92%</span></div>
+      <div class="data-row"><span class="dk">美国10Y：</span><span class="dv">4.29%</span></div>
+      <div class="data-row"><span class="dk">美国2Y：</span><span class="dv">4.71%</span></div>
+      <div class="data-row"><span class="dk">AA信用利差：</span><span class="dv">N/A</span></div>
+      <div class="data-row"><span class="dk">HY信用利差：</span><span class="dv">3.8%</span></div>
+      <div class="col-title" style="margin-top:10px;">⚠️ 实现状态</div>
+      <div style="font-size:0.78em; color:var(--dim); padding:8px; background:rgba(16,185,129,0.05); border-radius:6px; border:1px solid rgba(16,185,129,0.15);">
+        Layer 3 脚本可运行，但依赖历史分位数数据（percentile_lookup）进行 ERP 百分位估算，
+        当前 mock 数据集中缺少历史分位数表，导致大部分市场定价结论为 N/A。
+      </div>
+    </div>
+    <div class="process-col">
+      <div class="col-title">🔍 分析结论</div>
+      <div class="conclusion-box" style="border-left:3px solid var(--green);">
+        <div class="conclusion-title">📊 市场定价（基于数据推断）</div>
+        <div class="conclusion-text">
+          <strong>沪深300 ERP 5.2%：</strong>处于历史高位（>75th percentile 估算），
+          说明市场对A股的盈利预期偏低（贴现率较高），估值吸引力偏强，
+          但需结合实际增长（CAI −0.225）→ 预期差可能存在。
+          <br><br>
+          <strong>S&P500 ERP 2.1%：</strong>处于历史中低位，说明美股估值偏高，
+          市场定价的隐含增长预期强于实际（CAI +0.210）→ 预期差偏正向。
+          <br><br>
+          <strong>中国期限结构（2Y 1.92% / 10Y 2.23%）：</strong>正向陡峭，
+          反映市场定价未来经济改善 + 宽松预期，符合衰退→复苏过渡特征。
+          <br><br>
+          <strong>美国期限结构（2Y 4.71% / 10Y 4.29%）：</strong>倒挂42bp，
+          反映市场定价未来降息，但短期通胀粘性压制降息预期。
+          <br><br>
+          <strong>中美利差 −2.06%：</strong>深度倒挂，
+          资本外流压力持续，人民币贬值预期未完全定价。
+        </div>
+      </div>
+      <div class="conclusion-box" style="border-left:3px solid var(--red);">
+        <div class="conclusion-title">⚠️ 定价偏差表未生成</div>
+        <div class="conclusion-text">
+          由于历史分位数数据缺失，无法精确计算 ERP 百分位，
+          定价偏差 = 实际CAI − 市场隐含预期 无法量化。
+          这是后续数据接入的重点（P0）。
+        </div>
+      </div>
+    </div>
+    <div class="output-col">
+      <div class="col-title" style="color:var(--orange);">📤 实际输出（⚠️ 部分缺失）</div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv">CSI300 ERP value</span>
+        <br><s>5.2%（已知）</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(245,158,11,0.15);">
+        <span class="dv" style="color:var(--orange);">CSI300 信号</span>
+        <br><s>N/A（缺历史分位数）</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(245,158,11,0.15);">
+        <span class="dv" style="color:var(--orange);">期限结构</span>
+        <br><s>N/A（缺历史分位数）</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(245,158,11,0.15);">
+        <span class="dv" style="color:var(--orange);">定价偏差表</span>
+        <br><s>N/A（缺历史分位数）</s>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Arrow -->
+<div class="arrow-row">
+  <svg width="14" height="22" viewBox="0 0 14 22">
+    <polygon points="7,0 14,11 7,22 0,11" fill="#10b981" opacity="0.5"/>
+    <polygon points="7,4 11,11 7,18 3,11" fill="#10b981"/>
+  </svg>
+</div>
+
+<!-- ========== L4: 预期差信号 ========== -->
+<div class="lc l4" id="layer4">
+  <div class="lhd">
+    <div class="ln">L4</div>
+    <div class="lt">预期差信号引擎 — Alpha 的真正来源</div>
+    <div class="ltag">信号生成</div>
+    <button class="toggle-btn" onclick="toggleLayer(this)">收起</button>
+  </div>
+  <div class="lc-body">
+    <div class="input-col">
+      <div class="col-title">📥 来自 L1 / L3 / L2.5</div>
+      <div class="data-row"><span class="dk">CN CAI 实际：</span><span class="dv" style="color:var(--red);">−0.225</span></div>
+      <div class="data-row"><span class="dk">US CAI 实际：</span><span class="dv" style="color:var(--green);">+0.210</span></div>
+      <div class="data-row"><span class="dk">CN FCI：</span><span class="dv">+2.20</span></div>
+      <div class="data-row"><span class="dk">US FCI：</span><span class="dv">+0.463</span></div>
+      <div class="data-row"><span class="dk">CSI300 ERP：</span><span class="dv">5.2%</span></div>
+      <div class="data-row"><span class="dk">SP500 ERP：</span><span class="dv">2.1%</span></div>
+      <div class="data-row" style="border-color:rgba(245,158,11,0.1);"><span class="dk">L2.5 枢纽信号：</span><span class="dv" style="color:var(--orange);">0个</span> <s>（待接入）</s></div>
+      <div class="col-title" style="margin-top:10px;">⚙️ 强度阈值</div>
+      <div class="process-in">信号强度 ≥ 35 才输出</div>
+      <div class="process-in">3个有效信号（1个B类 + 2个C类）</div>
+    </div>
+    <div class="process-col">
+      <div class="col-title">🔍 分析结论 — 信号列表</div>
+
+      <!-- 信号 A -->
+      <div class="signal-card signal-neutral">
+        <span class="sig-icon">🔄</span>
+        <div class="sig-content">
+          <div class="sig-name">信号 A — 高频意外</div>
+          <div class="sig-meta">类型A · 花旗CESI vs L1实际 | 有效期2-4周</div>
+        </div>
+        <span class="sig-strength ss-low">0个</span>
+      </div>
+
+      <!-- 信号 B -->
+      <div class="signal-card signal-bullish">
+        <span class="sig-icon">📈</span>
+        <div class="sig-content">
+          <div class="sig-name">信号 B — 美国增长预期差（核心）</div>
+          <div class="sig-meta">类型B · 实际CAI=+0.210 vs 市场隐含≈−0.920 | 差值=1.13σ</div>
+          <div style="font-size:0.72em; color:var(--dim); margin-top:3px;">
+            市场低估了美国增长韧性（隐含增长 −0.920σ 远低于实际 +0.210σ）→
+            美股有向上修正空间
+          </div>
+        </div>
+        <span class="sig-strength ss-high">56.5</span>
+      </div>
+
+      <!-- 信号 C1 -->
+      <div class="signal-card signal-bearish">
+        <span class="sig-icon">📉</span>
+        <div class="sig-content">
+          <div class="sig-name">信号 C — 中美增长预期差</div>
+          <div class="sig-meta">类型C · 中美CAI差值=−0.435σ vs 市场定价=+0.287σ | 净差=−0.722σ</div>
+          <div style="font-size:0.72em; color:var(--dim); margin-top:3px;">
+            市场低估了中美增长分化程度 → 做多美股/做空A股 有效
+          </div>
+        </div>
+        <span class="sig-strength ss-mid">36.1 <s style="font-size:0.7em;">弱</s></span>
+      </div>
+
+      <!-- 信号 C2 -->
+      <div class="signal-card signal-bearish">
+        <span class="sig-icon">📉</span>
+        <div class="sig-content">
+          <div class="sig-name">信号 C — 中美流动性差</div>
+          <div class="sig-meta">类型C · CN FCI=+2.200 vs US FCI=+0.463 | 差值=+1.74σ</div>
+          <div style="font-size:0.72em; color:var(--dim); margin-top:3px;">
+            中国金融条件远超美国收紧，资本外流压力持续 →
+            新兴市场、全球资本流向偏空
+          </div>
+        </div>
+        <span class="sig-strength ss-high">86.9 <s style="font-size:0.7em;">强</s></span>
+      </div>
+
+      <div class="conclusion-box" style="border-left:3px solid var(--cyan); margin-top:8px;">
+        <div class="conclusion-title">🔍 总体信号方向判断</div>
+        <div class="conclusion-text">
+          <span style="color:var(--green); font-weight:700;">看多：</span>美股（美国增长超预期）
+          <br>
+          <span style="color:var(--red); font-weight:700;">看空：</span>A股/新兴市场（中美增长分化 + 流动性差）
+          <br>
+          <span style="color:var(--dim);">信号相互制衡：美股看多 vs 新兴市场/全球资本看空 → 防御为主</span>
+        </div>
+      </div>
+    </div>
+    <div class="output-col">
+      <div class="col-title" style="color:var(--green);">📤 传入 L4.5 / L5</div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--cyan);">总信号数</span>
+        <br><s>3个（过滤后）</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv">A类信号</span>
+        <br><s>0个（缺花旗CESI数据）</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--green);">B类信号</span>
+        <br><s>1个 · 美股增长超预期</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--orange);">C类信号</span>
+        <br><s>2个 · 中美分化</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--green);">美股 Alpha</span>
+        <br><s>net_deviation=0（无偏离，Beta主导）</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--red);">新兴市场 Alpha</span>
+        <br><s>net_deviation=−5.9%（看空）</s>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Arrow -->
+<div class="arrow-row">
+  <svg width="14" height="22" viewBox="0 0 14 22">
+    <polygon points="7,0 14,11 7,22 0,11" fill="#06b6d4" opacity="0.5"/>
+    <polygon points="7,4 11,11 7,18 3,11" fill="#06b6d4"/>
+  </svg>
+</div>
+
+<!-- ========== L4.5: 反身性 ========== -->
+<div class="lc l45" id="layer45">
+  <div class="lhd">
+    <div class="ln">L4.5</div>
+    <div class="lt">反身性与元认知 — 信号三重修正</div>
+    <div class="ltag">元认知修正</div>
+    <button class="toggle-btn" onclick="toggleLayer(this)">收起</button>
+  </div>
+  <div class="lc-body">
+    <div class="input-col">
+      <div class="col-title">📥 来自 L4</div>
+      <div class="data-row"><span class="dk">信号总数：</span><span class="dv">3个</span></div>
+      <div class="data-row"><span class="dk">美股信号：</span><span class="dv" style="color:var(--green);">1个（看多）</span></div>
+      <div class="data-row"><span class="dk">新兴市场：</span><span class="dv" style="color:var(--red);">2个（看空）</span></div>
+      <div class="col-title" style="margin-top:10px;">📥 Mock 数据</div>
+      <div class="data-row"><span class="dk">信号拥挤度：</span><span class="dv">50.0</span></div>
+      <div class="data-row"><span class="dk">自我实现指数：</span><span class="dv">50.0</span></div>
+      <div class="data-row"><span class="dk">跨框架一致性：</span><span class="dv">50.0</span></div>
+      <div class="data-row"><span class="dk">范式稳定性：</span><span class="dv">stable</span></div>
+      <div class="data-row"><span class="dk">逻辑生命周期：</span><span class="dv">diffusion（扩散期）</span></div>
+    </div>
+    <div class="process-col">
+      <div class="col-title">🔍 分析结论 — 三重修正</div>
+
+      <div class="process-box" style="border-left:3px solid var(--gold);">
+        <div class="process-title">🪞 修正①：反身性压力计</div>
+        <div class="process-in">四大指标各占25分，满分100</div>
+        <div class="process-in" style="color:var(--text);">拥挤度(50) + 仓位集中度(50) + 自我实现(50) + 跨框架一致(50) = 总分 50.0</div>
+        <div style="margin-top:6px;">
+          <span style="display:inline-block; width:50%; background:rgba(245,158,11,0.2); border-radius:4px; height:8px;"></span>
+          <span style="display:inline-block; width:50%; background:rgba(255,255,255,0.05); border-radius:4px; height:8px;"></span>
+        </div>
+        <div class="process-out" style="color:var(--orange);">🟡 中等压力（黄色区间30-50）→ 无需人类裁决</div>
+      </div>
+
+      <div class="process-box" style="border-left:3px solid var(--purple);">
+        <div class="process-title">🔮 修正②：范式稳定性</div>
+        <div class="process-in">三大代理指标：跨资产相关性 / 政策措辞 / 跨境资本</div>
+        <div class="process-out" style="color:var(--green);">✓ 稳定（0个触发项）→ 修正系数 1.0</div>
+        <div style="font-size:0.72em; color:var(--dim); margin-top:4px;">
+          中美利差倒挂和周期分化是结构性特征，非范式转移
+        </div>
+      </div>
+
+      <div class="process-box" style="border-left:3px solid var(--cyan);">
+        <div class="process-title">♻️ 修正③：逻辑生命周期</div>
+        <div class="process-in">5阶段：萌芽→扩散→共识→透支→崩塌</div>
+        <div class="process-out" style="color:var(--cyan);">扩散期（×0.9）→ 策略逻辑仍在积累共识，尚未到反转时</div>
+        <div style="font-size:0.72em; color:var(--dim); margin-top:4px;">
+          扩散期特征：策略拥挤度提升但未达峰值，反转风险有限
+        </div>
+      </div>
+
+      <div class="conclusion-box" style="border-left:3px solid var(--green);">
+        <div class="conclusion-title">⚖️ 综合修正系数 = 0.95</div>
+        <div class="conclusion-text">
+          最终信号强度 = L4初始强度 × (1−衰减) × 生命周期修正(0.9) × 反身性修正(1.0) × 范式修正(1.0)
+          <br><br>
+          <span style="color:var(--green); font-weight:700;">修正结论：信号整体有效，无须大幅下调</span>
+          反身性压力中等（黄色），美股策略处于扩散期（正常状态），无需人类介入裁决。
+        </div>
+      </div>
+    </div>
+    <div class="output-col">
+      <div class="col-title" style="color:var(--green);">📤 传入 L5</div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--orange);">压力等级</span>
+        <br><s>🟡 黄色（中等）</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv">压力总分</span>
+        <br><s>50.0 / 100</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--green);">范式稳定性</span>
+        <br><s>stable（稳定）</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--cyan);">逻辑生命周期</span>
+        <br><s>diffusion（扩散期）</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv" style="color:var(--green);">综合修正系数</span>
+        <br><s>0.95（小幅正修正）</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(16,185,129,0.15);">
+        <span class="dv">人类裁决</span>
+        <br><s>不需要（压力<70，范式稳定）</s>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Arrow -->
+<div class="arrow-row">
+  <svg width="14" height="22" viewBox="0 0 14 22">
+    <polygon points="7,0 14,11 7,22 0,11" fill="#a855f7" opacity="0.5"/>
+    <polygon points="7,4 11,11 7,18 3,11" fill="#a855f7"/>
+  </svg>
+</div>
+
+<!-- ========== L5: 资产配置 ========== -->
+<div class="lc l5" id="layer5">
+  <div class="lhd">
+    <div class="ln">L5</div>
+    <div class="lt">资产配置 — Beta风险平价 + Alpha预期差偏离</div>
+    <div class="ltag">决策输出</div>
+    <button class="toggle-btn" onclick="toggleLayer(this)">收起</button>
+  </div>
+  <div class="lc-body">
+    <div class="input-col">
+      <div class="col-title">📥 来自 L2 / L4 / L4.5</div>
+      <div class="data-row"><span class="dk">中国象限：</span><span class="dv" style="color:var(--pink);">衰退</span></div>
+      <div class="data-row"><span class="dk">周期一致性：</span><span class="dv">分化→中性</span></div>
+      <div class="data-row"><span class="dk">Beta权重（风险平价）：</span></div>
+      <div class="data-row" style="padding-left:10px;"><span class="dk">A股：</span><span class="dv">4.4%</span></div>
+      <div class="data-row" style="padding-left:10px;"><span class="dk">中债：</span><span class="dv" style="color:var(--green);">56.9%</span></div>
+      <div class="data-row" style="padding-left:10px;"><span class="dk">南华工业品：</span><span class="dv">8.5%</span></div>
+      <div class="data-row" style="padding-left:10px;"><span class="dk">黄金：</span><span class="dv">17.8%</span></div>
+      <div class="data-row" style="padding-left:10px;"><span class="dk">美股：</span><span class="dv">12.2%</span></div>
+      <div class="col-title" style="margin-top:8px;">📊 Alpha 偏离</div>
+      <div class="data-row"><span class="dk">美股：</span><span class="dv">0（无偏离）</span></div>
+      <div class="data-row"><span class="dk">新兴市场：</span><span class="dv" style="color:var(--red);">−5.9%</span></div>
+      <div class="data-row"><span class="dk">全球资本：</span><span class="dv" style="color:var(--red);">−5.9%</span></div>
+    </div>
+    <div class="process-col">
+      <div class="col-title">🔍 分析结论 — 配置逻辑</div>
+
+      <div class="process-box" style="border-left:3px solid var(--gold);">
+        <div class="process-title">⚙️ Beta层（风险平价 × 衰退象限调节）</div>
+        <div class="process-in">权重 ∝ 1/波动率（A股22% / 中债4% / 南华18% / 黄金14% / 美股17%）</div>
+        <div class="process-out" style="color:var(--green);">衰退象限：中债+黄金显著超配（+18%、+4%）</div>
+        <div style="font-size:0.72em; color:var(--dim); margin-top:4px;">
+          框架表7.3衰退象限规则：债券↑18% + 黄金↑4% + A股↓7% + 美股↓7%
+        </div>
+      </div>
+
+      <div class="process-box" style="border-left:3px solid var(--cyan);">
+        <div class="process-title">⚙️ Alpha层（预期差 → 偏离映射）</div>
+        <div class="process-in">修正后信号强度 × 偏离系数（≥80%→0.3 / 60-80%→0.2 / 50-60%→0.1 / &lt;50%→0）</div>
+        <div class="process-out" style="color:var(--red);">美股看多信号偏弱（net_deviation=0）→ 无Alpha正偏离</div>
+        <div class="process-out" style="color:var(--red);">新兴市场/全球资本：−5.9%偏离（看空）</div>
+      </div>
+
+      <div class="process-box" style="border-left:3px solid var(--pink);">
+        <div class="process-title">⚙️ Beta+Alpha 合并</div>
+        <div class="process-in">Beta权重 + Alpha偏离 = 最终权重（风险预算校验通过）</div>
+      </div>
+
+      <div class="conclusion-box" style="border-left:3px solid var(--red); background:rgba(239,68,68,0.05);">
+        <div class="conclusion-title">🎯 最终配置决策（2024-06-28）</div>
+        <div class="conclusion-text">
+          <strong>衰退象限 + 中美分化 + 信号偏弱</strong> → 整体防御姿态
+          <br><br>
+          中债占绝对主导（57%），黄金为第二权重（18%），
+          美股少量配置（12%）但Alpha信号不强，
+          A股和新兴市场维持最低配置（4%/0%/9%）。
+        </div>
+      </div>
+    </div>
+    <div class="output-col">
+      <div class="col-title" style="color:var(--green);">📤 最终输出</div>
+
+      <!-- 最终权重柱 -->
+      <div style="margin-bottom:10px;">
+        <div style="font-size:0.7em; font-weight:700; color:var(--dim); text-transform:uppercase; margin-bottom:6px;">最终配置权重</div>
+
+        <div class="weight-bar-wrap">
+          <div class="wb-label"><span class="wb-name">🇨🇳 中债</span><span class="wb-pct" style="color:var(--green);">57%</span></div>
+          <div class="wb-bar-bg"><div class="wb-bar-fill bar-green" style="width:57%;"></div></div>
+        </div>
+        <div class="weight-bar-wrap">
+          <div class="wb-label"><span class="wb-name">🥇 黄金</span><span class="wb-pct" style="color:var(--gold);">18%</span></div>
+          <div class="wb-bar-bg"><div class="wb-bar-fill bar-yellow" style="width:18%;"></div></div>
+        </div>
+        <div class="weight-bar-wrap">
+          <div class="wb-label"><span class="wb-name">🇺🇸 美股</span><span class="wb-pct" style="color:var(--purple);">12%</span></div>
+          <div class="wb-bar-bg"><div class="wb-bar-fill bar-purple" style="width:12%;"></div></div>
+        </div>
+        <div class="weight-bar-wrap">
+          <div class="wb-label"><span class="wb-name">📦 南华工业</span><span class="wb-pct" style="color:var(--orange);">9%</span></div>
+          <div class="wb-bar-bg"><div class="wb-bar-fill bar-orange" style="width:9%;"></div></div>
+        </div>
+        <div class="weight-bar-wrap">
+          <div class="wb-label"><span class="wb-name">🇨🇳 A股</span><span class="wb-pct" style="color:var(--red);">4%</span></div>
+          <div class="wb-bar-bg"><div class="wb-bar-fill bar-red" style="width:4%;"></div></div>
+        </div>
+      </div>
+
+      <div class="data-row" style="border-color:rgba(239,68,68,0.2);">
+        <span class="dv" style="color:var(--red); font-weight:800;">最终方向：看空</span>
+        <br><s>置信度：80%</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(239,68,68,0.15);">
+        <span class="dv">策略核心</span>
+        <br><s>偏重债券防御</s>
+      </div>
+      <div class="data-row" style="border-color:rgba(239,68,68,0.15);">
+        <span class="dv">推理</span>
+        <br><s>中债57% + 黄金18% + 美股12%</s>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 最终结果 -->
+<div class="final-result-box">
+  <h2>🎯 最终输出 — 标准化 Signal</h2>
+  <div class="fdr-row">
+    <div class="fdr-item">
+      <div class="fdr-label">方向</div>
+      <div class="fdr-value" style="color:var(--red);">Bearish（看空）</div>
+    </div>
+    <div class="fdr-item">
+      <div class="fdr-label">置信度</div>
+      <div class="fdr-value">80%</div>
+    </div>
+    <div class="fdr-item">
+      <div class="fdr-label">数据类型</div>
+      <div class="fdr-value">Mock</div>
+    </div>
+    <div class="fdr-item">
+      <div class="fdr-label">执行层数</div>
+      <div class="fdr-value">L0-L5 + L2.5 + L4.5</div>
+    </div>
+  </div>
+  <div style="font-size:0.85em; color:var(--dim);">
+    <strong>推理：</strong>偏重债券防御 | 中债 57% | 黄金 18% | 美股 12% | 低配：新兴市场、全球资本流向
+    <br>
+    <strong>信号列表：</strong>
+    <span class="tbd-tag">A股 低配4%</span>
+    <span class="tbd-tag" style="background:rgba(16,185,129,0.1);color:var(--green);border-color:rgba(16,185,129,0.25);">中债 配置57%</span>
+    <span class="tbd-tag" style="background:rgba(245,158,11,0.1);color:var(--gold);border-color:rgba(245,158,11,0.25);">南华工业 配置9%</span>
+    <span class="tbd-tag" style="background:rgba(245,158,11,0.1);color:var(--gold);border-color:rgba(245,158,11,0.25);">黄金 配置18%</span>
+    <span class="tbd-tag" style="background:rgba(139,92,246,0.1);color:var(--purple);border-color:rgba(139,92,246,0.25);">美股 配置12%</span>
+  </div>
+</div>
+
+<!-- 待确认问题 -->
+<div style="max-width:1600px; margin:16px auto 0; padding:0 12px;">
+  <div style="background:rgba(239,68,68,0.05); border:1px solid rgba(239,68,68,0.2); border-radius:10px; padding:14px 18px;">
+    <div style="font-size:0.9em; font-weight:700; color:var(--red); margin-bottom:10px;">🔍 待确认问题（需与框架作者对齐）</div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:10px; font-size:0.82em;">
+      <div style="background:rgba(239,68,68,0.04); border:1px solid rgba(239,68,68,0.15); border-radius:6px; padding:10px 12px;">
+        <div style="font-weight:700; color:var(--red); margin-bottom:4px;">🐛 L2.5 agent 数据拼接路径错误</div>
+        <div style="color:var(--dim); line-height:1.6;">agent 取 <code>layer25_result.get("layer_output", {})["hub_signals"]</code> → 返回空数组 []<br>脚本实际返回 <code>commodity_signals</code> / <code>cnh_direction</code> 嵌套结构<br><strong style="color:var(--text);">需确认：是 agent 拼接改字段，还是脚本在 layer_output 中补打包 hub_signals 键？</strong></div>
+      </div>
+      <div style="background:rgba(239,68,68,0.04); border:1px solid rgba(239,68,68,0.15); border-radius:6px; padding:10px 12px;">
+        <div style="font-weight:700; color:var(--red); margin-bottom:4px;">🐛 L2.5 宏观三角判定过于严格</div>
+        <div style="color:var(--dim); line-height:1.6;">框架要求 USD/大宗/美债三维度符号必须完美命中组合，否则 fallback 到 mixed<br>建议：增加容错机制（部分维度 None 时用其他维度加权判断），避免单一因子量纲错误导致整体失效<br><strong style="color:var(--text);">需确认：mixed 状态下的 fallback 策略是什么？</strong></div>
+      </div>
+      <div style="background:rgba(239,68,68,0.04); border:1px solid rgba(239,68,68,0.15); border-radius:6px; padding:10px 12px;">
+        <div style="font-weight:700; color:var(--red); margin-bottom:4px;">🐛 L2.5 z-score 硬编码均值</div>
+        <div style="color:var(--dim); line-height:1.6;"><code>_estimate_z_score</code> 和 <code>estimate_ratio_zscore</code> 使用硬编码均值/标准差（如铜金比均值=0.15）<br>铜金比 mock=143.63，z-score ≈ +4779 → 完全失真<br><strong style="color:var(--text);">需确认：是否改用滚动3年历史窗口计算？如无历史数据，是否接受当前简化？</strong></div>
+      </div>
+      <div style="background:rgba(239,68,68,0.04); border:1px solid rgba(239,68,68,0.15); border-radius:6px; padding:10px 12px;">
+        <div style="font-weight:700; color:var(--red); margin-bottom:4px;">🤔 L4.5 逻辑生命周期边界量化</div>
+        <div style="color:var(--dim); line-height:1.6;">框架定义了5阶段（萌芽/扩散/共识/透支/崩塌）及系数（×1.0/×0.9/×0.6/×0.3/×0），但各阶段边界无具体量化阈值<br>当前直接用 mock 数据 stage="diffusion" 传入，未经过算法判定<br><strong style="color:var(--text);">需确认：各阶段如何量化判定？基于报告提及次数、资金规模、还是其他指标？</strong></div>
+      </div>
+      <div style="background:rgba(239,68,68,0.04); border:1px solid rgba(239,68,68,0.15); border-radius:6px; padding:10px 12px;">
+        <div style="font-weight:700; color:var(--red); margin-bottom:4px;">🤔 L2 拐点确认约束量化条件</div>
+        <div style="color:var(--dim); line-height:1.6;">框架描述需满足①≥2个核心领先指标同向 ②连续2月同向变动 ③单月变动≥0.2pp<br>具体"核心领先指标"清单未定义，CAI/FCI 原始指标是否直接适用？<br><strong style="color:var(--text);">需确认：领先指标清单 + 各条件优先级？</strong></div>
+      </div>
+      <div style="background:rgba(239,68,68,0.04); border:1px solid rgba(239,68,68,0.15); border-radius:6px; padding:10px 12px;">
+        <div style="font-weight:700; color:var(--red); margin-bottom:4px;">🤔 L2.5 铜金比量纲与框架预设矛盾</div>
+        <div style="color:var(--dim); line-height:1.6;">框架预设均值=0.15（说明铜金比应该是 0.15 量级），但 mock 数据给出 143.63<br>实际历史数据：铜金比通常在 0.10-0.20 范围（黄金美元价格比）<br>南华商品指数铜品种价格与黄金价格比约 0.05-0.20<br><strong style="color:var(--text);">需确认：143.63 是哪个指标的量纲？是否南华综合指数/黄金比？铜金比原始数据应如何计算？</strong></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 待提供的支持 -->
+<div style="max-width:1600px; margin:14px auto 0; padding:0 12px;">
+  <div style="background:rgba(59,130,246,0.05); border:1px solid rgba(59,130,246,0.2); border-radius:10px; padding:14px 18px;">
+    <div style="font-size:0.9em; font-weight:700; color:var(--blue); margin-bottom:10px;">🔧 待提供的支持</div>
+
+    <!-- 数据接口 -->
+    <div style="font-size:0.85em; font-weight:700; color:var(--blue); margin-bottom:8px;">📡 数据接口（skills/data/ 需实现）</div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:8px; font-size:0.82em; margin-bottom:14px;">
+      <div style="background:rgba(59,130,246,0.05); border:1px solid rgba(59,130,246,0.15); border-radius:6px; padding:8px 10px;">
+        <div style="font-weight:700; color:var(--blue); margin-bottom:3px;">PBOC 宏观统计月报</div>
+        <div style="color:var(--dim); line-height:1.5;">覆盖：贸易顺差（海关口径）、外汇储备月度变化、央行中间价偏离度<br>
+        更新频率：每月初（优先接入）<br>
+        影响：L2.5 经常账户因子 + 政策意图因子</div>
+      </div>
+      <div style="background:rgba(59,130,246,0.05); border:1px solid rgba(59,130,246,0.15); border-radius:6px; padding:8px 10px;">
+        <div style="font-weight:700; color:var(--blue); margin-bottom:3px;">Wind/Bloomberg 历史百分位</div>
+        <div style="color:var(--dim); line-height:1.5;">覆盖：沪深300 ERP、信用利差（AA/城投/HY）、债券期限结构的历史分位数表<br>
+        更新频率：日度（滚动3年窗口）<br>
+        影响：L3 市场定价提取（ERP 信号当前 N/A 的根因）</div>
+      </div>
+      <div style="background:rgba(59,130,246,0.05); border:1px solid rgba(59,130,246,0.15); border-radius:6px; padding:8px 10px;">
+        <div style="font-weight:700; color:var(--blue); margin-bottom:3px;">花旗 CESI + 高频意外指数</div>
+        <div style="color:var(--dim); line-height:1.5;">覆盖：花旗经济意外指数（中/美）、各宏观指标实际 vs 共识差值<br>
+        更新频率：周度（事件驱动）<br>
+        影响：L4 Type A 信号（当前 0 个）</div>
+      </div>
+      <div style="background:rgba(59,130,246,0.05); border:1px solid rgba(59,130,246,0.15); border-radius:6px; padding:8px 10px;">
+        <div style="font-weight:700; color:var(--blue); margin-bottom:3px;">CFTC + ETF + 北向资金</div>
+        <div style="color:var(--dim); line-height:1.5;">覆盖：CFTC 非商业持仓、黄金 ETF 资金流、北向资金日度净流入<br>
+        更新频率：周度（CFTC）/ 日度（ETF/北向）<br>
+        影响：L4.5 反身性压力计（当前用 Mock=50）</div>
+      </div>
+      <div style="background:rgba(59,130,246,0.05); border:1px solid rgba(59,130,246,0.15); border-radius:6px; padding:8px 10px;">
+        <div style="font-weight:700; color:var(--blue); margin-bottom:3px;">LME/DCE/ICE 大宗商品</div>
+        <div style="color:var(--dim); line-height:1.5;">覆盖：铜/黄金/原油/铁矿石期货价格（计算比值：铜金比、油金比、铁铜比等）<br>
+        更新频率：日度（收盘后）<br>
+        影响：L2.5 商品比值信号（当前仅铜金比，缺5个）</div>
+      </div>
+      <div style="background:rgba(59,130,246,0.05); border:1px solid rgba(59,130,246,0.15); border-radius:6px; padding:8px 10px;">
+        <div style="font-weight:700; color:var(--blue); margin-bottom:3px;">期权隐含波动率</div>
+        <div style="color:var(--dim); line-height:1.5;">覆盖：CNH 期权 25Delta Risk Reversal（USD/CNH 隐含波动率价差）<br>
+        更新频率：日度<br>
+        影响：L2.5 汇率分析（风险偏好因子的精确替代指标）</div>
+      </div>
+    </div>
+
+    <!-- LLM 接口 -->
+    <div style="font-size:0.85em; font-weight:700; color:var(--purple); margin-bottom:8px;">🤖 LLM 调用接口（Agent 需接入）</div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:8px; font-size:0.82em;">
+      <div style="background:rgba(139,92,246,0.05); border:1px solid rgba(139,92,246,0.15); border-radius:6px; padding:8px 10px;">
+        <div style="font-weight:700; color:var(--purple); margin-bottom:3px;">Layer 0 — 双经济体智能解读</div>
+        <div style="color:var(--dim); line-height:1.5;">触发条件：每轮分析时调用（可选）<br>
+        输入：5维度面板原始数据 + z-score<br>
+        输出：定性判断 + 异常标注 + 传导通道建议<br>
+        Skill：<code>skills/macro/layer0_tracking/</code></div>
+      </div>
+      <div style="background:rgba(139,92,246,0.05); border:1px solid rgba(139,92,246,0.15); border-radius:6px; padding:8px 10px;">
+        <div style="font-weight:700; color:var(--purple); margin-bottom:3px;">Layer 2.5 — 枢纽变量综合判断</div>
+        <div style="color:var(--dim); line-height:1.5;">触发条件：L2.5 框架输出后（可选）<br>
+        输入：USD/CNH 得分 + 6个商品比值 + 宏观三角<br>
+        输出：枢纽信号综合判断 + 通道警报评估<br>
+        Skill：<code>skills/macro/layer2_5_hub_variable/</code></div>
+      </div>
+      <div style="background:rgba(139,92,246,0.05); border:1px solid rgba(139,92,246,0.15); border-radius:6px; padding:8px 10px;">
+        <div style="font-weight:700; color:var(--purple); margin-bottom:3px;">Layer 4.5 — 人类裁决接口</div>
+        <div style="color:var(--dim); line-height:1.5;">触发条件：反身性压力≥70 OR 范式"转移" OR 信号与压力计持续冲突3周<br>
+        输入：压力计得分 + 范式状态 + 持续冲突的信号列表<br>
+        输出：人类裁决结果（暂停/调整/维持）<br>
+        Skill：<code>skills/macro/layer4_5_reflexivity/</code></div>
+      </div>
+      <div style="background:rgba(139,92,246,0.05); border:1px solid rgba(139,92,246,0.15); border-radius:6px; padding:8px 10px;">
+        <div style="font-weight:700; color:var(--purple); margin-bottom:3px;">Layer 5 — 配置决策辅助</div>
+        <div style="color:var(--dim); line-height:1.5;">触发条件：Beta+Alpha 合并后（可选）<br>
+        输入：各资产配置权重 + 信号列表 + 风险预算校验结果<br>
+        输出：最终配置建议 + 风险提示 + 行业配置细节<br>
+        Skill：<code>skills/macro/layer5_asset_allocation/</code></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 待接入清单 -->
+<div style="max-width:1600px; margin:14px auto 30px; padding:0 12px;">
+  <div style="background:rgba(245,158,11,0.05); border:1px solid rgba(245,158,11,0.2); border-radius:10px; padding:14px 18px;">
+    <div style="font-size:0.9em; font-weight:700; color:var(--orange); margin-bottom:8px;">📦 数据待接入清单（P0）</div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:8px; font-size:0.82em;">
+      <div style="background:rgba(245,158,11,0.06); border-radius:6px; padding:8px 10px;">
+        <div style="font-weight:700; color:var(--orange); margin-bottom:3px;">L2.5 枢纽变量</div>
+        <div style="color:var(--dim);"><strong style="color:var(--green);">框架已实现</strong>，缺：trade_surplus、pboc_mid_deviation、外储变化；铜金比 mock 量纲错误（143 vs 预设 0.15）；agent 拼接路径取错字段（hub_signals→应取 commodity_signals）</div>
+      </div>
+      <div style="background:rgba(245,158,11,0.06); border-radius:6px; padding:8px 10px;">
+        <div style="font-weight:700; color:var(--orange); margin-bottom:3px;">L3 历史分位数</div>
+        <div style="color:var(--dim);">ERP 百分位查找表（3-5年历史）→ 当前 ERP 信号为 N/A</div>
+      </div>
+      <div style="background:rgba(245,158,11,0.06); border-radius:6px; padding:8px 10px;">
+        <div style="font-weight:700; color:var(--orange); margin-bottom:3px;">L4 花旗 CESI</div>
+        <div style="color:var(--dim);">花旗经济意外指数 → Type A 信号当前缺失（0个）</div>
+      </div>
+      <div style="background:rgba(245,158,11,0.06); border-radius:6px; padding:8px 10px;">
+        <div style="font-weight:700; color:var(--orange); margin-bottom:3px;">L4.5 反身性数据</div>
+        <div style="color:var(--dim);">CFTC 持仓、ETF 资金流、北向资金 → 当前使用 Mock 值（50分）</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(59,130,246,0.4);"></div>新输入数据（外部数据源）</div>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(139,92,246,0.4);"></div>上层信号（来自前层）</div>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(16,185,129,0.4);"></div>本层输出（传入后层）</div>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(239,68,68,0.4);"></div>待确认问题（框架/代码）</div>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(245,158,11,0.4);"></div>待接入数据（P0优先级）</div>
+  <div class="legend-item"><div class="legend-dot" style="background:rgba(59,130,246,0.4);"></div>LLM 接口待接入</div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+function scrollToLayer(id) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelectorAll('.cn-item').forEach(i => i.classList.remove('active'));
+    document.querySelector('.cn-item[onclick="scrollToLayer(\\'' + id + '\\')"]')?.classList.add('active');
+  }
+}
+
+function toggleLayer(btn) {
+  const card = btn.closest('.lc');
+  card.classList.toggle('collapsed');
+  btn.textContent = card.classList.contains('collapsed') ? '展开' : '收起';
+}
+
+// 动画加载效果
+document.addEventListener('DOMContentLoaded', () => {
+  const bars = document.querySelectorAll('.wb-bar-fill');
+  bars.forEach(bar => {
+    bar.style.width = '0%';
+    setTimeout(() => {
+      bar.style.width = bar.style.width;
+    }, 300);
+  });
+
+  // 滚动高亮
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        document.querySelectorAll('.cn-item').forEach(i => i.classList.remove('active'));
+        const navItem = document.querySelector(`.cn-item[onclick="scrollToLayer('${id}')"]`);
+        if (navItem) navItem.classList.add('active');
+      }
+    });
+  }, { threshold: 0.2 });
+
+  document.querySelectorAll('.lc[id]').forEach(el => observer.observe(el));
+});
+</script>
+
+</body>
+</html>

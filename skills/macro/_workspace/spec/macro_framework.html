@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>宏观组分析框架3.0 — 数据流向全景图</title>
+<style>
+:root {
+  --bg:#0b1120; --card:#111827; --border:#1e293b;
+  --text:#e2e8f0; --dim:#64748b;
+  --blue:#3b82f6; --purple:#8b5cf6; --green:#10b981;
+  --cyan:#06b6d4; --pink:#ec4899; --orange:#f59e0b; --red:#ef4444;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+s { text-decoration:none; color:var(--dim); font-size:0.82em; }
+body { background:var(--bg); color:var(--text); font-family:'Segoe UI','Microsoft YaHei',sans-serif; line-height:1.5; }
+
+.header { text-align:center; padding:24px 16px 12px; border-bottom:1px solid var(--border); }
+.header h1 { font-size:1.5em; background:linear-gradient(90deg,#3b82f6,#8b5cf6,#06b6d4); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:4px; }
+.header .sub { color:var(--dim); font-size:0.82em; }
+.legend { display:flex; justify-content:center; gap:18px; margin-top:10px; flex-wrap:wrap; font-size:0.82em; }
+.li { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:middle; }
+
+.container { max-width:1600px; margin:0 auto; padding:16px 12px 60px; }
+
+/* Layer card */
+.lc { border-radius:12px; background:var(--card); border:1px solid var(--border); margin-bottom:0; overflow:hidden; }
+.lhd { display:flex; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--border); font-weight:700; }
+.ln { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:7px; font-size:0.78em; font-weight:800; flex-shrink:0; }
+.lt { font-size:0.9em; }
+.ltag { margin-left:auto; font-size:0.7em; padding:2px 8px; border-radius:8px; font-weight:600; }
+
+.l0 { border-color:rgba(59,130,246,0.25); }
+.l0 .lhd { background:rgba(59,130,246,0.06); }
+.l0 .ln { background:rgba(59,130,246,0.18); color:var(--blue); }
+.l0 .ltag { background:rgba(59,130,246,0.12); color:var(--blue); }
+
+.l1 { border-color:rgba(139,92,246,0.25); }
+.l1 .lhd { background:rgba(139,92,246,0.06); }
+.l1 .ln { background:rgba(139,92,246,0.18); color:var(--purple); }
+.l1 .ltag { background:rgba(139,92,246,0.12); color:var(--purple); }
+
+.l2 { border-color:rgba(236,72,153,0.25); }
+.l2 .lhd { background:rgba(236,72,153,0.06); }
+.l2 .ln { background:rgba(236,72,153,0.18); color:var(--pink); }
+.l2 .ltag { background:rgba(236,72,153,0.12); color:var(--pink); }
+
+.l25 { border-color:rgba(245,158,11,0.25); }
+.l25 .lhd { background:rgba(245,158,11,0.06); }
+.l25 .ln { background:rgba(245,158,11,0.18); color:var(--orange); }
+.l25 .ltag { background:rgba(245,158,11,0.12); color:var(--orange); }
+
+.l3 { border-color:rgba(16,185,129,0.25); }
+.l3 .lhd { background:rgba(16,185,129,0.06); }
+.l3 .ln { background:rgba(16,185,129,0.18); color:var(--green); }
+.l3 .ltag { background:rgba(16,185,129,0.12); color:var(--green); }
+
+.l4 { border-color:rgba(6,182,212,0.25); }
+.l4 .lhd { background:rgba(6,182,212,0.06); }
+.l4 .ln { background:rgba(6,182,212,0.18); color:var(--cyan); }
+.l4 .ltag { background:rgba(6,182,212,0.12); color:var(--cyan); }
+
+.l45 { border-color:rgba(168,85,247,0.25); }
+.l45 .lhd { background:rgba(168,85,247,0.06); }
+.l45 .ln { background:rgba(168,85,247,0.18); color:#a855f7; }
+.l45 .ltag { background:rgba(168,85,247,0.12); color:#a855f7; }
+
+.l5 { border-color:rgba(249,115,22,0.25); }
+.l5 .lhd { background:rgba(249,115,22,0.06); }
+.l5 .ln { background:rgba(249,115,22,0.18); color:#f97316; }
+.l5 .ltag { background:rgba(249,115,22,0.12); color:#f97316; }
+
+/* Flow row */
+.fr { display:flex; align-items:stretch; min-height:90px; }
+
+.zi { width:20%; min-width:160px; padding:8px 6px 8px 10px; border-right:1px solid var(--border); display:flex; flex-direction:column; gap:3px; }
+.zt { font-size:0.62em; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; opacity:0.45; margin-bottom:1px; }
+.igl { font-size:0.62em; font-weight:700; padding:1px 5px; border-radius:3px; margin-top:3px; display:table; }
+.ign { background:rgba(59,130,246,0.13); color:var(--blue); }
+.igu { background:rgba(139,92,246,0.13); color:var(--purple); }
+.ii { font-size:0.72em; padding:2px 5px; border-radius:4px; background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.05); line-height:1.3; }
+
+.ao { width:28px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.ao svg { display:block; }
+
+.zp { flex:1; padding:8px 4px; display:flex; flex-direction:column; gap:4px; }
+.zp .zt { font-size:0.62em; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; opacity:0.45; margin-bottom:1px; }
+.pm { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:5px; padding:5px 8px; font-size:0.73em; }
+.pmt { font-weight:700; margin-bottom:1px; font-size:0.95em; }
+.pmi { font-size:0.88em; color:var(--dim); margin-bottom:1px; }
+.pmi .tn { background:rgba(59,130,246,0.1); color:#60a5fa; padding:0 2px; border-radius:2px; }
+.pmi .tu { background:rgba(139,92,246,0.1); color:#a78bfa; padding:0 2px; border-radius:2px; }
+.pmo { font-size:0.9em; color:var(--green); margin-top:1px; }
+
+.zo { width:20%; min-width:160px; padding:8px 10px 8px 6px; border-left:1px solid var(--border); display:flex; flex-direction:column; gap:3px; }
+.zo .zt { color:var(--green); }
+.oi { font-size:0.72em; padding:2px 5px; border-radius:4px; background:rgba(16,185,129,0.05); border:1px solid rgba(16,185,129,0.12); line-height:1.3; }
+.oi .ov { color:var(--green); font-weight:600; }
+.oi s { color:var(--dim); font-size:0.82em; }
+.oi .nh { margin-top:2px; font-size:0.68em; color:var(--dim); }
+
+.lc2 { display:flex; justify-content:center; align-items:center; height:28px; }
+.lc2 svg { display:block; }
+
+/* Exception + Inflection */
+.exs { margin-top:30px; border:2px solid rgba(239,68,68,0.3); border-radius:12px; overflow:hidden; background:rgba(239,68,68,0.03); }
+.exh { background:rgba(239,68,68,0.08); padding:10px 14px; display:flex; align-items:center; gap:8px; font-weight:700; color:var(--red); font-size:0.92em; }
+.exb { padding:10px 12px; display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:8px; }
+.exc { background:rgba(239,68,68,0.04); border:1px solid rgba(239,68,68,0.12); border-radius:6px; padding:7px 9px; font-size:0.78em; }
+.ext { font-weight:700; color:var(--red); margin-bottom:2px; }
+.exr { color:var(--orange); font-size:0.9em; margin-bottom:2px; }
+.exl { color:var(--text); font-size:0.92em; }
+
+/* 模块2.1 拐点确认约束样式 */
+.pmc { margin-top:8px; border:1px solid rgba(245,158,11,0.3); border-radius:8px; overflow:hidden; background:rgba(245,158,11,0.04); }
+.pmct { background:rgba(245,158,11,0.1); padding:6px 10px; font-size:0.82em; font-weight:700; color:var(--orange); display:flex; align-items:center; gap:6px; }
+.pmcb { padding:8px 10px; font-size:0.78em; }
+.pmc-item { margin-bottom:6px; }
+.pmc-item:last-child { margin-bottom:0; }
+.pmc-rule { display:inline-block; padding:2px 6px; margin:2px 3px 2px 0; background:rgba(139,92,246,0.08); border-radius:4px; font-size:0.92em; color:var(--purple); }
+.pmc-pass { display:inline-block; padding:2px 6px; background:rgba(16,185,129,0.1); border-radius:4px; color:var(--green); font-size:0.92em; margin-right:6px; }
+.pmc-fail { display:inline-block; padding:2px 6px; background:rgba(239,68,68,0.08); border-radius:4px; color:var(--red); font-size:0.92em; }
+.pmc-tbl { width:100%; border-collapse:collapse; margin-top:6px; font-size:0.92em; }
+.pmc-tbl th { background:rgba(245,158,11,0.08); padding:4px 6px; text-align:left; font-weight:700; color:var(--orange); border-bottom:1px solid rgba(245,158,11,0.15); font-size:0.92em; }
+.pmc-tbl td { padding:3px 6px; border-bottom:1px solid rgba(255,255,255,0.03); vertical-align:top; font-size:0.92em; }
+.pmc-note { margin-top:6px; padding:5px 8px; background:rgba(59,130,246,0.06); border-radius:4px; font-size:0.92em; color:var(--blue); }
+
+/* 待对齐设计样式 */
+.tbd { margin-top:24px; border:1px solid rgba(59,130,246,0.25); border-radius:12px; overflow:hidden; }
+.tbh { background:rgba(59,130,246,0.06); padding:10px 14px; display:flex; align-items:center; gap:8px; font-weight:700; color:var(--blue); font-size:0.92em; }
+.tbb { padding:12px 14px; }
+.tbi { margin-bottom:12px; padding:10px 12px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid rgba(255,255,255,0.04); }
+.tbi:last-child { margin-bottom:0; }
+.tbn { font-weight:700; color:var(--blue); margin-bottom:4px; font-size:0.92em; }
+.tbq { color:var(--text); margin-bottom:6px; font-size:0.9em; line-height:1.5; }
+.tbs { color:var(--dim); font-size:0.85em; line-height:1.5; padding:6px 8px; background:rgba(255,255,255,0.02); border-radius:4px; }
+
+.ifs { margin-top:24px; border:1px solid rgba(139,92,246,0.25); border-radius:12px; overflow:hidden; }
+.ifh { background:rgba(139,92,246,0.06); padding:10px 14px; display:flex; align-items:center; gap:8px; font-weight:700; color:var(--purple); font-size:0.92em; }
+.ifb { padding:12px 14px; }
+.cyc { display:flex; align-items:center; justify-content:center; gap:0; flex-wrap:wrap; margin:8px 0; }
+.cn { padding:5px 10px; border-radius:5px; font-weight:700; font-size:0.82em; }
+.ca { color:var(--dim); padding:0 2px; }
+.ift { width:100%; border-collapse:collapse; margin-top:8px; font-size:0.78em; }
+.ift th { background:rgba(139,92,246,0.08); padding:6px 8px; text-align:left; font-weight:700; color:var(--purple); border-bottom:1px solid rgba(139,92,246,0.15); }
+.ift td { padding:5px 8px; border-bottom:1px solid rgba(255,255,255,0.03); vertical-align:top; }
+.bg { display:inline-block; padding:1px 5px; border-radius:3px; font-size:0.82em; font-weight:600; }
+.bgg { background:rgba(16,185,129,0.12); color:var(--green); }
+.bgr { background:rgba(239,68,68,0.12); color:var(--red); }
+.br { display:inline-block; padding:1px 5px; border-radius:3px; font-size:0.82em; font-weight:600; background:rgba(239,68,68,0.12); color:var(--red); }
+
+.ft { margin-top:30px; text-align:center; color:var(--dim); font-size:0.78em; padding:12px; }
+
+/* 待解决问题清单可编辑样式 */
+.tbd {
+  margin: 30px auto;
+  max-width: 1200px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.tbd .tbh {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: rgba(16, 185, 129, 0.08);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+.tbd .tbh .save-btn {
+  padding: 6px 16px;
+  background: var(--green);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.tbd .tbh .save-btn:hover {
+  background: #059669;
+  transform: translateY(-1px);
+}
+.tbd .tbh .save-btn:active {
+  transform: translateY(0);
+}
+.tbd .tbh .save-status {
+  font-size: 0.8em;
+  color: var(--green);
+  font-weight: normal;
+  margin-left: 12px;
+}
+.tbb {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tbi {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  transition: border-color 0.2s;
+}
+.tbi:hover {
+  border-color: var(--blue);
+}
+.tbn {
+  font-weight: 700;
+  color: var(--cyan);
+  margin-bottom: 8px;
+  font-size: 0.95em;
+}
+.tbq {
+  color: var(--dim);
+  font-size: 0.85em;
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+.tbs {
+  background: rgba(245, 158, 11, 0.08);
+  border-left: 3px solid var(--orange);
+  padding: 8px 12px;
+  font-size: 0.85em;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.tba {
+  margin-top: 8px;
+}
+.tba label {
+  display: block;
+  font-size: 0.8em;
+  color: var(--green);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.tba textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 10px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid var(--green);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.85em;
+  line-height: 1.5;
+  resize: vertical;
+  transition: all 0.2s;
+}
+.tba textarea:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+.tba textarea::placeholder {
+  color: var(--dim);
+  opacity: 0.6;
+}
+.tbs-resolved {
+  background: rgba(16, 185, 129, 0.12);
+  border-left-color: var(--green);
+  margin-top: 8px;
+}
+.tbs-resolved .tbr {
+  font-size: 0.85em;
+  color: var(--green);
+  font-weight: 600;
+}
+
+@media (max-width:1100px) {
+  .fr { flex-direction:column; }
+  .zi,.zo { width:100%; min-width:0; border:none; }
+  .ao { display:none; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>宏观组分析框架 3.1 — 数据流向全景图</h1>
+  <div class="sub">7层流水线 · 每层：入口(新数据/上层信号) → 内部处理(输入来源标注) → 出口(输出参数+流向) · V3.1新增Layer 4.5反身性与元认知层</div>
+  <div class="legend">
+    <span><i class="li" style="background:#3b82f6"></i> 新输入数据（本层引入）</span>
+    <span><i class="li" style="background:#8b5cf6"></i> 上层信号（来自前层）</span>
+    <span><i class="li" style="background:#10b981"></i> 输出参数（传至后层）</span>
+  </div>
+</div>
+
+<!-- ========== 数据流向总览（置顶） ========== -->
+<div style="max-width:1600px;margin:0 auto 16px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:12px 16px;">
+  <div style="text-align:center;font-size:0.82em;font-weight:700;color:var(--dim);margin-bottom:8px;">数据流向总览 — 7层流水线（V3.1）</div>
+  <div style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:5px;font-size:0.78em;">
+    <span style="padding:4px 10px;border-radius:6px;background:rgba(59,130,246,0.15);color:var(--blue);font-weight:600;">L0 双经济体</span>
+    <span style="color:var(--dim);">→</span>
+    <span style="padding:4px 10px;border-radius:6px;background:rgba(139,92,246,0.15);color:var(--purple);font-weight:600;">L1 CAI/FCI</span>
+    <span style="color:var(--dim);">→</span>
+    <span style="padding:4px 10px;border-radius:6px;background:rgba(236,72,153,0.15);color:var(--pink);font-weight:600;">L2 周期定位</span>
+    <span style="color:var(--dim);">→</span>
+    <span style="padding:4px 10px;border-radius:6px;background:rgba(245,158,11,0.15);color:var(--orange);font-weight:600;">L2.5 枢纽变量</span>
+    <span style="color:var(--dim);">→</span>
+    <span style="padding:4px 10px;border-radius:6px;background:rgba(16,185,129,0.15);color:var(--green);font-weight:600;">L3 市场定价</span>
+    <span style="color:var(--dim);">→</span>
+    <span style="padding:4px 10px;border-radius:6px;background:rgba(6,182,212,0.15);color:var(--cyan);font-weight:600;">L4 预期差</span>
+    <span style="color:var(--dim);">→</span>
+    <span style="padding:4px 10px;border-radius:6px;background:rgba(168,85,247,0.15);color:#a855f7;font-weight:600;">L4.5 反身性·元认知</span>
+    <span style="color:var(--dim);">→</span>
+    <span style="padding:4px 10px;border-radius:6px;background:rgba(249,115,22,0.15);color:#f97316;font-weight:600;">L5 资产配置</span>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ========== L0 ========== -->
+<div class="lc l0">
+  <div class="lhd">
+    <div class="ln">L0</div>
+    <div class="lt">双经济体追踪与中美交互通道</div>
+    <div class="ltag">输入层 · 纯新数据</div>
+  </div>
+  <div class="fr">
+    <div class="zi">
+      <div class="zt">入口数据</div>
+      <div class="igl ign">🌐 全新输入（外部数据源）</div>
+      <div class="ii">中国PMI/工业增加值 <s>NBS</s></div>
+      <div class="ii">社融存量/企业信贷 <s>PBOC</s></div>
+      <div class="ii">CPI/PPI/核心CPI <s>NBS</s></div>
+      <div class="ii">DR007/10Y国债 <s>CFETS</s></div>
+      <div class="ii">LPR/MLF <s>PBOC</s></div>
+      <div class="ii">ISM PMI/非农 <s>ISM/BLS</s></div>
+      <div class="ii">核心PCE/FFR <s>BEA/Fed</s></div>
+      <div class="ii">10Y UST/VIX <s>Bloomberg</s></div>
+    </div>
+    <div class="ao">
+      <svg width="24" height="80" viewBox="0 0 24 80">
+        <defs><marker id="a0" markerWidth="5" markerHeight="4" refX="2.5" refY="2" orient="auto"><polygon points="0,0 5,2 0,4" fill="#3b82f6"/></marker></defs>
+        <line x1="3" y1="18" x2="21" y2="18" stroke="#3b82f6" stroke-width="1" marker-end="url(#a0)" opacity="0.5"/>
+        <line x1="3" y1="45" x2="21" y2="45" stroke="#3b82f6" stroke-width="1" marker-end="url(#a0)" opacity="0.5"/>
+        <line x1="3" y1="70" x2="21" y2="70" stroke="#3b82f6" stroke-width="1" marker-end="url(#a0)" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="zp">
+      <div class="zt">内部处理模块（箭头标注输入来源）</div>
+      <div class="pm">
+        <div class="pmt">📊 模块0.1 — 双经济体5维面板构建</div>
+        <div class="pmi">输入：<span class="tn">全部L0外部指标</span>（中美各5维度）</div>
+        <div class="pmo">→ 输出：两国5维面板（数值 + z-score）</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">📈 模块0.2 — 跨国差值/比值信号</div>
+        <div class="pmi">输入：<span class="tn">中美同维度指标对</span> → 差值/比值 → z-score</div>
+        <div class="pmo">→ 输出：增长差/通胀差/利差 z-score序列</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">🔗 模块0.3 — 6条传导通道建模</div>
+        <div class="pmi">输入：<span class="tn">利差/美元/美联储政策/中国信贷/全球PMI/地缘</span></div>
+        <div class="pmo">→ 输出：通道触发状态 + 传导强度 + 交互层次判定</div>
+      </div>
+      <div class="pm" style="border:2px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.04);">
+        <div class="pmt" style="color:var(--red);">⚠ 异常场景检查（L0层内置）</div>
+        <div class="pmi" style="color:var(--dim);font-size:0.92em;">以下场景在L0数据读入后立即检查，结果传递至后续各层</div>
+        <div style="margin-top:6px;">
+          <div style="font-weight:700;font-size:0.92em;color:var(--orange);margin-bottom:4px;">🦢 黑天鹅 — 轻度冲击</div>
+          <div style="font-size:0.78em;margin-bottom:2px;"><span style="color:var(--dim);">等级：</span>轻度（满足任意2条即认定）</div>
+          <div style="font-size:0.78em;margin-bottom:2px;"><span style="color:var(--dim);">触发：</span>VIX单日攀升&lt;10点 · 沪深300单日跌幅&lt;3% · 北向单日净流出&lt;100亿</div>
+          <div style="font-size:0.78em;color:var(--orange);"><span style="color:var(--dim);">效应：</span>维持常规流程；仅下调信号强度(1-2分)；不否定周期定位</div>
+        </div>
+        <div style="margin-top:6px;">
+          <div style="font-weight:700;font-size:0.92em;color:var(--red);margin-bottom:4px;">🌋 黑天鹅 — 重度冲击</div>
+          <div style="font-size:0.78em;margin-bottom:2px;"><span style="color:var(--dim);">等级：</span>重度（满足任意2条即认定）</div>
+          <div style="font-size:0.78em;margin-bottom:2px;"><span style="color:var(--dim);">触发：</span>VIX单日≥10点或VIX&gt;30 · 沪深300单日跌幅≥5% · 北向单日净流出≥200亿或连续5日流出 · DXY单日波动&gt;1.5%</div>
+          <div style="font-size:0.78em;color:var(--red);"><span style="color:var(--dim);">效应：</span>⚡ 跳过L1-L4全部流水线；直接输出观望/风险预警；待冲击消退后重启</div>
+        </div>
+        <div style="margin-top:6px;">
+          <div style="font-weight:700;font-size:0.92em;color:var(--orange);margin-bottom:4px;">💸 流动性危机</div>
+          <div style="font-size:0.78em;margin-bottom:2px;"><span style="color:var(--dim);">等级：</span>重度（立即触发）</div>
+          <div style="font-size:0.78em;margin-bottom:2px;"><span style="color:var(--dim);">触发：</span>银行间资金面异常紧张（DR007单日&gt;政策利率+50BP）· 美元流动性枯竭（SOFR-EFFR利差&gt;25BP）</div>
+          <div style="font-size:0.78em;color:var(--red);"><span style="color:var(--dim);">效应：</span>⚡ 否决L2周期定位结论；直接输出看空/观望；待流动性回归后重启</div>
+        </div>
+      </div>
+    </div>
+    <div class="ao">
+      <svg width="24" height="80" viewBox="0 0 24 80">
+        <defs><marker id="o0" markerWidth="5" markerHeight="4" refX="2.5" refY="2" orient="auto"><polygon points="0,0 5,2 0,4" fill="#10b981"/></marker></defs>
+        <line x1="3" y1="15" x2="21" y2="15" stroke="#10b981" stroke-width="1" marker-end="url(#o0)" opacity="0.5"/>
+        <line x1="3" y1="45" x2="21" y2="45" stroke="#10b981" stroke-width="1" marker-end="url(#o0)" opacity="0.5"/>
+        <line x1="3" y1="70" x2="21" y2="70" stroke="#10b981" stroke-width="1" marker-end="url(#o0)" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="zo">
+      <div class="zt">出口输出</div>
+      <div class="oi"><span class="ov">两国5维面板</span><br><s>数值表 + z-score · 月度</s></div>
+      <div class="oi"><span class="ov">跨国差值信号</span><br><s>增长差/通胀差/利差 · z-score</s></div>
+      <div class="oi"><span class="ov">6条通道触发状态</span><br><s>触发/未触发 + 传导强度</s></div>
+      <div class="oi"><span class="ov">交互层次判定</span><br><s>对称/非对称/反馈循环</s></div>
+      <div class="nh">⬇ 全部传入 <b>L1</b>（CAI/FCI输入）</div>
+    </div>
+  </div>
+</div>
+
+<!-- Arrow L0→L1 -->
+<div class="lc2">
+  <svg width="18" height="28" viewBox="0 0 18 28">
+    <polygon points="9,0 18,14 9,28 0,14" fill="#3b82f6" opacity="0.4"/>
+    <polygon points="9,5 15,14 9,23 3,14" fill="#3b82f6"/>
+  </svg>
+</div>
+
+<!-- ========== L1 ========== -->
+<div class="lc l1">
+  <div class="lhd">
+    <div class="ln">L1</div>
+    <div class="lt">状态识别 — CAI/FCI 合成指标 + 通胀得分</div>
+    <div class="ltag">状态识别 · 上层信号+新数据</div>
+  </div>
+  <div class="fr">
+    <div class="zi">
+      <div class="zt">入口数据</div>
+      <div class="igl igu">⬇ 上层信号（来自L0）</div>
+      <div class="ii">两国5维面板 <s>L0输出</s></div>
+      <div class="ii">跨国差值信号 <s>L0输出</s></div>
+      <div class="igl ign" style="margin-top:5px">🌐 全新输入</div>
+      <div class="ii">CAI权重表 <s>框架固定</s></div>
+      <div class="ii">FCI权重表 <s>框架固定</s></div>
+      <div class="ii">通胀指标(水平+动量) <s>NBS/BEA</s></div>
+    </div>
+    <div class="ao">
+      <svg width="24" height="90" viewBox="0 0 24 90">
+        <defs><marker id="a1" markerWidth="5" markerHeight="4" refX="2.5" refY="2" orient="auto"><polygon points="0,0 5,2 0,4" fill="#8b5cf6"/></marker></defs>
+        <line x1="3" y1="18" x2="21" y2="18" stroke="#8b5cf6" stroke-width="1" marker-end="url(#a1)" opacity="0.5"/>
+        <line x1="3" y1="55" x2="21" y2="55" stroke="#3b82f6" stroke-width="1" marker-end="url(#a1)" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="zp">
+      <div class="zt">内部处理模块</div>
+      <div class="pm">
+        <div class="pmt">模块1.1 — 中国CAI合成</div>
+        <div class="pmi">输入：<span class="tu">L0中国指标面板</span> + <span class="tn">CAI权重表</span></div>
+        <div class="pmo">→ 中国CAI连续分数（σ单位）</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">模块1.2 — 中国FCI合成</div>
+        <div class="pmi">输入：<span class="tu">L0流动性面板</span> + <span class="tn">FCI权重表</span></div>
+        <div class="pmo">→ 中国FCI分数（σ，正=偏紧）</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">模块1.3 — 美国CAI/FCI合成</div>
+        <div class="pmi">输入：<span class="tu">L0美国指标面板</span> + <span class="tn">美版权重</span></div>
+        <div class="pmo">→ 美国CAI/FCI连续分数</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">模块1.4 — 通胀得分（独立合成）</div>
+        <div class="pmi">输入：<span class="tn">通胀指标(水平+动量)</span></div>
+        <div class="pmo">→ 中/美通胀得分（水平z×0.5 + 动量z×0.5）</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">模块1.5 — 离散标签兜底</div>
+        <div class="pmi">输入：<span class="tu">CAI/FCI分数</span>（缺失时使用）</div>
+        <div class="pmo">→ 上行/中性/下行 离散标签</div>
+      </div>
+    </div>
+    <div class="ao">
+      <svg width="24" height="90" viewBox="0 0 24 90">
+        <defs><marker id="o1" markerWidth="5" markerHeight="4" refX="2.5" refY="2" orient="auto"><polygon points="0,0 5,2 0,4" fill="#10b981"/></marker></defs>
+        <line x1="3" y1="15" x2="21" y2="15" stroke="#10b981" stroke-width="1" marker-end="url(#o1)" opacity="0.5"/>
+        <line x1="3" y1="55" x2="21" y2="55" stroke="#10b981" stroke-width="1" marker-end="url(#o1)" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="zo">
+      <div class="zt">出口输出</div>
+      <div class="oi"><span class="ov">中国CAI分数</span><br><s>连续值（σ），如+0.8σ</s></div>
+      <div class="oi"><span class="ov">中国FCI分数</span><br><s>连续值（σ），正=偏紧</s></div>
+      <div class="oi"><span class="ov">美国CAI/FCI分数</span><br><s>连续值（σ）</s></div>
+      <div class="oi"><span class="ov">中/美通胀得分</span><br><s>水平+动量双维度</s></div>
+      <div class="oi"><span class="ov">两国状态画像表</span><br><s>CAI/FCI/通胀 汇总</s></div>
+      <div class="nh">⬇ 全部传入 <b>L2</b>（周期定位输入）</div>
+    </div>
+  </div>
+</div>
+
+<!-- Arrow L1→L2 -->
+<div class="lc2">
+  <svg width="18" height="28" viewBox="0 0 18 28">
+    <polygon points="9,0 18,14 9,28 0,14" fill="#8b5cf6" opacity="0.4"/>
+    <polygon points="9,5 15,14 9,23 3,14" fill="#8b5cf6"/>
+  </svg>
+</div>
+
+<!-- ========== L2 ========== -->
+<div class="lc l2">
+  <div class="lhd">
+    <div class="ln">L2</div>
+    <div class="lt">周期定位 — 4象限 + 政策调节 + 长期债务周期</div>
+    <div class="ltag">周期定位 · 上层信号+新数据</div>
+  </div>
+  <div class="fr">
+    <div class="zi">
+      <div class="zt">入口数据</div>
+      <div class="igl igu">⬇ 上层信号（来自L1）</div>
+      <div class="ii">中/美CAI分数 <s>L1输出</s></div>
+      <div class="ii">中/美通胀得分 <s>L1输出</s></div>
+      <div class="ii">中/美FCI分数 <s>L1输出</s></div>
+      <div class="igl ign" style="margin-top:5px">🌐 全新输入</div>
+      <div class="ii">DR007/MLF/LPR <s>PBOC</s></div>
+      <div class="ii">专项债/财政赤字率 <s>财政部</s></div>
+      <div class="ii">地产政策宽松度 <s>各地住建</s></div>
+      <div class="ii">利率中枢/杠杆率 <s>BIS/PBOC</s></div>
+    </div>
+    <div class="ao">
+      <svg width="24" height="90" viewBox="0 0 24 90">
+        <defs><marker id="a2" markerWidth="5" markerHeight="4" refX="2.5" refY="2" orient="auto"><polygon points="0,0 5,2 0,4" fill="#8b5cf6"/></marker></defs>
+        <line x1="3" y1="20" x2="21" y2="20" stroke="#8b5cf6" stroke-width="1" marker-end="url(#a2)" opacity="0.5"/>
+        <line x1="3" y1="58" x2="21" y2="58" stroke="#3b82f6" stroke-width="1" marker-end="url(#a2)" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="zp">
+      <div class="zt">内部处理模块</div>
+      <div class="pm">
+        <div class="pmt">模块2.1 — 4象限定位（中美并行）</div>
+        <div class="pmi">输入：<span class="tu">CAI分数(增长方向)</span> + <span class="tu">通胀得分(通胀方向)</span></div>
+        <div class="pmo">→ 象限I/II/III/IV + 强弱标签（|CAI|>1.0σ=强）</div>
+        <div style="margin-top:6px;font-size:0.78em;color:var(--dim);line-height:1.6;">
+          ⚡ <b>拐点确认约束</b>（象限迁移时触发）：需满足①≥2个核心领先指标同向 ②连续2月同向变动 ③单月变动≥0.2pp；满足→正式切换象限，不满足→标记"象限过渡区"，延续上一周期结论。
+        </div>
+      </div>
+      <div class="pm">
+        <div class="pmt">模块2.2 — 政策维度调节（中国）</div>
+        <div class="pmi">输入：<span class="tn">DR007/MLF/专项债/地产政策</span> × 权重</div>
+        <div class="pmo">→ 政策综合得分（-1至+1）→ 调节象限信号强度</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">模块2.3 — 长期债务周期偏置</div>
+        <div class="pmi">输入：<span class="tn">利率中枢/杠杆率/央行资产负债表</span></div>
+        <div class="pmo">→ 战略偏置（美：黄金+10-20%；中：高股息+5-10%）</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">模块2.4 — 周期一致性校验</div>
+        <div class="pmi">输入：<span class="tu">全球周期 + 国内周期</span></div>
+        <div class="pmo">→ 一致性判定 + 分歧处理规则执行</div>
+      </div>
+      <div class="pm" style="border:2px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.04);">
+        <div class="pmt" style="color:var(--red);">⚠ 异常场景处理（L2层内置）</div>
+        <div class="pmi" style="color:var(--dim);font-size:0.92em;">以下场景在L2周期定位时同步检查，结果传递至L3及后续各层</div>
+        <div style="margin-top:6px;">
+          <div style="font-weight:700;font-size:0.92em;color:var(--purple);margin-bottom:4px;">⚡ 政策超预期突变</div>
+          <div style="font-size:0.78em;margin-bottom:2px;"><span style="color:var(--dim);">等级：</span>常规 / 历史级</div>
+          <div style="font-size:0.78em;margin-bottom:2px;"><span style="color:var(--dim);">触发：</span>历史级=财政&gt;1.5万亿/降准&gt;50BP/降息&gt;20BP</div>
+          <div style="font-size:0.78em;color:var(--purple);"><span style="color:var(--dim);">效应：</span>历史级→立即高频跟踪可临时调方向；仍需L2拐点确认方可正式切换</div>
+        </div>
+        <div style="margin-top:6px;">
+          <div style="font-weight:700;font-size:0.92em;color:var(--red);margin-bottom:4px;">📉 中美周期严重分化</div>
+          <div style="font-size:0.78em;margin-bottom:2px;"><span style="color:var(--dim);">等级：</span>中度（立即触发）</div>
+          <div style="font-size:0.78em;margin-bottom:2px;"><span style="color:var(--dim);">触发：</span>美联储大幅加息+国内大幅宽松（或反之）</div>
+          <div style="font-size:0.78em;color:var(--red);"><span style="color:var(--dim);">效应：</span>信号有效性下调至≤5分；仅输出结构性配置信号或观望</div>
+        </div>
+        <div style="margin-top:6px;">
+          <div style="font-weight:700;font-size:0.92em;color:var(--orange);margin-bottom:4px;">🔴 Sahm Rule 衰退预警</div>
+          <div style="font-size:0.78em;margin-bottom:2px;"><span style="color:var(--dim);">等级：</span>重度（立即触发）</div>
+          <div style="font-size:0.78em;margin-bottom:2px;"><span style="color:var(--dim);">触发：</span>Sahm Rule≥0.5（失业率3月均值−过去12月最低3月均值≥0.5pp）</div>
+          <div style="font-size:0.78em;color:var(--orange);"><span style="color:var(--dim);">效应：</span>①强制输出"美国衰退预警"置顶 ②美股信号↓1档 ③进入高频跟踪</div>
+        </div>
+        <div style="margin-top:6px;">
+          <div style="font-weight:700;font-size:0.92em;color:var(--blue);margin-bottom:4px;">📊 数据大幅修正</div>
+          <div style="font-size:0.78em;margin-bottom:2px;"><span style="color:var(--dim);">等级：</span>中度（按修正后数据触发）</div>
+          <div style="font-size:0.78em;margin-bottom:2px;"><span style="color:var(--dim);">触发：</span>官方数据修正导致原有信号方向反转</div>
+          <div style="font-size:0.78em;color:var(--blue);"><span style="color:var(--dim);">效应：</span>按修正后数据重新执行L2拐点判定；仅调整未来信号</div>
+        </div>
+        <div style="margin-top:6px;">
+          <div style="font-weight:700;font-size:0.92em;color:var(--cyan);margin-bottom:4px;">📋 政策预期打分卡</div>
+          <div style="font-size:0.78em;margin-bottom:2px;"><span style="color:var(--dim);">等级：</span>轻度/中度（按打分结果）</div>
+          <div style="font-size:0.78em;margin-bottom:2px;"><span style="color:var(--dim);">触发：</span>总分≥7强转向预期 · 5-6边际宽松 · ≤4无转向</div>
+          <div style="font-size:0.78em;color:var(--cyan);"><span style="color:var(--dim);">效应：</span>≥7分→允许提前1月输出前瞻信号 · 5-6分→有效性+1</div>
+        </div>
+      </div>
+    </div>
+    <div class="ao">
+      <svg width="24" height="90" viewBox="0 0 24 90">
+        <defs><marker id="o2" markerWidth="5" markerHeight="4" refX="2.5" refY="2" orient="auto"><polygon points="0,0 5,2 0,4" fill="#10b981"/></marker></defs>
+        <line x1="3" y1="18" x2="21" y2="18" stroke="#10b981" stroke-width="1" marker-end="url(#o2)" opacity="0.5"/>
+        <line x1="3" y1="58" x2="21" y2="58" stroke="#10b981" stroke-width="1" marker-end="url(#o2)" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="zo">
+      <div class="zt">出口输出</div>
+      <div class="oi"><span class="ov">全球周期定位</span><br><s>象限 + 强度</s></div>
+      <div class="oi"><span class="ov">美国周期定位</span><br><s>象限 + 强度</s></div>
+      <div class="oi"><span class="ov">中国周期定位</span><br><s>象限 + 强度</s></div>
+      <div class="oi"><span class="ov">政策综合得分</span><br><s>-1至+1，调节信号强度</s></div>
+      <div class="oi"><span class="ov">长期债务偏置方向</span><br><s>战略资产配置偏置</s></div>
+      <div class="nh">⬇ 全部传入 <b>L2.5</b>（枢纽变量分析）</div>
+    </div>
+  </div>
+</div>
+
+<!-- Arrow L2→L2.5 -->
+<div class="lc2">
+  <svg width="18" height="28" viewBox="0 0 18 28">
+    <polygon points="9,0 18,14 9,28 0,14" fill="#ec4899" opacity="0.4"/>
+    <polygon points="9,5 15,14 9,23 3,14" fill="#ec4899"/>
+  </svg>
+</div>
+
+<!-- ========== L2.5 ========== -->
+<div class="lc l25">
+  <div class="lhd">
+    <div class="ln">L2.5</div>
+    <div class="lt">枢纽变量分析层 — 全球宏观背景判断器</div>
+    <div class="ltag">传导枢纽 · 上层信号+新数据</div>
+  </div>
+  <div class="fr">
+    <div class="zi">
+      <div class="zt">入口数据</div>
+      <div class="igl igu">⬇ 上层信号（来自L2）</div>
+      <div class="ii">中/美周期定位 <s>L2输出</s></div>
+      <div class="ii">中/美政策得分 <s>L2输出</s></div>
+      <div class="igl ign" style="margin-top:5px">🌐 全新输入</div>
+      <div class="ii">USD/CNH + 中间价 <s>SAFE/PBOC</s></div>
+      <div class="ii">中美10Y利差 <s>CFETS</s></div>
+      <div class="ii">铜/金/油/铁矿石 <s>LME/DCE/ICE</s></div>
+      <div class="ii">CRB/南华/美元指数 <s>路透/南华/ICE</s></div>
+    </div>
+    <div class="ao">
+      <svg width="24" height="90" viewBox="0 0 24 90">
+        <defs><marker id="a25" markerWidth="5" markerHeight="4" refX="2.5" refY="2" orient="auto"><polygon points="0,0 5,2 0,4" fill="#8b5cf6"/></marker></defs>
+        <line x1="3" y1="20" x2="21" y2="20" stroke="#8b5cf6" stroke-width="1" marker-end="url(#a25)" opacity="0.5"/>
+        <line x1="3" y1="60" x2="21" y2="60" stroke="#3b82f6" stroke-width="1" marker-end="url(#a25)" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="zp">
+      <div class="zt">内部处理模块</div>
+      <div class="pm">
+        <div class="pmt">模块2.5.A — 汇率分析（USD/CNH方向得分）</div>
+        <div class="pmi">输入：<span class="tn">利差(0.3)+经常账户(0.2)+风险偏好(0.2)+政策意图(0.3)</span></div>
+        <div class="pmo">→ USD/CNH方向得分（z-score）→ 升值/贬值/震荡</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">模块2.5.B — 大宗商品6比值信号</div>
+        <div class="pmi">输入：<span class="tn">铜金比/油金比/铁铜比/大豆玉米比/黄金vs实际利率/南华vs全球PMI</span></div>
+        <div class="pmo">→ 6个比值z-score + 强信号标记（|z|>1.5σ）</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">模块2.5.C — 商品-汇率-利率三角定位</div>
+        <div class="pmi">输入：<span class="tn">美元指数z + 大宗z + 美债收益率z</span></div>
+        <div class="pmo">→ 4种全球宏观环境（紧缩/宽松/滞胀/通缩）</div>
+      </div>
+    </div>
+    <div class="ao">
+      <svg width="24" height="90" viewBox="0 0 24 90">
+        <defs><marker id="o25" markerWidth="5" markerHeight="4" refX="2.5" refY="2" orient="auto"><polygon points="0,0 5,2 0,4" fill="#10b981"/></marker></defs>
+        <line x1="3" y1="18" x2="21" y2="18" stroke="#10b981" stroke-width="1" marker-end="url(#o25)" opacity="0.5"/>
+        <line x1="3" y1="60" x2="21" y2="60" stroke="#10b981" stroke-width="1" marker-end="url(#o25)" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="zo">
+      <div class="zt">出口输出</div>
+      <div class="oi"><span class="ov">USD/CNH方向得分</span><br><s>z-score + 方向标签</s></div>
+      <div class="oi"><span class="ov">6个商品比值信号</span><br><s>z-score + 强信号标记</s></div>
+      <div class="oi"><span class="ov">全球宏观三角定位</span><br><s>紧缩/宽松/滞胀/通缩</s></div>
+      <div class="oi"><span class="ov">通道警报状态</span><br><s>触发项 + 传导强度</s></div>
+      <div class="nh">⬇ 全部传入 <b>L3</b>（市场定价提取）</div>
+    </div>
+  </div>
+</div>
+
+<!-- Arrow L2.5→L3 -->
+<div class="lc2">
+  <svg width="18" height="28" viewBox="0 0 18 28">
+    <polygon points="9,0 18,14 9,28 0,14" fill="#f59e0b" opacity="0.4"/>
+    <polygon points="9,5 15,14 9,23 3,14" fill="#f59e0b"/>
+  </svg>
+</div>
+
+<!-- ========== L3 ========== -->
+<div class="lc l3">
+  <div class="lhd">
+    <div class="ln">L3</div>
+    <div class="lt">市场定价提取 — 反推市场已定价了什么</div>
+    <div class="ltag">Alpha核心 · 上层信号+新数据</div>
+  </div>
+  <div class="fr">
+    <div class="zi">
+      <div class="zt">入口数据</div>
+      <div class="igl igu">⬇ 上层信号（来自L1/L2.5）</div>
+      <div class="ii">L1实际状态得分 <s>L1输出</s></div>
+      <div class="ii">L2.5枢纽变量信号 <s>L2.5输出</s></div>
+      <div class="igl ign" style="margin-top:5px">🌐 全新输入</div>
+      <div class="ii">A.利率市场价 <s>CFETS/Bloomberg</s></div>
+      <div class="ii">B.估值指标 <s>Wind/Bloomberg</s></div>
+      <div class="ii">C.汇率远期/期权 <s>HKMA/Bloomberg</s></div>
+      <div class="ii">D.商品期货价差 <s>SHFE/LME</s></div>
+      <div class="ii">E.信用利差 <s>Wind/ICE</s></div>
+    </div>
+    <div class="ao">
+      <svg width="24" height="100" viewBox="0 0 24 100">
+        <defs><marker id="a3" markerWidth="5" markerHeight="4" refX="2.5" refY="2" orient="auto"><polygon points="0,0 5,2 0,4" fill="#8b5cf6"/></marker></defs>
+        <line x1="3" y1="16" x2="21" y2="16" stroke="#8b5cf6" stroke-width="1" marker-end="url(#a3)" opacity="0.5"/>
+        <line x1="3" y1="50" x2="21" y2="50" stroke="#3b82f6" stroke-width="1" marker-end="url(#a3)" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="zp">
+      <div class="zt">内部处理模块（5类反推并行）</div>
+      <div class="pm">
+        <div class="pmt">模块3.A — 利率市场反推（增长/通胀/政策预期）</div>
+        <div class="pmi">输入：<span class="tn">期限利差/IRS/隐含通胀</span> → 反推 → 对比 <span class="tu">L1实际</span></div>
+        <div class="pmo">→ 利率市场隐含预期得分（z-score）</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">模块3.B — 估值反推（盈利预期）</div>
+        <div class="pmi">输入：<span class="tn">前瞻PE/ERP/A-H溢价</span> → 反推 → 对比 <span class="tu">L1实际状态</span></div>
+        <div class="pmo">→ 估值隐含预期得分（z-score）</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">模块3.C — 汇率反推（资本流动预期）</div>
+        <div class="pmi">输入：<span class="tn">CNH远期点/CNY-CNH价差/期权RR</span></div>
+        <div class="pmo">→ 汇率隐含贬值预期得分</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">模块3.D — 商品反推（全球需求预期）</div>
+        <div class="pmi">输入：<span class="tn">铜金比/远月近月价差/南华vs全球PMI</span></div>
+        <div class="pmo">→ 商品市场隐含需求预期得分</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">模块3.E — 信用反推（风险偏好）</div>
+        <div class="pmi">输入：<span class="tn">AA信用利差/城投-国开债利差/HY-IG利差</span></div>
+        <div class="pmo">→ 信用市场隐含风险偏好得分</div>
+      </div>
+    </div>
+    <div class="ao">
+      <svg width="24" height="100" viewBox="0 0 24 100">
+        <defs><marker id="o3" markerWidth="5" markerHeight="4" refX="2.5" refY="2" orient="auto"><polygon points="0,0 5,2 0,4" fill="#10b981"/></marker></defs>
+        <line x1="3" y1="15" x2="21" y2="15" stroke="#10b981" stroke-width="1" marker-end="url(#o3)" opacity="0.5"/>
+        <line x1="3" y1="55" x2="21" y2="55" stroke="#10b981" stroke-width="1" marker-end="url(#o3)" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="zo">
+      <div class="zt">出口输出</div>
+      <div class="oi"><span class="ov">5类市场定价画像</span><br><s>中国+美国各5类隐含预期z-score</s></div>
+      <div class="oi"><span class="ov">定价偏差表</span><br><s>实际z-score − 定价z-score</s></div>
+      <div class="oi"><span class="ov">两国状态对照表</span><br><s>实际状态 vs 市场定价 并排</s></div>
+      <div class="nh">⬇ 全部传入 <b>L4</b>（预期差信号引擎）</div>
+    </div>
+  </div>
+</div>
+
+<!-- Arrow L3→L4 -->
+<div class="lc2">
+  <svg width="18" height="28" viewBox="0 0 18 28">
+    <polygon points="9,0 18,14 9,28 0,14" fill="#10b981" opacity="0.4"/>
+    <polygon points="9,5 15,14 9,23 3,14" fill="#10b981"/>
+  </svg>
+</div>
+
+<!-- ========== L4 ========== -->
+<div class="lc l4">
+  <div class="lhd">
+    <div class="ln">L4</div>
+    <div class="lt">预期差信号引擎 — Alpha的真正来源</div>
+    <div class="ltag">信号生成 · 上层信号+新数据</div>
+  </div>
+  <div class="fr">
+    <div class="zi">
+      <div class="zt">入口数据</div>
+      <div class="igl igu">⬇ 上层信号（来自L1/L2.5/L3）</div>
+      <div class="ii">L1实际状态得分 <s>L1输出</s></div>
+      <div class="ii">L2.5枢纽变量信号 <s>L2.5输出</s></div>
+      <div class="ii">L3市场定价画像 <s>L3输出</s></div>
+      <div class="ii">L3定价偏差表 <s>L3输出</s></div>
+      <div class="igl ign" style="margin-top:5px">🌐 全新输入</div>
+      <div class="ii">花旗经济意外指数 <s>花旗/Bloomberg</s></div>
+    </div>
+    <div class="ao">
+      <svg width="24" height="90" viewBox="0 0 24 90">
+        <defs><marker id="a4" markerWidth="5" markerHeight="4" refX="2.5" refY="2" orient="auto"><polygon points="0,0 5,2 0,4" fill="#8b5cf6"/></marker></defs>
+        <line x1="3" y1="18" x2="21" y2="18" stroke="#8b5cf6" stroke-width="1" marker-end="url(#a4)" opacity="0.5"/>
+        <line x1="3" y1="55" x2="21" y2="55" stroke="#3b82f6" stroke-width="1" marker-end="url(#a4)" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="zp">
+      <div class="zt">内部处理模块</div>
+      <div class="pm">
+        <div class="pmt">信号A — 高频意外（数据vs共识）</div>
+        <div class="pmi">输入：<span class="tn">花旗CESI</span> + <span class="tu">L1实际状态</span></div>
+        <div class="pmo">→ 方向(正/负) + 强度(百分位) · 有效期2-4周</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">信号B — 基本面vs市场定价（核心Alpha）</div>
+        <div class="pmi">输入：<span class="tu">L1实际z-score</span> − <span class="tu">L3定价z-score</span> = 预期差</div>
+        <div class="pmo">→ 4类预期差方向+强度 · 衰减每月20% · 有效期1-3月</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">信号C — 跨国预期差（中美周期错位）</div>
+        <div class="pmi">输入：<span class="tu">中美增长差/通胀差/政策差</span></div>
+        <div class="pmo">→ 6个跨国预期差信号 · 衰减每月15%</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">信号D+E — 枢纽变量+估值行为信号</div>
+        <div class="pmi">输入：<span class="tu">L2.5枢纽信号</span> + <span class="tu">L3估值/行为指标</span></div>
+        <div class="pmo">→ 6个枢纽信号 + 2-3个行为信号 · 约20个信号源</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">信号衰减+复核规则</div>
+        <div class="pmi">输入：各信号发布时间 + 连续反向周数</div>
+        <div class="pmo">→ 衰减调整后强度 + 复核记录 + 强制清零判定</div>
+      </div>
+    </div>
+    <div class="ao">
+      <svg width="24" height="90" viewBox="0 0 24 90">
+        <defs><marker id="o4" markerWidth="5" markerHeight="4" refX="2.5" refY="2" orient="auto"><polygon points="0,0 5,2 0,4" fill="#10b981"/></marker></defs>
+        <line x1="3" y1="15" x2="21" y2="15" stroke="#10b981" stroke-width="1" marker-end="url(#o4)" opacity="0.5"/>
+        <line x1="3" y1="55" x2="21" y2="55" stroke="#10b981" stroke-width="1" marker-end="url(#o4)" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="zo">
+      <div class="zt">出口输出</div>
+      <div class="oi"><span class="ov">3类预期差信号</span><br><s>方向(正/负)+强度(百分位)+边际变化</s></div>
+      <div class="oi"><span class="ov">约20个信号源汇总</span><br><s>目标筛选10-15个低相关信号</s></div>
+      <div class="oi"><span class="ov">信号相关性矩阵</span><br><s>季度滚动校验 · 相关系数>0.5降权</s></div>
+      <div class="oi"><span class="ov">信号复核记录</span><br><s>触发原因+复核结论+后续行动</s></div>
+      <div class="nh">⬇ 全部传入 <b>L4.5</b>（反身性与元认知修正）</div>
+    </div>
+  </div>
+</div>
+
+<!-- Arrow L4→L4.5 -->
+<div class="lc2">
+  <svg width="18" height="28" viewBox="0 0 18 28">
+    <polygon points="9,0 18,14 9,28 0,14" fill="#06b6d4" opacity="0.4"/>
+    <polygon points="9,5 15,14 9,23 3,14" fill="#06b6d4"/>
+  </svg>
+</div>
+
+<!-- ========== L4.5 (V3.1新增) ========== -->
+<div class="lc l45">
+  <div class="lhd">
+    <div class="ln">L4.5</div>
+    <div class="lt">反身性与元认知层 — 信号三重修正（V3.1新增）</div>
+    <div class="ltag" style="background:rgba(168,85,247,0.12);color:#a855f7;">元认知修正 · 上层信号+新数据</div>
+  </div>
+  <div class="fr">
+    <div class="zi">
+      <div class="zt">入口数据</div>
+      <div class="igl igu">⬇ 上层信号（来自L4）</div>
+      <div class="ii">3类预期差信号方向+强度 <s>L4输出</s></div>
+      <div class="ii">信号相关性矩阵 <s>L4输出</s></div>
+      <div class="igl ign" style="margin-top:5px">🌐 全新输入</div>
+      <div class="ii">CFTC非商业持仓 <s>CFTC</s></div>
+      <div class="ii">ETF资金流 <s>Bloomberg</s></div>
+      <div class="ii">北向资金流向 <s>Wind</s></div>
+      <div class="ii">卖方/买方策略报告观点 <s>各券商</s></div>
+      <div class="ii">铜金比/利差/ERP相关性 <s>Bloomberg</s></div>
+      <div class="ii">美联储/央行政策措辞 <s>Fed/PBOC</s></div>
+      <div class="ii">跨境资本流向 <s>BIS/TIC</s></div>
+    </div>
+    <div class="ao">
+      <svg width="24" height="90" viewBox="0 0 24 90">
+        <defs><marker id="a45" markerWidth="5" markerHeight="4" refX="2.5" refY="2" orient="auto"><polygon points="0,0 5,2 0,4" fill="#a855f7"/></marker></defs>
+        <line x1="3" y1="18" x2="21" y2="18" stroke="#a855f7" stroke-width="1" marker-end="url(#a45)" opacity="0.5"/>
+        <line x1="3" y1="55" x2="21" y2="55" stroke="#06b6d4" stroke-width="1" marker-end="url(#a45)" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="zp">
+      <div class="zt">内部处理模块</div>
+      <div class="pm" style="border:1px solid rgba(168,85,247,0.3);">
+        <div class="pmt" style="color:#a855f7;">🪞 模块4.5.1 — 反身性压力计</div>
+        <div class="pmi">输入：<span class="tn">CFTC持仓/ETF资金流/北向资金/策略报告</span></div>
+        <div style="font-size:0.78em;margin-top:4px;color:var(--dim);">
+          四大压力指标：信号拥挤度(0-25) + 仓位集中度(0-25) + 自我实现指数(0-25) + 跨框架一致性(0-25)
+        </div>
+        <div class="pmo">→ 反身性压力综合得分(0-100) · 绿色0-30/黄色30-50/橙色50-70/红色70-100</div>
+      </div>
+      <div class="pm" style="border:1px solid rgba(168,85,247,0.3);">
+        <div class="pmt" style="color:#a855f7;">🔮 模块4.5.2 — 范式稳定性监测</div>
+        <div class="pmi">输入：<span class="tn">跨资产相关性/政策措辞/跨境资本流向</span></div>
+        <div style="font-size:0.78em;margin-top:4px;color:var(--dim);">
+          三大代理指标：跨资产相关性结构断裂 + 政策框架措辞质变 + 全球资本流动结构突变
+        </div>
+        <div class="pmo">→ 范式稳定性判定 · 稳定(0触发)/动摇(1触发)/转移(≥2触发)</div>
+      </div>
+      <div class="pm" style="border:1px solid rgba(168,85,247,0.3);">
+        <div class="pmt" style="color:#a855f7;">♻️ 模块4.5.3 — 逻辑生命周期监控</div>
+        <div class="pmi">输入：<span class="tn">报告提及次数/策略资金规模</span></div>
+        <div style="font-size:0.78em;margin-top:4px;color:var(--dim);">
+          5个阶段：萌芽期(×1.0) → 扩散期(×0.9) → 共识期(×0.6) → 透支期(×0.3) → 崩塌期(×0)
+        </div>
+        <div class="pmo">→ 逻辑生命周期判定 + 修正系数</div>
+      </div>
+      <div class="pm" style="border:2px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.04);">
+        <div class="pmt" style="color:var(--red);">🧠 模块4.5.4 — 人类裁决接口</div>
+        <div class="pmi">触发条件：反身性压力>70(红色) OR 范式"转移" OR 信号与压力计持续冲突(3周)</div>
+        <div class="pmo">→ 暂停Alpha偏离至25% · 呈现状态 · 定性类比 · 人类裁决 · 记录归档</div>
+      </div>
+      <div class="pm" style="border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.04);">
+        <div class="pmt" style="color:var(--green);">⚖️ 模块4.5.5 — 信号修正合成</div>
+        <div class="pmi">最终信号强度 = L4初始强度 × (1−累计衰减率) × 生命周期修正 × 反身性压力修正 × 范式稳定性修正</div>
+        <div style="font-size:0.78em;margin-top:4px;color:var(--dim);">
+          示例：初始80% × 0.6(衰减) × 0.9(扩散期) × 0.75(黄色) × 1.0(稳定) = 32.4% → 无效信号
+        </div>
+        <div class="pmo">→ 修正后信号强度 → ≥80%强(0.3) / 60-80%中强(0.2) / 50-60%弱(0.1) / &lt;50%无效</div>
+      </div>
+    </div>
+    <div class="ao">
+      <svg width="24" height="90" viewBox="0 0 24 90">
+        <defs><marker id="o45" markerWidth="5" markerHeight="4" refX="2.5" refY="2" orient="auto"><polygon points="0,0 5,2 0,4" fill="#10b981"/></marker></defs>
+        <line x1="3" y1="15" x2="21" y2="15" stroke="#10b981" stroke-width="1" marker-end="url(#o45)" opacity="0.5"/>
+        <line x1="3" y1="55" x2="21" y2="55" stroke="#10b981" stroke-width="1" marker-end="url(#o45)" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="zo">
+      <div class="zt">出口输出</div>
+      <div class="oi"><span class="ov">反身性压力综合得分</span><br><s>0-100分 + 四项子指标得分 · 周度(红色日度)</s></div>
+      <div class="oi"><span class="ov">范式稳定性判定</span><br><s>稳定/动摇/转移 · 月度(触发即时)</s></div>
+      <div class="oi"><span class="ov">逻辑生命周期判定</span><br><s>萌芽/扩散/共识/透支/崩塌 · 月度</s></div>
+      <div class="oi"><span class="ov">修正后信号强度</span><br><s>L4初始强度 × 三重修正系数 · 周度</s></div>
+      <div class="nh">⬇ 全部传入 <b>L5</b>（资产配置权重）</div>
+    </div>
+  </div>
+</div>
+
+<!-- Arrow L4.5→L5 -->
+<div class="lc2">
+  <svg width="18" height="28" viewBox="0 0 18 28">
+    <polygon points="9,0 18,14 9,28 0,14" fill="#a855f7" opacity="0.4"/>
+    <polygon points="9,5 15,14 9,23 3,14" fill="#a855f7"/>
+  </svg>
+</div>
+
+<!-- ========== L5 ========== -->
+<div class="lc l5">
+  <div class="lhd">
+    <div class="ln">L5</div>
+    <div class="lt">资产配置与权重输出 — Beta + Alpha 双层</div>
+    <div class="ltag">决策输出 · 上层信号 + 新数据</div>
+  </div>
+  <div class="fr">
+    <div class="zi">
+      <div class="zt">入口数据</div>
+      <div class="igl igu">⬇ 上层信号（来自L2/L2.5/L4.5）</div>
+      <div class="ii">L4.5修正后信号(强度+方向) <s>L4.5输出</s></div>
+      <div class="ii">L2.5枢纽变量信号 <s>L2.5输出</s></div>
+      <div class="ii">L2周期定位+政策得分 <s>L2输出</s></div>
+      <div class="igl ign" style="margin-top:5px">🌐 全新输入</div>
+      <div class="ii">5类资产3年滚动波动率 <s>Wind/Bloomberg</s></div>
+      <div class="ii">行业景气跟踪指标 <s>各行业数据源</s></div>
+    </div>
+    <div class="ao">
+      <svg width="24" height="90" viewBox="0 0 24 90">
+        <defs><marker id="a5" markerWidth="5" markerHeight="4" refX="2.5" refY="2" orient="auto"><polygon points="0,0 5,2 0,4" fill="#8b5cf6"/></marker></defs>
+        <line x1="3" y1="18" x2="21" y2="18" stroke="#8b5cf6" stroke-width="1" marker-end="url(#a5)" opacity="0.5"/>
+        <line x1="3" y1="58" x2="21" y2="58" stroke="#3b82f6" stroke-width="1" marker-end="url(#a5)" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="zp">
+      <div class="zt">内部处理模块</div>
+      <div class="pm">
+        <div class="pmt">模块5.1 — Beta层（All Weather 风险平价）</div>
+        <div class="pmi">输入：<span class="tn">5类资产波动率</span> + <span class="tu">L2长期债务偏置</span></div>
+        <div class="pmo">→ Beta基准权重（权重∝1/σ）· 年化波动≤8%</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">模块5.2 — Alpha层（预期差→偏离映射）</div>
+        <div class="pmi">输入：<span class="tu">L4.5修正后信号(三重修正+衰减)</span> → 查表映射偏离系数</div>
+        <div class="pmo">→ Alpha偏离权重（系数0.3/0.2/0.1）· 同向相加/反向取净</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">模块5.3 — 行业景气映射（A股+美股）</div>
+        <div class="pmi">输入：<span class="tu">L4预期差分</span> + <span class="tn">行业景气指标</span> → 评分公式</div>
+        <div class="pmo">→ 行业配置得分(0-10分) → 超配/标配/低配</div>
+      </div>
+      <div class="pm">
+        <div class="pmt">模块5.4 — 风险预算校验</div>
+        <div class="pmi">输入：<span class="tu">Beta+Alpha合并权重</span> → 5项约束校验</div>
+        <div class="pmo">→ 校验通过/触发截断 · 触及回撤上限→Alpha清零</div>
+      </div>
+    </div>
+    <div class="ao">
+      <svg width="24" height="90" viewBox="0 0 24 90">
+        <defs><marker id="o5" markerWidth="5" markerHeight="4" refX="2.5" refY="2" orient="auto"><polygon points="0,0 5,2 0,4" fill="#10b981"/></marker></defs>
+        <line x1="3" y1="15" x2="21" y2="15" stroke="#10b981" stroke-width="1" marker-end="url(#o5)" opacity="0.5"/>
+        <line x1="3" y1="58" x2="21" y2="58" stroke="#10b981" stroke-width="1" marker-end="url(#o5)" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="zo">
+      <div class="zt">出口输出</div>
+      <div class="oi"><span class="ov">Beta基准权重表</span><br><s>A股/国债/商品/黄金/美元 · 月度再平衡</s></div>
+      <div class="oi"><span class="ov">Alpha偏离权重</span><br><s>各资产偏离幅度 + 驱动信号标注</s></div>
+      <div class="oi"><span class="ov">最终资产配置权重</span><br><s>Beta + Alpha 合并 · 风险预算校验后</s></div>
+      <div class="oi"><span class="ov">A股+美股行业配置</span><br><s>超配/标配/低配建议</s></div>
+      <div class="oi"><span class="ov">标准化信号输出(15项)</span><br><s>完整模板 · 周度更新</s></div>
+      <div class="nh">✓ 最终输出 · 流程结束</div>
+    </div>
+  </div>
+</div>
+
+
+
+
+<!-- ========== 待解决问题清单 ========== -->
+<div class="tbd">
+  <div class="tbh">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:1.1em;">📋</span>
+      <span>V3.1 遗留待解决问题（共16项）</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span class="save-status" id="saveStatus"></span>
+      <button class="save-btn" onclick="saveAllAnswers()">💾 保存答案</button>
+    </div>
+  </div>
+  <div class="tbb">
+    <div class="tbi" data-problem="P1">
+      <div class="tbn">P1 — 传导强度量化方法</div>
+      <div class="tbq">V3.1中"传导强度"仅为输出项，缺少具体计算公式和数值范围定义。</div>
+      <div class="tbs">需补充：传导强度计算公式、数值范围（0-1或其他）、阈值设定</div>
+      <div class="tba">
+        <label>📝 专家填写答案：</label>
+        <textarea id="answer_P1" placeholder="请在此输入答案..."></textarea>
+      </div>
+    </div>
+    <div class="tbi" data-problem="P2">
+      <div class="tbn">P2 — 交互层次量化判定</div>
+      <div class="tbq">V3.1第566-572行有定性描述，但缺乏量化阈值（相关系数、Granger因果显著性水平）。</div>
+      <div class="tbs">需补充：对称/非对称/反馈三种交互类型的量化判定标准</div>
+      <div class="tba">
+        <label>📝 专家填写答案：</label>
+        <textarea id="answer_P2" placeholder="请在此输入答案..."></textarea>
+      </div>
+    </div>
+    <div class="tbi" data-problem="P3">
+      <div class="tbn">P3 — 长期债务周期判定阈值</div>
+      <div class="tbq">V3.1第910-924行有特征描述，缺少具体量化阈值。</div>
+      <div class="tbs">需补充：债务/GDP比率、偿债率上升速度、政策空间受限程度的临界值</div>
+      <div class="tba">
+        <label>📝 专家填写答案：</label>
+        <textarea id="answer_P3" placeholder="请在此输入答案..."></textarea>
+      </div>
+    </div>
+    <div class="tbi" data-problem="P4">
+      <div class="tbn">P4 — 信号相关性降权算法</div>
+      <div class="tbq">V3.1第1388行仅说明相关系数>0.5时"取其一或降权"，降权幅度未定义。</div>
+      <div class="tbs">需补充：具体的降权系数计算公式</div>
+      <div class="tba">
+        <label>📝 专家填写答案：</label>
+        <textarea id="answer_P4" placeholder="请在此输入答案..."></textarea>
+      </div>
+    </div>
+    <div class="tbi" data-problem="P5">
+      <div class="tbn">P5 — 信号筛选算法</div>
+      <div class="tbq">V3.1第1378-1387行仅引用"投资圣杯原理"，缺少具体筛选步骤。</div>
+      <div class="tbs">需补充：信号筛选的完整算法流程</div>
+      <div class="tba">
+        <label>📝 专家填写答案：</label>
+        <textarea id="answer_P5" placeholder="请在此输入答案..."></textarea>
+      </div>
+    </div>
+    <div class="tbi" data-problem="P6">
+      <div class="tbn">P6 — 汇率方向得分中间区间（±0.5σ~±1.0σ）</div>
+      <div class="tbq">V3.1第988-994行定义了>±1.0σ和<±0.5σ的处理方式，±0.5σ到±1.0σ之间未明确。</div>
+      <div class="tbs">需补充：中间区间的汇率方向得分赋值规则</div>
+      <div class="tba">
+        <label>📝 专家填写答案：</label>
+        <textarea id="answer_P6" placeholder="请在此输入答案..."></textarea>
+      </div>
+    </div>
+    <div class="tbi" data-problem="P7">
+      <div class="tbn">P7 — 异常场景多触发优先级</div>
+      <div class="tbq">V3.1第2080-2211行列出6类异常场景，但多场景同时触发时优先级未定义。</div>
+      <div class="tbs">需补充：异常场景优先级排序表</div>
+      <div class="tba">
+        <label>📝 专家填写答案：</label>
+        <textarea id="answer_P7" placeholder="请在此输入答案..."></textarea>
+      </div>
+    </div>
+    <div class="tbi" data-problem="P8">
+      <div class="tbn">P8 — 信号时间对齐方法</div>
+      <div class="tbq">V3.1未讨论日度/周度/月度/季度信号的时间对齐问题。</div>
+      <div class="tbs">需补充：插值方法（末值/均值/线性插值）、信号有效期定义</div>
+      <div class="tba">
+        <label>📝 专家填写答案：</label>
+        <textarea id="answer_P8" placeholder="请在此输入答案..."></textarea>
+      </div>
+    </div>
+    <div class="tbi" data-problem="P9">
+      <div class="tbn">P9 — 数据频率不匹配处理</div>
+      <div class="tbq">V3.1第288-300行有频率分层，但高频→低频的降频/插值方法未说明。</div>
+      <div class="tbs">需补充：频率转换方法、缺失数据处理策略</div>
+      <div class="tba">
+        <label>📝 专家填写答案：</label>
+        <textarea id="answer_P9" placeholder="请在此输入答案..."></textarea>
+      </div>
+    </div>
+    <div class="tbi" data-problem="P10">
+      <div class="tbn">P10 — 象限过渡区数据等待机制</div>
+      <div class="tbq">V3.1第467-474行有基本规则，但等待的具体数据清单、人工介入阈值、过渡区持续上限未定义。</div>
+      <div class="tbs">需补充：等待数据清单、人工参与触发条件、过渡区时长上限</div>
+      <div class="tba">
+        <label>📝 专家填写答案：</label>
+        <textarea id="answer_P10" placeholder="请在此输入答案..."></textarea>
+      </div>
+    </div>
+    <div class="tbi" data-problem="P11">
+      <div class="tbn">P11 — 异常场景判断标准量化</div>
+      <div class="tbq">"政策超预期突变常规级"、"中美周期严重分化"、"数据大幅修正"等缺少量化阈值。</div>
+      <div class="tbs">需补充：常规级/大幅的量化定义（如：加息>25bp为大幅）</div>
+      <div class="tba">
+        <label>📝 专家填写答案：</label>
+        <textarea id="answer_P11" placeholder="请在此输入答案..."></textarea>
+      </div>
+    </div>
+    <div class="tbi" data-problem="P12">
+      <div class="tbn">P12 — 指标有效性回测方法</div>
+      <div class="tbq">V3.1第304-326行有回测框架，但Pearson/Spearman选择、滚动窗口vs固定区间未明确。</div>
+      <div class="tbs">需补充：统计方法选择标准、胜率显著性检验方法</div>
+      <div class="tba">
+        <label>📝 专家填写答案：</label>
+        <textarea id="answer_P12" placeholder="请在此输入答案..."></textarea>
+      </div>
+    </div>
+    <div class="tbi" data-problem="P13">
+      <div class="tbn">P13 — Skill运行频率与高低频同步</div>
+      <div class="tbq">V3.1第288-300行有频率分层，但Skill实际运行频率、高频→低频同步方法未明确。</div>
+      <div class="tbs">需补充：Skill运行频率配置方案、信号同步衰减计算</div>
+      <div class="tba">
+        <label>📝 专家填写答案：</label>
+        <textarea id="answer_P13" placeholder="请在此输入答案..."></textarea>
+      </div>
+    </div>
+    <div class="tbi" data-problem="P14">
+      <div class="tbn">P14 — 反身性压力计数据可得性（V3.1新增）</div>
+      <div class="tbq">V3.1第1568-1578行定义了4个指标，但各指标的数据来源和可得性未评估。</div>
+      <div class="tbs">需补充：各子指标的数据源列表、更新频率、替代指标</div>
+      <div class="tba">
+        <label>📝 专家填写答案：</label>
+        <textarea id="answer_P14" placeholder="请在此输入答案..."></textarea>
+      </div>
+    </div>
+    <div class="tbi" data-problem="P15">
+      <div class="tbn">P15 — 逻辑生命周期阶段量化（V3.1新增）</div>
+      <div class="tbq">V3.1第1468-1500行定义了5阶段及系数，但各阶段边界的量化判定未明确。</div>
+      <div class="tbs">需补充：各阶段边界的时间阈值、系数跳跃触发条件</div>
+      <div class="tba">
+        <label>📝 专家填写答案：</label>
+        <textarea id="answer_P15" placeholder="请在此输入答案..."></textarea>
+      </div>
+    </div>
+    <div class="tbi" data-problem="P16">
+      <div class="tbn">P16 — 人类裁决接口治理流程（V3.1新增）</div>
+      <div class="tbq">V3.1第1634-1662行描述了人工介入机制，但自动化程度和治理流程未定义。</div>
+      <div class="tbs">需补充：裁决触发条件、决策时效、人工介入权限管理</div>
+      <div class="tba">
+        <label>📝 专家填写答案：</label>
+        <textarea id="answer_P16" placeholder="请在此输入答案..."></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// 自动保存到 localStorage
+function saveAllAnswers() {
+  const answers = {};
+  for (let i = 1; i <= 16; i++) {
+    const el = document.getElementById('answer_P' + i);
+    if (el) {
+      answers['P' + i] = el.value;
+    }
+  }
+  answers.savedAt = new Date().toISOString();
+  localStorage.setItem('macro_framework_answers', JSON.stringify(answers));
+  
+  const status = document.getElementById('saveStatus');
+  status.textContent = '✓ 已保存 ' + new Date().toLocaleTimeString('zh-CN');
+  status.style.color = 'var(--green)';
+  setTimeout(() => { status.textContent = ''; }, 3000);
+}
+
+// 页面加载时恢复保存的答案
+function loadSavedAnswers() {
+  const saved = localStorage.getItem('macro_framework_answers');
+  if (saved) {
+    try {
+      const answers = JSON.parse(saved);
+      for (const key in answers) {
+        if (key.startsWith('P') && document.getElementById('answer_' + key)) {
+          document.getElementById('answer_' + key).value = answers[key];
+        }
+      }
+    } catch (e) {
+      console.warn('无法加载保存的答案:', e);
+    }
+  }
+}
+
+// 页面加载时自动恢复
+document.addEventListener('DOMContentLoaded', loadSavedAnswers);
+</script>
+
+<div class="ft">
+  宏观组分析框架 V3.1 · AI Renaissance 项目 · 2026-05-15 · 基于7层流水线+5大公理+3类预期差信号
+</div>
+
+</div><!-- /container -->
+</body>
+</html>
