@@ -1,0 +1,174 @@
+name: AI芯片层
+version: "1.0"
+industry: ai-chip
+source: 黄仁勋AI五层蛋糕结构投研报告
+
+# 产业链结构（上游 → 中游 → 下游）
+chain:
+  upstream:
+    name: 上游 · 材料与设备
+    segments:
+      - name: 半导体材料
+        key_items:
+          - 硅片/硅晶圆
+          - 光刻胶
+          - 电子特气
+          - CMP抛光材料
+        key_players:
+          - "信越化学"
+          - "SUMCO"
+          - "沪硅产业"
+          - "江丰电子"
+        bottleneck: "12英寸硅片扩产周期长，光刻胶日本垄断"
+        data_sources: "硅片出货量、材料价格跟踪"
+      - name: 半导体设备
+        key_items:
+          - 光刻机(EUV/DUV)
+          - 刻蚀机
+          - 薄膜沉积
+          - 量测设备
+        key_players:
+          - "ASML"
+          - "AMAT"
+          - "LAM"
+          - "北方华创"
+          - "中微公司"
+        bottleneck: "EUV光刻机单台交付周期18-24个月"
+        data_sources: "设备出货数据、台积电/中芯国际capex"
+      - name: 先进封装材料
+        key_items:
+          - 封装基板(ABF/FC-BGA)
+          - 键合线/凸块
+          - 底部填充胶
+          - 光刻胶(封装级)
+        key_players:
+          - "揖斐电(IBIDEN)"
+          - "欣兴电子"
+          - "深南电路"
+        bottleneck: "ABF载板尺寸变大→良率降低→产能扩张追不上"
+        data_sources: "载板交期、封装材料价格"
+
+  midstream:
+    name: 中游 · 制造与封装
+    segments:
+      - name: 晶圆制造
+        key_items:
+          - 先进制程(3nm/2nm)
+          - 特色工艺(模拟/功率)
+          - 晶圆代工服务
+        key_players:
+          - "台积电(TSMC)"
+          - "三星"
+          - "中芯国际"
+          - "华虹半导体"
+        bottleneck: "3nm产能严重不足，台积电CoWoS产能持续紧张"
+        data_sources: "晶圆代工收入、产能利用率、先进制程占比"
+      - name: 先进封装
+        key_items:
+          - CoWoS(2.5D)
+          - SoIC(3D)
+          - EMIB
+          - HBM堆叠封装
+        key_players:
+          - "台积电"
+          - "日月光"
+          - "长电科技"
+          - "通富微电"
+        bottleneck: "CoWoS产能缺口持续，扩产受制于设备交付"
+        data_sources: "封装产能利用率、设备交付周期"
+      - name: 存储制造
+        key_items:
+          - HBM3E/HBM4
+          - DDR5
+          - NAND Flash
+        key_players:
+          - "SK海力士"
+          - "三星"
+          - "美光"
+          - "长鑫存储"
+        bottleneck: "HBM产能缺口50-60%，良率提升缓慢"
+        data_sources: "HBM出货量、DRAM/NAND价格"
+
+  downstream:
+    name: 下游 · 芯片设计与终端
+    segments:
+      - name: GPU/加速器设计
+        key_items:
+          - 训练GPU
+          - 推理ASIC
+          - 国产算力芯片
+        key_players:
+          - "英伟达(NVDA)"
+          - "AMD"
+          - "Intel"
+          - "寒武纪"
+          - "海光信息"
+          - "芯原股份"
+        bottleneck: "推理ASIC渗透率已超40%，定制芯片侵蚀GPU份额"
+        data_sources: "GPU/ASIC出货量、市场份额变化"
+      - name: 光互连/CPO
+        key_items:
+          - 硅光芯片
+          - CPO(共封装光学)
+          - 光模块(800G/1.6T)
+          - DSP芯片
+        key_players:
+          - "博通(AVGO)"
+          - "Marvell"
+          - "中际旭创"
+          - "新易盛"
+        bottleneck: "光模块紧缺，DSP/EML芯片缺口60-70%"
+        data_sources: "光模块出货量、LightCounting数据"
+      - name: CPU/配套芯片
+        key_items:
+          - 高性能CPU
+          - Retimer/Redriver
+          - 内存接口芯片
+        key_players:
+          - "Intel"
+          - "AMD"
+          - "ARM"
+          - "澜起科技"
+        bottleneck: "CPU调度占比超50%，Agent时代配比从1:4→1:1"
+        data_sources: "CPU出货量、服务器BOM占比"
+
+# 关键投资数据锚点
+key_metrics:
+  - metric: 全球AI芯片市场规模
+    value: "$2800亿 (2026E)"
+    growth: "+40% YoY"
+    source: "行业研报"
+  - metric: 推理芯片市场规模
+    value: "$1450亿 (2026E)"
+    share: "占比52%，首次成为主力"
+    source: "行业研报"
+  - metric: HBM市场规模
+    value: "$546亿 (2026E)"
+    share: "占DRAM市场近40%"
+    source: "行业研报"
+  - metric: HBM产能缺口
+    value: "50-60%"
+    source: "SK海力士/三星产能跟踪"
+  - metric: 推理ASIC渗透率
+    value: "40%+"
+    source: "博通/Marvell财报"
+  - metric: 光模块市场
+    value: "$19.37B (+52%)"
+    source: "LightCounting"
+  - metric: DSP/EML芯片缺口
+    value: "60-70%"
+    source: "Yole/Omdia"
+
+# 投资逻辑总结
+investment_thesis: |
+  芯片层是AI的引擎，正经历从训练到推理的结构性转变。
+  核心矛盾：推理需求爆发(千倍增长) vs 产能扩张刚性(18-24个月扩产周期)。
+  
+  三层机会：
+  1. 上游材料设备：半导体设备和材料是"卖铲人"，但扩产周期长
+  2. 中游制造封装：CoWoS/HBM是超级瓶颈，产能缺口50-60%
+  3. 下游芯片设计：GPU→ASIC迁移趋势明确，国产替代空间大
+  
+  关键转折：推理占比首次超过训练(52%)，标志着AI从实验室走向规模化部署。
+  
+  投资特性：中层制造封装确定性最高(产能为王)，下游芯片设计波动大但弹性大。

@@ -1,0 +1,30 @@
+{
+  "version": "1.0",
+  "last_updated": "2026-05-22",
+  "description": "股票代码 → 行业 → 产业链preset chain 映射表。首次分析时自动搜索识别，确认后写入。陌生行业自动降级为generic。",
+  
+  "mappings": {
+    "000001.SZ": {
+      "name": "示例标的",
+      "industry": "示例行业",
+      "sub_industry": "示例子行业",
+      "chain_preset": "generic",
+      "chain_name": "通用产业链",
+      "confidence": "template",
+      "verified_date": "2026-05-22",
+      "source": "模板示例"
+    }
+  },
+
+  "metadata": {
+    "data_sources": [
+      "同花顺行情数据",
+      "券商研报聚合",
+      "行业新闻",
+      "用户知识库"
+    ],
+    "verification_date": "2026-05-22",
+    "verification_method": "交叉验证",
+    "next_update_trigger": "新上市公司纳入或重大业务转型"
+  }
+}
