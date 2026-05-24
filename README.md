@@ -344,6 +344,8 @@ AIRenaissance/
 └── README.md
 ```
 
+测试目录约定：`tests/` 根目录只放跨 Agent 契约、Orchestrator、AgentScope 和共享基础设施测试；单个领域的 Agent / Skill runtime / 模型测试放到 `tests/{domain}/`；数据源测试放到 `tests/data_sources/`；不要把 CI 需要执行的正式测试放到 `skills/**/tests/`。
+
 ---
 
 ## 团队协作
