@@ -324,15 +324,10 @@ AIRenaissance/
 │   ├── README.md
 │   └── agent_run_check_sample.py
 │
-├── tests/                         # 基础测试、专家 Agent 契约检查、Orchestrator 仲裁契约检查和 AgentScope 边界检查
-│   ├── test_base_agent_agentscope.py
-│   ├── test_agentscope_message_bridge.py
-│   ├── test_arbitration_contract.py
-│   ├── test_expert_agent_contract.py
-│   ├── test_orchestrator_scope.py
-│   └── technical/
-│       ├── test_technical_agent.py
-│       └── test_traditional_model_fusion.py
+├── tests/                         # pytest 测试目录
+│   ├── test_*.py                  # 跨 Agent 契约、Orchestrator、AgentScope 和共享基础设施测试
+│   ├── technical/                 # 技术领域 Agent / Skill runtime / 模型测试
+│   └── data_sources/              # 数据源测试
 │
 ├── .github/                       # PR 模板和 CI 工作流
 │   ├── PULL_REQUEST_TEMPLATE.md
