@@ -80,16 +80,16 @@ Orchestrator Agent（编排，开发2组）
 
 | Skill | 目录 | 状态 |
 |-------|------|------|
-| 传统技术模型融合 | `skills/technical/traditional_model_fusion/` | ✅ 已接入 TechnicalAgent |
-| 量价背离与反转 | `skills/technical/volume_price_reversal/` | ✅ 已接入 TechnicalAgent |
-| 公司发展沿革辅助分析 | `skills/technical/company_evolution_analysis/` | ✅ 已接入 TechnicalAgent |
+| 传统技术模型融合 | `skills/technical/traditional_model_fusion/` | runtime 已接入 TechnicalAgent |
+| 量价背离与反转 | `skills/technical/volume_price_reversal/` | runtime 已接入 TechnicalAgent |
+| 公司发展沿革辅助分析 | `skills/technical/company_evolution_analysis/` | runtime 已接入 TechnicalAgent |
 
 **待补齐方向：**
 
 | Skill | 说明 | 优先级 |
 |-------|------|--------|
-| 支撑压力位 | 价位识别 | P2 |
-| K 线形态扩展 | 更多形态识别 | P3 |
+| 支撑压力位工程化识别 | 独立价位识别能力 | P2 |
+| K 线形态扩展 | `volume_price_reversal` 已覆盖长上下影线等反转形态；更多形态未单独建模 | P3 |
 
 ---
 
