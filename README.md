@@ -256,57 +256,17 @@ skills/{domain}/{skill_name}/SKILL.md
 ```
 AIRenaissance/
 ├── agents/                        # 8 Agent 扁平结构
-│   ├── __init__.py
-│   ├── base.py                    # Agent 基类（AgentScope-native，含 Skill 加载）
-│   ├── signal.py                  # 统一信号格式
-│   ├── registry.py                # Skill 注册机制
-│   ├── orchestrator/              # 编排 Agent（开发2组）
-│   │   ├── __init__.py
-│   │   ├── agent.py               # Orchestrator Agent
-│   │   └── arbitration.py         # 仲裁引擎
-│   ├── financial/                 # 财务分析 Agent（专家1组）
-│   │   ├── __init__.py
-│   │   └── agent.py
-│   ├── technical/                 # 技术指标 Agent（专家2组）
-│   │   ├── __init__.py
-│   │   └── agent.py
-│   ├── fundflow/                  # 资金流向 Agent（专家3组）
-│   │   ├── __init__.py
-│   │   └── agent.py
-│   ├── macro/                     # 宏观周期 Agent（专家4组）
-│   │   ├── __init__.py
-│   │   └── agent.py
-│   ├── industry/                  # 行业景气 Agent（专家5组）
-│   │   ├── __init__.py
-│   │   └── agent.py
-│   ├── news_agent/                # 舆情情感 Agent（专家6组）
-│   │   ├── __init__.py
-│   │   └── agent.py
-│   └── risk/                      # 风险预警 Agent（专家7组）
-│       ├── __init__.py
-│       └── agent.py
+│   ├── base.py                    # Agent 基类（AgentScope-native）
+│   ├── signal.py                  # 统一 Signal
+│   ├── registry.py                # 专家 Agent 注册表
+│   ├── orchestrator/              # 编排 Agent 和仲裁逻辑
+│   └── {financial,technical,fundflow,macro,industry,news_agent,risk}/
 │
-├── data_sources/                  # 数据执行层（开发3组）
-│   ├── __init__.py
-│   ├── base.py                    # 数据源基类
-│   ├── eastmoney.py               # 东方财富财报数据源
-│   └── eastmoney_guba.py          # 东方财富股吧数据源
+├── data_sources/                  # 数据执行层
 │
 ├── skills/                        # Skill 目录（专家分析 + 数据接口说明）
-│   ├── data/                      # 数据接口说明 Skill（开发3组）
-│   │   └── eastmoney_guba/
-│   │       └── SKILL.md
-│   ├── financial/                 # 财务类 Skill（专家1组）
-│   │   └── financial_report_analysis/
-│   │       └── SKILL.md
-│   ├── technical/                 # 技术类 Skill（专家2组）
-│   ├── fundflow/                  # 资金类 Skill（专家3组）
-│   ├── macro/                     # 宏观类 Skill（专家4组）
-│   ├── industry/                  # 行业类 Skill（专家5组）
-│   ├── news/                      # 舆情类 Skill（专家6组）
-│   │   └── market_emotion_discovery/
-│   │       └── SKILL.md
-│   ├── risk/                      # 风控类 Skill（专家7组）
+│   ├── data/                      # 数据接口说明 Skill
+│   ├── {financial,technical,fundflow,macro,industry,news,risk}/
 │   ├── examples/                  # 示例 Skill
 │   └── expert_skill_authoring/    # 写 Skill 的 Skill
 │
