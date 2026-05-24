@@ -46,3 +46,4 @@
 4. **Skill 各组自维护** — 每个专家组维护自己领域目录下的 Skill（`skills/{domain}/`）
 5. **Orchestrator 归开发2组** — 仲裁逻辑、推理链、主流程调度
 6. **PR 必须 Review** — 任何人提交，至少一人看过再合并
+7. **main 是唯一长期主线** — 不再维护 develop，所有 PR 直接回 main，CI 保护
