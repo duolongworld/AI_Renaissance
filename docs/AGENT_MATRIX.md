@@ -76,15 +76,18 @@ Orchestrator Agent（编排，开发2组）
 | Skill 目录 | `skills/technical/` |
 | 核心能力 | 趋势识别、量价分析、动量信号 |
 
-**待开发 Skill：**
+**已有 Skill：**
+
+| Skill | 目录 | 状态 |
+|-------|------|------|
+| 传统技术模型融合 | `skills/technical/traditional_model_fusion/` | runtime 已接入 TechnicalAgent |
+| 量价背离与反转 | `skills/technical/volume_price_reversal/` | runtime 已接入 TechnicalAgent |
+| 公司发展沿革辅助分析 | `skills/technical/company_evolution_analysis/` | runtime 已接入 TechnicalAgent |
+
+**待补齐方向：**
 
 | Skill | 说明 | 优先级 |
 |-------|------|--------|
-| 均线趋势判定 | MA/EMA 趋势方向 | P0 |
-| MACD 信号 | 金叉死叉 | P0 |
-| RSI 超买超卖 | 超买超卖区间 | P1 |
-| 成交量异动 | 量价配合 | P1 |
-| 趋势强度 | ADX 等 | P2 |
 | 支撑压力位 | 价位识别 | P2 |
 | K 线形态 | 形态识别 | P3 |
 
@@ -213,7 +216,9 @@ Orchestrator Agent（编排，开发2组）
 | 东方财富 API | `data_sources/eastmoney.py` | ✅ 财务数据已实现 |
 | 东方财富股吧 | `data_sources/eastmoney_guba.py` | ✅ 股吧帖子抓取已实现 |
 | 股吧数据接口说明 | `skills/data/eastmoney_guba/` | ✅ 数据接口说明已成稿 |
-| 行情数据 | `data_sources/` | 📝 待实现 |
+| Market OHLCV | `data_sources/market_ohlcv.py` | ✅ 统一 OHLCV 入口，支持 CSV / EastMoney / Tencent 兜底 |
+| 腾讯行情 | `data_sources/tencent_technical.py` | ✅ K 线与基础技术指标数据源 |
+| 行情数据接口说明 | `skills/data/market_ohlcv/`、`skills/data/tencent_technical/` | ✅ 数据接口说明已成稿 |
 | 资金流向 | `data_sources/` | 📝 待实现 |
 
 ---
