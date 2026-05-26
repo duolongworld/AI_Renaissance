@@ -1,0 +1,157 @@
+chain_name: ai-model
+industry_name: AI模型/大语言模型
+tags: [AI模型, 大语言模型, 训练, 推理, 开源, 闭源]
+
+upstream:
+  nodes:
+    - name: 算力基础设施
+      key_players: [英伟达, AMD, Intel, 华为昇腾]
+      key_metrics:
+        - GPU/ASIC出货量
+        - 算力租赁价格
+        - 数据中心CAPEX
+      price_benchmark: "H100/B200供不应求，算力租赁价格高位"
+      shortage_indicator: "先进制程GPU产能被头部模型厂商锁定"
+    - name: 训练数据
+      key_players: [Scale AI, 百度, 海天瑞声]
+      key_metrics:
+        - 高质量语料库规模
+        - 数据标注成本
+        - 合成数据占比
+      price_benchmark: "高质量数据标注成本上升"
+    - name: 基础模型框架
+      key_players: [PyTorch, TensorFlow, JAX]
+      key_metrics:
+        - 框架生态迁移趋势
+        - 分布式训练效率
+      price_benchmark: "开源框架零成本，训练工具链生态关键"
+
+midstream:
+  nodes:
+    - name: 闭源大模型
+      key_players: [OpenAI, Google DeepMind, Anthropic, 百度, 字节]
+      key_metrics:
+        - 模型参数规模
+        - 评测基准排名（MMLU/GSM8K等）
+        - API调用价格趋势
+        - 企业客户数量
+      price_benchmark: "API调用价格快速下降，token成本年降80%+"
+    - name: 开源大模型
+      key_players: [Meta, Mistral, 阿里, 深度求索]
+      key_metrics:
+        - 开源模型下载量
+        - 社区活跃度
+        - 企业私有化部署比例
+      demand_indicator: "开源模型性能逼近闭源，私有化部署需求爆发"
+    - name: 模型训练/微调服务
+      key_players: [Together AI, Fireworks, 硅基流动]
+      key_metrics:
+        - 微调服务收入增速
+        - 定制化模型需求
+      demand_indicator: "企业定制化微调需求快速增长"
+
+downstream:
+  nodes:
+    - name: AI应用/Agent
+      key_players: [微软, Salesforce, 字节, 钉钉]
+      key_metrics:
+        - AI Agent部署数量
+        - 企业付费意愿
+        - 日活用户指标
+      demand_indicator: "AI Agent从实验走向生产，企业付费意愿提升"
+    - name: 终端推理
+      key_players: [苹果, 高通, 联发科]
+      key_metrics:
+        - 端侧AI芯片出货量
+        - 终端推理延迟/功耗
+      demand_indicator: "端侧推理成为差异化竞争焦点"
+
+value_allocation:
+  upstream_share: 40
+  midstream_share: 35
+  downstream_share: 25
+  bargaining_power: "上游算力高度集中（英伟达），议价权极强；中游闭源厂商通过生态锁定用户；下游应用分散但付费意愿上升"
+
+life_cycle:
+  stage: 成长期
+  penetration_range: "20-40%"
+  growth_driver: "大模型能力持续提升 + Agent从实验走向生产 + 端侧推理爆发"
+  risk_factor: "开源模型性能快速追赶闭源模型，商业模式不确定性高；算力成本高企压缩利润"
+
+signal_weights:
+  barometric: 1.2
+  mid_axis: 1.0
+  ebb_warning: 0.8
+
+key_catalysts:
+  - "GPT-5/Claude 4等下一代模型发布"
+  - "开源模型MMLU突破90%"
+  - "AI Agent企业部署规模超预期"
+  - "端侧推理芯片出货放量"
+  - "API调用价格降至盈亏平衡点以下"
+
+preset_indicators:
+  barometric:
+    - indicator: 预训练算力投入
+      unit: FLOPS
+      trigger: 同比增长≥5x
+      current: "Scaling Law持续"
+      source: "Epoch AI"
+    - indicator: 训练数据规模
+      unit: tokens
+      trigger: 同比增长≥3x
+      current: "数据墙隐现"
+      source: "产业报告"
+    - indicator: 合成数据占比
+      unit: '%'
+      trigger: 从10%升至30%+
+      current: "15-20%"
+      source: "技术论文"
+
+  mid_axis:
+    - indicator: 评测基准得分
+      unit: '%'
+      trigger: 连续两个版本提升≥3pp
+      current: "MMLU 85-89%"
+      source: "公开评测"
+    - indicator: API调用价格
+      unit: 美元/1M tokens
+      trigger: 月度降幅≥10%
+      current: "快速下降"
+      source: "厂商定价"
+    - indicator: 企业付费客户数
+      unit: 家
+      trigger: 季度增长≥30%
+      current: "快速增长"
+      source: "厂商披露"
+
+  ebb_warning:
+    - indicator: 开源vs闭源差距
+      unit: pp
+      trigger: 开源追平闭源（<3pp差距）
+      current: "5-8pp差距"
+      source: "公开评测"
+    - indicator: 模型厂商亏损
+      unit: 亿美元
+      trigger: 季度亏损扩大≥50%
+      current: "多数未盈利"
+      source: "财报"
+    - indicator: 客户流失率
+      unit: '%'
+      trigger: 季度流失率≥10%
+      current: "低"
+      source: "产业调研"
+
+preset_companies:
+  - code: "BIDU"
+    name: 百度
+    position: "中游闭源大模型"
+    logic: "文心大模型国产领先，搜索+云+自动驾驶多场景落地"
+  - code: "BABA"
+    name: 阿里巴巴
+    position: "中游闭源大模型+开源"
+    logic: "通义千问开源+闭源双轨，云+电商场景深度绑定"
+  - code: "MSFT"
+    name: 微软
+    position: "下游应用+投资"
+    logic: "Copilot全线产品AI化，Azure AI云服务增长最快"
