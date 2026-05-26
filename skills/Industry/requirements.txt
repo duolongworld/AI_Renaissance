@@ -1,6 +1,0 @@
-# Supply-Chain-Sentinel V4.5
-# 核心框架零外部依赖（Python 3.9+ 标准库）
-# 以下为可选依赖：
-
-# akshare>=1.16.0  # 可选：用于自动检测 A 股行业分类（auto_detect_preset.py 回退方案）
-# PyYAML>=6.0       # 可选：用于解析产业链 preset YAML 文件（代码有 JSON 兜底）
