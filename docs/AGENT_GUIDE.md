@@ -269,6 +269,14 @@ guba_data = guba_source.get_posts("600519", pages=2, fetch_content=True)
 Orchestrator 通过 `BaseAgent` 继承的 AgentScope `AgentBase.__call__()` 调用专家，再把返回消息还原成 `Signal`。
 专家组仍然只需要维护 `analyze(stock_code) -> Signal`。AgentScope `reply()` 协议由 `BaseAgent` 统一实现，不要求各专家 Agent 单独处理 `Msg`，也不代表项目已经切到完整 AgentScope pipeline / memory / session。
 
+### 测试目录约定
+
+`tests/` 根目录只放跨 Agent 或共享基础设施的测试，包括专家 Agent 契约、Orchestrator 仲裁契约、AgentScope 消息边界和 `BaseAgent` 原生调用边界。
+
+单个领域的 Agent、Skill runtime、模型逻辑测试放到 `tests/{domain}/`，例如技术侧测试放到 `tests/technical/`。数据源测试放到 `tests/data_sources/`。
+
+不要把项目 CI 需要发现和执行的测试放到 `skills/**/tests/`。Skill 目录可以保留示例、eval 或调试脚本，但正式 pytest 测试统一放在 `tests/` 树下。
+
 ### 专家 Agent 契约检查
 
 CI 使用 `tests/test_expert_agent_contract.py` 做最低限度契约检查：注册的专家 Agent 能导入，`analyze("000001")` 能离线跑通，并返回当前标准 `Signal`。

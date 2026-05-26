@@ -61,9 +61,5 @@ data_sources/data/
 # OS
 Thumbs.db
 
-# Generated reports
-reports/
-run_report_*.html
-
 # Tests
 .pytest_cache/
