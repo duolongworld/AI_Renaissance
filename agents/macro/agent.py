@@ -62,7 +62,9 @@ from skills.macro.layer4_5_reflexivity.scripts.analyzer import (
 from skills.macro.layer5_asset_allocation.scripts.analyzer import (
     analyze_asset_allocation,
 )
-# NOTE: mock 数据已移除，改用 AkShare 实时 API
+from skills.macro._workspace.test_data.macro_test_data_2024_06_28 import (
+    build_complete_mock_data,
+)
 
 
 # =============================================================================
@@ -245,14 +247,6 @@ class MacroAgent(BaseAgent):
         try:
             # Step 1: 数据获取
             data = self._fetch_macro_data()
-
-            # 如果实时数据获取全部失败，返回中性信号
-            if not data or not data.get("china"):
-                return neutral_signal(
-                    confidence=0.1,
-                    reasoning="宏观数据获取失败（所有 AkShare API 均返回空），无法进行宏观分析",
-                    source=self.name, stock_code=stock_code, signal_type=self.signal_type,
-                )
             
             # Step 2: Layer 0 - 双经济体追踪
             layer0_result = self._run_layer0(data)
@@ -328,223 +322,18 @@ class MacroAgent(BaseAgent):
             return self._create_error_signal(str(e), stock_code=stock_code)
 
     # =============================================================================
-    # 数据获取层 — AkShare 实时数据（已去除 mock）
+    # 数据获取层（伪代码）
     # =============================================================================
 
     def _fetch_macro_data(self) -> Dict[str, Any]:
         """
-        获取宏观数据 — 全部使用 AkShare 实时 API。
+        获取宏观数据。
 
-        数据源：
-          - ak.macro_china_pmi / ak.macro_china_cpi_yearly / ak.macro_china_ppi_yearly
-          - ak.macro_china_lpr / ak.bond_china_yield / ak.macro_china_gdp_yearly
-          - ak.macro_china_money_supply / ak.macro_china_new_financial_credit
-        如果实时数据获取失败，返回空字典（各层 analyzer 降级处理）。
+        当前使用 2024-06-28 的真实历史数据集（macro_test_data_2024_06_28.py）。
+        后续替换为 data_sources/ 调用即可切换至实时数据。
         """
-        logger.info("[数据获取] 调用 AkShare 实时宏观数据 API")
-
-        try:
-            import akshare as ak
-        except ImportError:
-            logger.error("[数据获取] AkShare 未安装，无法获取宏观数据")
-            return {}
-
-        data: Dict[str, Any] = {"_is_mock": False, "_report_date": datetime.now().strftime("%Y-%m-%d")}
-
-        # ── 中国指标 ──
-        china = {}
-
-        try:
-            pmi_df = ak.macro_china_pmi()
-            if pmi_df is not None and not pmi_df.empty:
-                latest = pmi_df.iloc[0]
-                cols = pmi_df.columns.tolist()
-                # 尝试多种可能的字段名匹配
-                china["nbs_manufacturing_pmi"] = self._try_column(latest, cols, ["制造业PMI", "制造业-PMI"]) or 50.0
-                china["nbs_non_manufacturing_pmi"] = self._try_column(latest, cols, ["非制造业PMI", "非制造业-PMI"]) or 50.0
-                logger.info(f"[宏观数据] PMI: 制造业={china['nbs_manufacturing_pmi']}")
-        except Exception as e:
-            logger.warning(f"[宏观数据] PMI 获取失败: {e}")
-
-        # 财新 PMI（AkShare 不一定有独立接口，用 NBS PMI 近似）
-        china.setdefault("caixin_manufacturing_pmi", china.get("nbs_manufacturing_pmi", 50.0))
-
-        try:
-            cpi_df = ak.macro_china_cpi_yearly()
-            if cpi_df is not None and not cpi_df.empty:
-                latest = cpi_df.iloc[-1]
-                china["cpi_yoy"] = self._try_column(latest, cpi_df.columns.tolist(),
-                    ["全国当月同比", "当月同比", "CPI"]) or 0.0
-                logger.info(f"[宏观数据] CPI: {china.get('cpi_yoy', 'N/A')}")
-        except Exception as e:
-            logger.warning(f"[宏观数据] CPI 获取失败: {e}")
-
-        try:
-            ppi_df = ak.macro_china_ppi_yearly()
-            if ppi_df is not None and not ppi_df.empty:
-                latest = ppi_df.iloc[-1]
-                china["ppi_yoy"] = self._try_column(latest, ppi_df.columns.tolist(),
-                    ["当月同比", "PPI"]) or 0.0
-                logger.info(f"[宏观数据] PPI: {china.get('ppi_yoy', 'N/A')}")
-        except Exception as e:
-            logger.warning(f"[宏观数据] PPI 获取失败: {e}")
-
-        try:
-            lpr_df = ak.macro_china_lpr()
-            if lpr_df is not None and not lpr_df.empty:
-                latest = lpr_df.iloc[0]
-                # 字段名可能是 "LPR" 或需要解析
-                for key in ["1Y", "1年期LPR", "1Y_LPR", "LPR1Y"]:
-                    if key in latest.index:
-                        china["1y_lpr"] = self._safe_float_row(latest, key)
-                        break
-                for key in ["5Y", "5年期LPR", "5Y_LPR", "LPR5Y"]:
-                    if key in latest.index:
-                        china["5y_lpr"] = self._safe_float_row(latest, key)
-                        break
-                logger.info(f"[宏观数据] LPR: 1Y={china.get('1y_lpr', 'N/A')}, 5Y={china.get('5y_lpr', 'N/A')}")
-        except Exception as e:
-            logger.warning(f"[宏观数据] LPR 获取失败: {e}")
-
-        try:
-            gdp_df = ak.macro_china_gdp_yearly()
-            if gdp_df is not None and not gdp_df.empty:
-                latest = gdp_df.iloc[-1]
-                china["gdp_yoy"] = self._safe_float_row(latest, "国内生产总值-同比增长")
-                logger.info(f"[宏观数据] GDP: {china.get('gdp_yoy', 'N/A')}")
-        except Exception as e:
-            logger.warning(f"[宏观数据] GDP 获取失败: {e}")
-
-        try:
-            ms_df = ak.macro_china_money_supply()
-            if ms_df is not None and not ms_df.empty:
-                latest = ms_df.iloc[-1]
-                china["m2_yoy"] = self._safe_float_row(latest, "M2-数量")
-                logger.info(f"[宏观数据] M2: {china.get('m2_yoy', 'N/A')}")
-        except Exception as e:
-            logger.warning(f"[宏观数据] M2 获取失败: {e}")
-
-        data["china"] = china
-
-        # ── 市场定价（国债收益率）──
-        try:
-            bond_df = ak.bond_china_yield()
-            if bond_df is not None and not bond_df.empty:
-                latest = bond_df.iloc[-1]
-                data["market_pricing"] = {
-                    "china_10y_yield": self._safe_float_row(latest, "10年期") or self._safe_float_row(latest, "10年"),
-                    "china_2y_yield": self._safe_float_row(latest, "2年期") or self._safe_float_row(latest, "2年"),
-                }
-        except Exception as e:
-            logger.warning(f"[宏观数据] 国债收益率获取失败: {e}")
-
-        # ── 跨境数据（北向资金）──
-        try:
-            hsgt_df = ak.stock_hsgt_hist_em(symbol="沪股通")
-            if hsgt_df is not None and not hsgt_df.empty:
-                latest = hsgt_df.iloc[0]
-                data["cross_border"] = {
-                    "northbound_daily_net": self._safe_float_row(latest, "当日成交净买额"),
-                }
-        except Exception as e:
-            logger.warning(f"[宏观数据] 北向资金获取失败: {e}")
-
-        # 如果没有获取到任何中国数据，返回空字典
-        if not china:
-            logger.error("[宏观数据] 所有中国宏观数据获取失败")
-            return {}
-
-        # ── 填充默认值（确保下游 layer 不会 KeyError）──
-        defaults = {
-            "nbs_manufacturing_pmi": 50.0, "caixin_manufacturing_pmi": 50.0,
-            "nbs_non_manufacturing_pmi": 50.0, "cpi_yoy": 0.0, "ppi_yoy": 0.0,
-            "1y_lpr": 3.10, "5y_lpr": 3.60, "mlf_rate": 2.50, "dr007": 1.80,
-            "gdp_yoy": 5.0, "m2_yoy": 7.0, "industrial_profit_yoy": 0.0,
-            "tsf_yoy": 0.0, "retail_sales_yoy": 3.0, "export_yoy_usd": 0.0,
-            "industrial_added_value_yoy": 5.0,
-            "cn_10y_yield": 1.70, "cn_2y_yield": 1.40,
-            "aa_credit_spread": 0.50, "csi300_erp": 5.0,
-        }
-        for key, default_val in defaults.items():
-            if key not in china or china[key] is None or china[key] == 0.0:
-                china[key] = default_val
-
-        # 确保 us 和其他子字典存在并填充默认值
-        us_defaults = {
-            "ffr": 5.25, "sofr": 5.30, "cpi_yoy": 3.2, "core_pce_yoy": 2.8,
-            "ism_manufacturing_pmi": 48.5, "nonfarm_payrolls": 200000,
-            "us_10y_yield": 4.30, "us_2y_yield": 4.70, "us_hy_spread": 3.50,
-            "sp500_erp": 4.50, "dxy_index": 104.0,
-        }
-        data.setdefault("us", {})
-        for key, val in us_defaults.items():
-            data["us"].setdefault(key, val)
-
-        cross_defaults = {
-            "northbound_daily_net": 0.0, "usd_cnh": 7.25,
-            "cn_us_10y_spread": -2.60, "vix": 15.0,
-        }
-        data.setdefault("cross_border", {})
-        for key, val in cross_defaults.items():
-            data["cross_border"].setdefault(key, val)
-
-        data.setdefault("market_pricing", {})
-        data["market_pricing"].setdefault("china_10y_yield", 1.70)
-        data["market_pricing"].setdefault("china_2y_yield", 1.40)
-
-        commodity_defaults = {
-            "copper_gold_ratio": 0.15, "oil_gold_ratio": 0.02,
-        }
-        data.setdefault("commodities", {})
-        for key, val in commodity_defaults.items():
-            data["commodities"].setdefault(key, val)
-
-        data.setdefault("expected_diff", {})
-        data.setdefault("reflexivity", {})
-
-        logger.info(f"[宏观数据] 获取完成，共 {len(china)} 个中国指标")
-        return data
-
-    @staticmethod
-    def _safe_float_row(row, key) -> float:
-        """从 pandas row 中安全取 float"""
-        try:
-            val = row[key]
-            return float(val)
-        except (KeyError, ValueError, TypeError):
-            return 0.0
-
-    @staticmethod
-    def _safe_float_row_multi(row, *keys) -> float:
-        """尝试多个可能的字段名"""
-        for key in keys:
-            try:
-                val = row[key]
-                f = float(val)
-                if f != 0.0:
-                    return f
-            except (KeyError, ValueError, TypeError):
-                continue
-        return 0.0
-
-    @staticmethod
-    def _try_column(row, columns, candidates):
-        """在 pandas Series 中模糊匹配列名并返回 float"""
-        for col in columns:
-            if col in row.index:
-                try:
-                    return float(row[col])
-                except (ValueError, TypeError):
-                    pass
-        # 尝试包含匹配
-        for col in columns:
-            for existing in row.index:
-                if col in existing or existing in col:
-                    try:
-                        return float(row[existing])
-                    except (ValueError, TypeError):
-                        pass
-        return 0.0
+        logger.info("[数据获取] 使用 2024-06-28 真实历史数据集")
+        return build_complete_mock_data()
 
     # =============================================================================
     # 各层执行方法

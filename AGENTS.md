@@ -48,6 +48,13 @@ Data interface Skills:
 - Keep data-source outputs stable and dictionary-based when they are consumed by Skills or Agents.
 - When implementation status matters, inspect the current code directly instead of relying on this file.
 
+## Test Layout Rules
+
+- Cross-agent contracts, Orchestrator contracts, AgentScope boundaries, and shared infrastructure tests live directly under `tests/`.
+- Domain-specific Agent, Skill runtime, and model tests live under `tests/{domain}/`, for example `tests/technical/`.
+- Data source tests live under `tests/data_sources/`.
+- Do not place project CI tests under `skills/**/tests/`; Skill directories may contain examples or debugging wrappers, but repo-level tests should stay under `tests/`.
+
 ## Documentation Map
 
 - `README.md`: human-facing project overview.
