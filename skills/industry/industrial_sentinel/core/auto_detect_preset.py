@@ -67,6 +67,85 @@ def _lookup_code(code: str, mapping: dict) -> Optional[str]:
     return None
 
 # ═══════════════════════════════════════════════════════════════
+# 股票名称 → 代码映射（五层蛋糕 A 股核心标的）
+# ═══════════════════════════════════════════════════════════════
+
+def _is_stock_code(s: str) -> bool:
+    """判断输入是否为股票代码（而非名称）。"""
+    s = s.strip()
+    if any(s.endswith(sfx) for sfx in (".SH", ".SZ", ".BJ", ".HK")):
+        return True
+    digits = "".join(c for c in s if c.isdigit())
+    return len(digits) >= 6
+
+
+STOCK_NAME_TO_CODE = {
+    "中芯国际": "688981.SH", "中微公司": "688012.SH", "北方华创": "002371.SZ",
+    "澜起科技": "688008.SH", "寒武纪": "688256.SH", "海光信息": "688041.SH",
+    "芯原股份": "688521.SH", "通富微电": "002156.SZ", "长电科技": "600584.SH",
+    "华虹半导体": "688347.SH", "沪硅产业": "688126.SH", "江丰电子": "300666.SZ",
+    "深南电路": "002916.SZ", "生益科技": "600183.SH", "东山精密": "002384.SZ",
+    "工业富联": "601138.SH", "沪电股份": "002463.SZ", "胜宏科技": "300476.SZ",
+    "立讯精密": "002475.SZ", "浪潮信息": "000977.SZ", "中航光电": "002179.SZ",
+    "中石科技": "300684.SZ", "华勤技术": "603296.SH", "锐捷网络": "301165.SZ",
+    "德明利": "301309.SZ", "瑞芯微": "603893.SH",
+    "中际旭创": "300308.SZ", "新易盛": "300502.SZ", "天孚通信": "300394.SZ",
+    "光迅科技": "002281.SZ", "德科立": "688205.SH", "仕佳光子": "688313.SH",
+    "源杰科技": "688498.SH", "长光华芯": "688048.SH", "光库科技": "300620.SZ",
+    "太辰光": "300570.SZ", "博创科技": "300548.SZ", "联特科技": "301205.SZ",
+    "剑桥科技": "603083.SH", "华工科技": "000988.SZ", "腾景科技": "688195.SH",
+    "炬光科技": "688167.SH", "亨通光电": "600487.SH", "长飞光纤": "601869.SH",
+    "烽火通信": "600498.SH", "中兴通讯": "000063.SZ",
+    "阳光电源": "300274.SZ", "汇川技术": "300124.SZ", "思源电气": "002028.SZ",
+    "国电南瑞": "600406.SH", "平高电气": "600312.SH", "许继电气": "000400.SZ",
+    "中国西电": "601179.SH", "英维克": "002837.SZ", "高澜股份": "300499.SZ",
+    "同飞股份": "300990.SZ", "科华数据": "002335.SZ", "科士达": "002518.SZ",
+    "光环新网": "300383.SZ", "润泽科技": "300442.SZ",
+    "绿的谐波": "688017.SH", "拓普集团": "601689.SH", "三花智控": "002050.SZ",
+    "双环传动": "002472.SZ", "鸣志电器": "603728.SH", "柯力传感": "603662.SH",
+    "奥比中光": "688322.SH", "石头科技": "688169.SH",
+    "云南锗业": "002428.SZ", "罗博特科": "300757.SZ", "菲利华": "300395.SZ",
+    "东田微": "301116.SZ", "永鼎股份": "600105.SH", "模塑科技": "000700.SZ",
+    "埃斯顿": "002747.SZ", "步科股份": "688160.SH", "中大力德": "002896.SZ",
+    "佰维存储": "688525.SH", "东芯股份": "688110.SH",
+}
+
+
+def _resolve_input(stock_code: str) -> str:
+    """将输入解析为标准化的股票代码（名称→代码 或 代码标准化）。"""
+    s = stock_code.strip()
+    if _is_stock_code(s):
+        return _normalize_a_stock_code(s.upper())
+    # 精确名称匹配
+    code = STOCK_NAME_TO_CODE.get(s)
+    if code:
+        return code
+    # 模糊匹配
+    s_clean = s.replace(" ", "").replace("(", "\uff08").replace(")", "\uff09")
+    for name, code in STOCK_NAME_TO_CODE.items():
+        if s_clean in name or name in s_clean:
+            return code
+    return _normalize_a_stock_code(s.upper())
+
+
+NAME_TO_PRESET = {
+    "芯原": "ai-chip", "寒武纪": "ai-chip", "海光": "ai-chip",
+    "中芯": "ai-chip", "中微": "ai-chip", "澜起": "ai-chip",
+    "通富": "ai-chip", "华虹": "ai-chip", "长电": "ai-chip",
+    "旭创": "optical-module", "新易盛": "optical-module",
+    "天孚": "optical-module", "仕佳": "optical-module",
+    "德科立": "optical-module", "源杰": "optical-module",
+    "锗业": "optical-module", "光迅": "optical-module",
+    "深南": "ai-infrastructure", "生益": "ai-infrastructure",
+    "东山": "ai-infrastructure", "胜宏": "ai-infrastructure",
+    "沪电": "ai-infrastructure", "立讯": "ai-infrastructure",
+    "阳光电源": "ai-energy", "汇川": "ai-energy",
+    "绿的谐波": "robotics", "拓普": "robotics", "三花": "robotics",
+    "埃斯顿": "robotics", "机器人": "robotics",
+}
+
+
+# ═══════════════════════════════════════════════════════════════
 # 第一层：内置映射表（覆盖常见标的）
 # ═══════════════════════════════════════════════════════════════
 
@@ -271,12 +350,31 @@ def match_preset_by_industry(industry_name: str) -> Optional[str]:
 
 def auto_detect_preset(stock_code: str, data_dir: Path) -> Optional[str]:
     """
-    自动检测股票所属 preset
-    多轮查询：内置映射 → akshare → 东方财富 → 腾讯名称 → None
-    支持 A 股纯数字代码自动补全后缀（如 688521 → 688521.SH）
+    自动检测股票所属 preset。支持代码和名称。
+
+    查询顺序：名称直接匹配 → 名称→代码 → 内置映射 → 用户映射
+              → akshare → 东方财富 → 腾讯API
     """
-    stock_code = _normalize_a_stock_code(stock_code.upper())
     data_dir = Path(data_dir) if not isinstance(data_dir, Path) else data_dir
+
+    # 轮0：名称识别（名称→preset 直接映射 + 名称→代码转换）
+    if not _is_stock_code(stock_code):
+        for name_key, preset in NAME_TO_PRESET.items():
+            if name_key in stock_code:
+                logger.info("[自动检测] 名称'%s' 匹配'%s' → %s", stock_code, name_key, preset)
+                return preset
+        resolved = _resolve_input(stock_code)
+        if resolved != _normalize_a_stock_code(stock_code.upper()):
+            logger.info("[自动检测] 名称'%s' → %s", stock_code, resolved)
+            stock_code = resolved
+        else:
+            for name, code in STOCK_NAME_TO_CODE.items():
+                if stock_code in name or name in stock_code:
+                    logger.info("[自动检测] 模糊'%s' → %s", stock_code, code)
+                    stock_code = code
+                    break
+    else:
+        stock_code = _normalize_a_stock_code(stock_code.upper())
 
     # 轮1：内置映射表（支持带后缀和纯数字两种格式）
     preset = _lookup_code(stock_code, BUILT_IN_MAP)
@@ -321,13 +419,30 @@ def auto_detect_preset(stock_code: str, data_dir: Path) -> Optional[str]:
 
 def auto_detect_preset_with_log(stock_code: str, data_dir: Path) -> tuple[Optional[str], list[str]]:
     """
-    自动检测，同时返回查询日志
-    用于 run.sh 展示给用户看查询过程
-    支持 A 股纯数字代码自动补全后缀
+    自动检测，同时返回查询日志。支持名称输入。
     """
-    stock_code = _normalize_a_stock_code(stock_code.upper())
     data_dir = Path(data_dir) if not isinstance(data_dir, Path) else data_dir
     logs = []
+
+    # 轮0：名称识别
+    if not _is_stock_code(stock_code):
+        logs.append(f"轮0: 检测到名称输入'{stock_code}'...")
+        for name_key, preset in NAME_TO_PRESET.items():
+            if name_key in stock_code:
+                logs.append(f"  ✅ 名称关键字'{name_key}'匹配 → {preset}")
+                return preset, logs
+        resolved = _resolve_input(stock_code)
+        if resolved != _normalize_a_stock_code(stock_code.upper()):
+            logs.append(f"  ✅ 名称→代码: {resolved}")
+            stock_code = resolved
+        else:
+            for name, code in STOCK_NAME_TO_CODE.items():
+                if stock_code in name or name in stock_code:
+                    logs.append(f"  ✅ 模糊名称→代码: {code}")
+                    stock_code = code
+                    break
+    else:
+        stock_code = _normalize_a_stock_code(stock_code.upper())
 
     # 轮1：内置映射
     logs.append(f"轮1: 查内置映射表...")
