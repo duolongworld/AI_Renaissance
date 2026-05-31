@@ -178,6 +178,58 @@ preset_indicators:
       current: "持续高压"
       source: "政策跟踪"
 
+cross_verify:
+  upstream:
+    - name: 精密零部件/材料
+      metrics:
+        - "陶瓷/石英件国产化率25%"
+        - "真空阀门交货周期>6个月"
+      pool: ["688012.SH"]
+    - name: 光学系统/光源
+      metrics:
+        - "DUV光源被Cymer/Gigaphoton垄断"
+        - "EUV光源仅ASML供货"
+      pool: []
+    - name: 精密运动系统
+      metrics:
+        - "纳米级运动台国产突破"
+        - "激光干涉仪精度达到1nm"
+      pool: ["002371.SZ"]
+  midstream:
+    - name: 刻蚀设备
+      metrics:
+        - "国产刻蚀设备市占率突破20%"
+        - "CCP刻蚀5nm以下验证通过"
+      pool: ["688012.SH"]
+    - name: 薄膜沉积设备
+      metrics:
+        - "PECVD国产化率15%"
+        - "ALD设备进入量产验证"
+      pool: ["688072.SH"]
+    - name: 量测/检测设备
+      metrics:
+        - "半导体量测设备国产化率<10%"
+        - "光学检测精度达到28nm节点"
+      pool: ["688361.SH", "300567.SZ"]
+  downstream:
+    - name: 晶圆代工厂
+      metrics:
+        - "中芯国际CAPEX $75亿+"
+        - "国内12英寸产能扩至300万片/月"
+      pool: ["688981.SH"]
+    - name: 存储厂商
+      metrics:
+        - "长江存储/长鑫存储扩产"
+        - "DRAM国产化率从5%→15%"
+      pool: ["688525.SH"]
+  external_indicators:
+    - name: "美国出口管制动态"
+      metric: "BIS实体清单更新频率"
+      source: "美国商务部BIS"
+    - name: "国内晶圆厂招标量"
+      metric: "2026H1招标金额同比+45%"
+      source: "中国国际招标网"
+
 preset_companies:
   - code: "688012.SH"
     name: 中微公司
