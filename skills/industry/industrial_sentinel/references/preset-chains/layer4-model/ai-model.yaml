@@ -142,6 +142,53 @@ preset_indicators:
       current: "低"
       source: "产业调研"
 
+cross_verify:
+  upstream:
+    - name: 算力基础设施（GPU/TPU集群）
+      metrics:
+        - "训练万卡集群保有量>200个"
+        - "H100租用价格$2.5→$1.8/小时"
+      pool: ["002230.SZ"]
+    - name: 训练数据/标注
+      metrics:
+        - "高质量训练数据缺口>50%"
+        - "合成数据占比从10%→40%"
+      pool: ["603039.SH"]
+    - name: 基础模型架构/框架
+      metrics:
+        - "MoE架构成为主流"
+        - "Transformer替代方案尚早期"
+      pool: []
+  midstream:
+    - name: 闭源大模型（GPT/Claude/文心）
+      metrics:
+        - "GPT-5推理成本降至GPT-4的1/10"
+        - "国产模型MMLU突破85%"
+      pool: []
+    - name: 开源大模型（Llama/通义/DeepSeek）
+      metrics:
+        - "开源模型性能差闭源<5%"
+        - "Llama 4下载量破2000万"
+      pool: []
+  downstream:
+    - name: AI Agent/应用
+      metrics:
+        - "企业AI Agent部署率>30%"
+        - "Agent调用Token量月增50%"
+      pool: ["688111.SH", "002230.SZ"]
+    - name: 终端推理/端侧模型
+      metrics:
+        - "端侧推理芯片出货>5亿颗"
+        - "手机本地模型参数量3B→7B"
+      pool: ["603160.SH"]
+  external_indicators:
+    - name: "AI API调用价格趋势"
+      metric: "推理价格年降幅>90%"
+      source: "各厂商API定价"
+    - name: "开源模型MMLU分数"
+      metric: "Llama 4 MMLU 89.2%"
+      source: "HuggingFace Leaderboard"
+
 preset_companies:
   - code: "BIDU"
     name: 百度
