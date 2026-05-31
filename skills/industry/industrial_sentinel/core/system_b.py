@@ -321,28 +321,6 @@ def _safe_get(metrics: dict, dim: str, key: str):
     d = metrics.get(dim, {})
     return d.get(key)
 
-def calculate_system_b_score(
-    data: Dict[str, Any],
-    stock_type: str = None,
-    stage: str = "default"
-) -> WeightedScoreResult:
-    """【V4.5 已禁用】System B 算法评分。
-    
-    当前仅保留类型判定和权重计算（identify_stock_type + get_adaptive_weights）。
-    如需恢复评分功能，请从 git 历史还原此函数。
-    """
-    logger.info("[V4.5] System B 算法评分已禁用 — 仅保留类型判定和权重计算")
-    return WeightedScoreResult(
-        total_score=0.0,
-        breakdown={"fundamental": 0.0, "valuation": 0.0, "technical": 0.0, "sentiment": 0.0},
-        stock_type=stock_type or "mixed",
-        weights=get_adaptive_weights(stock_type or "mixed", stage),
-        adjustment_notes=["V4.5 评分已禁用"],
-    )
-
-# ═══════════════════════════════════════════════════════════════
-# 四、便捷函数：类型说明
-# ═══════════════════════════════════════════════════════════════
 
 def get_stock_type_description(stock_type: str) -> Dict[str, str]:
     """
