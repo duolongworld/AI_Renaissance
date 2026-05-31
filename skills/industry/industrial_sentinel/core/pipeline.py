@@ -151,6 +151,39 @@ def _safe_num(value) -> Optional[float]:
 # Step 2: 生命周期阶段判定（基于真实数据）
 # ═══════════════════════════════════════════════════════════════
 
+def determine_lifecycle_from_segments(segment_data: list) -> dict:
+    """V4.6: 多业务公司分部判定。
+    新业务(增速>50%)占比>=30% + 旧业务(增速<0%) → 结构转型"""
+    if not segment_data or len(segment_data) < 2:
+        return None
+    new_segs = [s for s in segment_data if s.get("revenue_growth", 0) > 50]
+    old_segs = [s for s in segment_data if s.get("revenue_growth", 0) < 0]
+    if not new_segs:
+        return None
+    new_mix = sum(s.get("revenue_mix", 0) for s in new_segs)
+    old_mix = sum(s.get("revenue_mix", 0) for s in old_segs) if old_segs else 0
+    transition_score = min(1.0, new_mix * 0.4 / 100 + 0.3)
+    if new_mix >= 30 and old_mix >= 20:
+        stage, short = "结构转型·拐点确认", "转型确认"
+        desc = f"新业务占比{new_mix:.0f}%，旧业务占比{old_mix:.0f}%，转型拐点已确认"
+    elif new_mix >= 20:
+        stage, short = "结构转型·拐点初期", "转型初期"
+        desc = f"新业务占比{new_mix:.0f}%，拐点初期"
+    else:
+        return None
+    seg_results = []
+    for seg in segment_data:
+        g = seg.get("revenue_growth", 0)
+        s = "成长期" if g >= 30 else ("成长期(稳健)" if g >= 15 else ("成熟期" if g > 0 else "衰退期"))
+        seg_results.append({"name": seg.get("segment_name",""), "stage": s, "growth": g, "mix": seg.get("revenue_mix",0)})
+    return {"stage": stage, "stage_short": short, "subtitle": "结构转型", "desc": desc,
+            "segment_analysis": seg_results, "transition_score": round(transition_score, 2),
+            "color": "#f59e0b", "color_bg": "rgba(245,158,11,0.12)",
+            "indicators": [{"label": "新业务占比", "value": f"{new_mix:.0f}%"}, {"label": "转型进度", "value": f"{transition_score*100:.0f}%"}],
+            "analysis": f"新业务占比{new_mix:.0f}%，毛利率趋势验证中 | 关键节点：新业务突破30%即为结构拐点确认"}
+
+
+
 def determine_lifecycle_from_real_data(real_data: Optional[Dict]) -> Dict[str, Any]:
     """
     基于真实财务指标判定生命周期阶段。
