@@ -842,6 +842,24 @@ def _chain_summary_to_html(chain_summary: list) -> str:
 # 主流程
 # ═══════════════════════════════════════════════════════════════
 
+def save_history(stock_code: str, snapshot: Dict[str, Any]):
+    """P2-2: 将运行快照追加到历史记录 (data/history/<code>.jsonl)"""
+    import json, os
+    history_dir = DATA_DIR / "history"
+    history_dir.mkdir(parents=True, exist_ok=True)
+    hist_file = history_dir / f"{stock_code}.jsonl"
+    entry = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "stock_code": stock_code,
+        **snapshot,
+    }
+    try:
+        with open(hist_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\\n")
+        logger.info(f"历史记录已保存: {hist_file} ({hist_file.stat().st_size} bytes)")
+    except Exception as e:
+        logger.warning(f"历史记录保存失败: {e}")
+
 def run_pipeline(stock_code: str) -> str:
     """运行完整流水线，返回生成的HTML文件路径"""
     logger.info("=" * 50)
