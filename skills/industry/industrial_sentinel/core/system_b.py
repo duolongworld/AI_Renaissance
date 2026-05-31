@@ -11,7 +11,7 @@ V4.5 变更：删除交易计划生成模块，仅保留类型判定输出
 """
 
 import logging
-from typing import Dict, Any, Union, Tuple
+from typing import Dict, Any
 from dataclasses import dataclass
 
 # ───────────────────────────────────────────────────────────────
