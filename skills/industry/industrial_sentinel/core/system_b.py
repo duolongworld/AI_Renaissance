@@ -325,93 +325,19 @@ def calculate_system_b_score(
     stock_type: str = None,
     stage: str = "default"
 ) -> WeightedScoreResult:
+    """【V4.5 已禁用】System B 算法评分。
+    
+    当前仅保留类型判定和权重计算（identify_stock_type + get_adaptive_weights）。
+    如需恢复评分功能，请从 git 历史还原此函数。
     """
-    System B 自适应加权评分核心函数。
-
-    输入 data 必须包含以下字段:
-        - fundamental_score: 基本面维度得分（0-100）
-        - valuation_score: 估值维度得分（0-100）
-        - technical_score: 技术面维度得分（0-100）
-        - sentiment_score: 情绪/消息维度得分（0-100）
-
-    可选字段（用于自动类型识别，如 stock_type 未提供）:
-        - industry: 行业名称
-        - revenue_growth: 营收增速（%）
-        - rd_ratio: 研发投入占比（%）
-        - asset_lightness: 资产轻重程度（0-1）
-        - profit_stability: 利润稳定性（0-1）
-
-    参数:
-        data: 包含四维评分的字典
-        stock_type: 可选，直接指定类型。如未提供，自动识别。
-        stage: 阶段标签，默认"default"
-
-    返回:
-        WeightedScoreResult: 包含总分、权重明细、调整说明的完整结果
-
-    使用示例:
-        >>> data = {
-        ...     "fundamental_score": 75, "valuation_score": 60,
-        ...     "technical_score": 85, "sentiment_score": 70,
-        ...     "industry": "半导体", "revenue_growth": 35, "rd_ratio": 18,
-        ...     "asset_lightness": 0.8, "profit_stability": 0.5
-        ... }
-        >>> result = calculate_system_b_score(data, stage="performance_period")
-        >>> print(f"总分: {result.total_score:.1f}, 类型: {result.stock_type}")
-    """
-
-    # ── 1. 提取四维原始得分 ──
-    raw_scores = {
-        "fundamental": float(data.get("fundamental_score", 0)),
-        "valuation": float(data.get("valuation_score", 0)),
-        "technical": float(data.get("technical_score", 0)),
-        "sentiment": float(data.get("sentiment_score", 0)),
-    }
-
-    # 校验得分范围
-    for dim, score in raw_scores.items():
-        if not 0 <= score <= 100:
-            logger.warning(f"[评分校验] {dim}_score={score} 超出[0,100]范围，已截断")
-            raw_scores[dim] = max(0, min(100, score))
-
-    # ── 2. 个股类型识别（如未指定） ──
-    if stock_type is None:
-        stock_type = identify_stock_type(
-            industry=data.get("industry", ""),
-            revenue_growth=data.get("revenue_growth", 0.0),
-            rd_ratio=data.get("rd_ratio", 0.0),
-            asset_lightness=data.get("asset_lightness", 0.5),
-            profit_stability=data.get("profit_stability", 0.5),
-        )
-
-    # ── 3. 获取自适应权重 ──
-    weights = get_adaptive_weights(stock_type, stage)
-
-    # ── V4.5 评分已禁用 ──
-    # 用户明确要求：禁止所有算法评分，所有数字必须有真实来源。
-    # 以下计算保留原始逻辑但输出强制归零，仅保留类型判定和权重参考。
-    logger.warning("[V4.5] System B 算法评分已禁用 — 仅保留类型判定")
-    breakdown = {dim: 0.0 for dim in raw_scores}
-    total_score = 0.0
-    adjustment_parts = [f"类型:{stock_type}", f"阶段:{stage}"]
-    if stage in STAGE_ADJUSTMENTS:
-        adj = STAGE_ADJUSTMENTS[stage]
-        adj_desc = ", ".join([f"{k}{'+' if v > 0 else ''}{v*100:.0f}%" for k, v in adj.items()])
-        adjustment_parts.append(f"调整:{adj_desc}")
-    adjustment_note = " | ".join(adjustment_parts)
-
-    logger.info(f"[System B评分] 类型判定={stock_type}, 阶段={stage} (V4.5 评分已禁用)")
-
+    logger.info("[V4.5] System B 算法评分已禁用 — 仅保留类型判定和权重计算")
     return WeightedScoreResult(
-        total_score=total_score,
-        stock_type=stock_type,
-        stage=stage,
-        weights=weights,
-        breakdown=breakdown,
-        raw_scores=raw_scores,
-        adjustment_note=adjustment_note,
+        total_score=0.0,
+        breakdown={"fundamental": 0.0, "valuation": 0.0, "technical": 0.0, "sentiment": 0.0},
+        stock_type=stock_type or "mixed",
+        weights=get_adaptive_weights(stock_type or "mixed", stage),
+        adjustment_notes=["V4.5 评分已禁用"],
     )
-
 
 # ═══════════════════════════════════════════════════════════════
 # 四、便捷函数：类型说明
