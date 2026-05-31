@@ -16,7 +16,6 @@ V4.5 变更:
 - 生命周期判定改为基于数据推断
 """
 
-import json
 import logging
 import re
 from dataclasses import dataclass, field
