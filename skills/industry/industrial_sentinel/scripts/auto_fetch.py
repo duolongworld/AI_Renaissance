@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-V4.6 自动数据抓取 — 用 akshare 自动获取财务数据，写入 real_data.json
+V4.6 自动数据抓取 — 东方财富 push2 API + akshare 双通道
 
 用法:
     python3 scripts/auto_fetch.py 688521.SH      # 单个股票
@@ -9,6 +9,7 @@ V4.6 自动数据抓取 — 用 akshare 自动获取财务数据，写入 real_d
 import json
 import re
 import sys
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -17,7 +18,16 @@ SCRIPT_DIR = Path(__file__).parent.parent.resolve()
 DATA_DIR = SCRIPT_DIR / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-# 核心指标映射: akshare 字段 → real_signals 字段
+# ── Eastmoney push2 → real_signals 字段映射 ──
+# 深交所 0.xxx, 上交所 1.xxx
+EASTMONEY_FIELD_MAP = {
+    "f41": "revenue_growth",     # 营收同比增速(%)
+    "f57": "gross_margin",       # 销售毛利率(%)
+    "f9":  "pe",                 # PE(TTM)
+    "f20": "total_market_cap",   # 总市值
+}
+
+# 核心指标映射: akshare 字段 → real_signals 字段 (备用)
 FIELD_MAP = {
     "revenue_growth": "营业总收入同比增长率",
     "gross_margin": "销售毛利率",
@@ -34,55 +44,50 @@ def _clean_code(stock_code: str) -> str:
     return re.sub(r"\.(SH|SZ|BJ|HK)$", "", stock_code.upper())
 
 
-def fetch_from_akshare(stock_code: str) -> dict:
-    """用 akshare 获取个股财务数据, 返回 real_signals dict。"""
-    code = _clean_code(stock_code)
+def _code_to_em_secid(stock_code: str) -> str:
+    """将股票代码转为东方财富 secid 格式。深交所 0.xxx, 上交所 1.xxx"""
+    code = stock_code.upper()
+    if ".SZ" in code:
+        return f"0.{_clean_code(code)}"
+    elif ".SH" in code:
+        return f"1.{_clean_code(code)}"
+    elif ".BJ" in code:
+        return f"0.{_clean_code(code)}"
+    else:
+        # 尝试判断: 60xxxx→SH, 00xxxx/30xxxx→SZ, 68xxxx→SH(科创板)
+        clean = _clean_code(code)
+        if clean.startswith("6"):
+            return f"1.{clean}"
+        return f"0.{clean}"
+
+
+def fetch_from_eastmoney(stock_code: str) -> dict:
+    """东方财富 push2 API 直连获取财务数据（零依赖，速度最快）。"""
     signals = {}
-    
     try:
-        import akshare as ak
-    except ImportError:
-        print("⚠️ akshare 未安装。pip install akshare")
-        return signals
-    
-    # 方式1: stock_individual_info_em — 基础指标
-    try:
-        df = ak.stock_individual_info_em(symbol=code)
-        if df is not None and not df.empty:
-            row = dict(zip(df["item"], df["value"]))
-            
-            # 提取可用字段
-            for field, cn_name in FIELD_MAP.items():
-                if cn_name in row:
-                    val = str(row[cn_name]).replace("%", "").replace(",", "")
-                    try:
-                        signals[field] = float(val)
-                    except ValueError:
-                        pass
-            
-            if signals:
-                print(f"  ✅ akshare 获取 {len(signals)} 个字段")
+        secid = _code_to_em_secid(stock_code)
+        url = (f"https://push2.eastmoney.com/api/qt/ulist.np/get"
+               f"?fltt=2&fields=f2,f9,f12,f14,f20,f41,f57&secids={secid}")
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        data = json.loads(urllib.request.urlopen(req, timeout=10).read())
+        stock = data["data"]["diff"][0]
+        
+        for em_field, signal_field in EASTMONEY_FIELD_MAP.items():
+            val = stock.get(em_field)
+            if val is not None and val != "-":
+                try:
+                    signals[signal_field] = float(val)
+                except (ValueError, TypeError):
+                    pass
+        
+        if "total_market_cap" in signals and "市值" not in signals:
+            # 总市值字段单位特殊处理（API 返回可能有误差）
+            pass
+        
+        if signals:
+            print(f"  ✅ 东方财富 push2 获取 {len(signals)} 个字段")
     except Exception as e:
-        print(f"  ⚠️ akshare stock_individual_info_em 失败: {e}")
-    
-    # 方式2: 补充 — 同花顺财务摘要
-    if len(signals) < 3:
-        try:
-            df2 = ak.stock_financial_abstract_ths(symbol=code, indicator="按报告期")
-            if df2 is not None and not df2.empty:
-                latest = df2.iloc[-1] if len(df2) > 0 else None
-                if latest is not None:
-                    for col in latest.index:
-                        col_lower = str(col).lower()
-                        if "营收" in col_lower and "增长" in col_lower and "revenue_growth" not in signals:
-                            try: signals["revenue_growth"] = float(str(latest[col]).replace("%",""))
-                            except: pass
-                        if "毛利" in str(col) and "gross_margin" not in signals:
-                            try: signals["gross_margin"] = float(str(latest[col]).replace("%",""))
-                            except: pass
-                    print(f"  ✅ 同花顺补充 {len(signals)} 个字段")
-        except Exception as e:
-            print(f"  ⚠️ 同花顺摘要失败: {e}")
+        print(f"  ⚠️ 东方财富 push2 失败: {e}")
     
     return signals
 
@@ -98,7 +103,18 @@ def auto_fetch_and_save(stock_code: str, force: bool = False) -> Optional[Path]:
         return out_path
     
     print(f"🔍 自动抓取: {stock_code} ...")
-    signals = fetch_from_akshare(stock_code)
+    
+    # 首选: 东方财富 push2 (零依赖, 直连)
+    signals = fetch_from_eastmoney(stock_code)
+    
+    # 备用: akshare (需安装, 字段更丰富)
+    if len(signals) < 3:
+        try:
+            import akshare  # noqa
+            extra = fetch_from_akshare(stock_code)
+            signals.update(extra)
+        except ImportError:
+            pass  # akshare 未安装, 继续用已有的
     
     if not signals:
         print("  ❌ 未能获取任何数据")
