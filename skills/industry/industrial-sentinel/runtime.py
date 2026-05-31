@@ -93,14 +93,14 @@ def run_industrial_sentinel(
         direction = direction_map.get(state, "neutral")
 
         confidence_map = {
-            "inflection_point": 70,
-            "inflection_confirmed": 85,
-            "pre_inflection": 25,
-            "early_inflection": 55,
-            "late_inflection": 40,
-            "post_inflection_decline": 15,
+            "inflection_point": 0.70,
+            "inflection_confirmed": 0.85,
+            "pre_inflection": 0.25,
+            "early_inflection": 0.55,
+            "late_inflection": 0.40,
+            "post_inflection_decline": 0.15,
         }
-        confidence = confidence_map.get(state, 30)
+        confidence = confidence_map.get(state, 0.30)
 
         # 构建信号列表（List[str]），详细数据放入 meta
         signals = [
