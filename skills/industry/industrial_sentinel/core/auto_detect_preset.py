@@ -8,7 +8,7 @@ import logging
 import sys
 import importlib.util
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -302,8 +302,7 @@ def query_akshare(stock_code: str) -> Optional[str]:
 def query_eastmoney(stock_code: str) -> Optional[str]:
     """尝试通过东方财富API获取行业"""
     import urllib.request
-    import urllib.error
-    
+        
     # 确定 secid
     if stock_code.endswith(".SH"):
         secid = f"1.{stock_code.replace('.SH', '')}"
