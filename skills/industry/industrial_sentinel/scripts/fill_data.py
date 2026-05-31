@@ -24,7 +24,7 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 SCRIPT_DIR = Path(__file__).parent.parent.resolve()
 DATA_DIR = SCRIPT_DIR / "data"
@@ -224,7 +224,7 @@ def fill_batch(stock_code: str, items: List[Dict[str, Any]]) -> Dict[str, Any]:
 def _auto_run_pipeline(stock_code: str):
     """自动重新运行 pipeline 生成报告"""
     try:
-        import sys, os
+        import sys
         sys.path.insert(0, str(Path(__file__).parent.parent))
         from core.pipeline import run_pipeline
         print(f"\\n🔄 自动重新运行 pipeline: {stock_code}")
