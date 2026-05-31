@@ -27,11 +27,12 @@ from typing import Dict, Any, List, Optional, Tuple, Union, Set
 # ───────────────────────────────────────────────────────────────
 # 日志配置(统一一次)
 # ───────────────────────────────────────────────────────────────
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+if not logging.root.handlers:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 logger = logging.getLogger("system_a")
 
 # ───────────────────────────────────────────────────────────────
