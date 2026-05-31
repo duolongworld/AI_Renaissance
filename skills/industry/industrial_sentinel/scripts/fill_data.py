@@ -22,6 +22,7 @@ field 与 real_data 路径对应:
 import json
 import re
 import sys
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
@@ -287,7 +288,7 @@ if __name__ == "__main__":
 
     if args.show:
         show_missing(args.stock_code)
-        return
+        sys.exit(0)
     
     # 执行回填
     if args.batch:
@@ -301,7 +302,7 @@ if __name__ == "__main__":
         )
     else:
         parser.print_help()
-        return
+        sys.exit(1)
     
     # P2-1: 自动重新运行 pipeline
     if args.auto_run:
