@@ -101,6 +101,53 @@ value_allocation:
   downstream_share: "45-50%"
   bargain_power: "中游设备商(工业富联/Arista)有工程壁垒，但云厂商CAPEX是景气度锚点"
 
+cross_verify:
+  upstream:
+    - name: 高速PCB/CCL
+      metrics:
+        - "M9级材料认证通过厂商<5家"
+        - "800G PCB单价$200→$300"
+      pool: ["002916.SZ", "002384.SZ"]
+    - name: 连接器/线缆
+      metrics:
+        - "800G光模块连接器需求+80%"
+        - "铜缆DAC在短距占比>60%"
+      pool: ["002475.SZ"]
+    - name: 散热/液冷
+      metrics:
+        - "液冷渗透率从15%→35%"
+        - "CDU(冷板)单价$15万→$22万"
+      pool: []
+  midstream:
+    - name: AI服务器整机
+      metrics:
+        - "GB200机柜出货量QoQ+45%"
+        - "AI服务器ASP $25万→$35万"
+      pool: ["601138.SH", "002384.SZ"]
+    - name: 网络设备（交换机/光模块）
+      metrics:
+        - "800G交换机端口出货+70%"
+        - "1.6T光模块送样客户"
+      pool: ["300308.SZ", "300502.SZ"]
+  downstream:
+    - name: 超大规模数据中心
+      metrics:
+        - "全球在建数据中心>500个"
+        - "单数据中心功耗50MW→200MW"
+      pool: ["000063.SZ"]
+    - name: AI工厂/GPU云
+      metrics:
+        - "GPU云GPU保有量>50万卡"
+        - "推理aaS收入增速>100%"
+      pool: []
+  external_indicators:
+    - name: "北美云厂商CAPEX"
+      metric: "$7250亿，+77% YoY"
+      source: "行业预测2026"
+    - name: "全球数据中心电力需求"
+      metric: "2026年>100GW，缺口20%"
+      source: "IEA 2026"
+
 investment_thesis: |
   基础设施层是AI工厂，从"仓库"变成"产线"。
   核心矛盾：算力需求爆发式增长 vs 物理基础设施建设的线性扩张。
