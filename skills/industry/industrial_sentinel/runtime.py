@@ -48,6 +48,23 @@ CONFIDENCE_MAP = {
 }
 
 
+
+# ──────────────────────────────────────────────────────────────
+# Stage name mapping: Chinese → English (for System B weights)
+# ──────────────────────────────────────────────────────────────
+STAGE_MAP = {
+    "导入期": "valuation_switch",
+    "成长期": "performance_period",
+    "成长期(稳健)": "performance_period",
+    "成熟期": "default",
+    "衰退期": "emotion_driven",
+    "退潮期": "emotion_driven",
+    "结构转型": "valuation_switch",
+    "结构转型·拐点确认": "valuation_switch",
+    "结构转型·拐点初期": "valuation_switch",
+    "结构转型·拐点早期": "valuation_switch",
+}
+
 def run_industrial_sentinel(
     stock_code: str,
     config: Optional[Dict[str, Any]] = None,
@@ -226,7 +243,7 @@ def run_industrial_sentinel(
                 "preset": stock_info.get("preset", "generic"),
                 "data_quality": data_quality,
                 "stock_type": stock_type_result,
-                "adaptive_weights": get_adaptive_weights(stock_type_result, stage),
+                "adaptive_weights": get_adaptive_weights(stock_type_result, STAGE_MAP.get(stage, "default")),
                 "supply_demand": inflection.get("signals", {}),
                 "policy_catalyst": inflection.get("policy_catalyst", {}),
                 "needs_data": data_quality != "complete",
