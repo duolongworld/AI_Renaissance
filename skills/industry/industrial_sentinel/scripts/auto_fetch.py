@@ -95,7 +95,7 @@ def fetch_from_eastmoney(stock_code: str) -> dict:
 def auto_fetch_and_save(stock_code: str, force: bool = False) -> Optional[Path]:
     """自动抓取并保存到 real_data.json。返回文件路径或 None。"""
     code = _clean_code(stock_code)
-    out_path = DATA_DIR / f"{stock_code.upper()}_real_data.json"
+    out_path = DATA_DIR / f"{_clean_code(stock_code)}_real_data.json"
     
     # 已有数据且非强制
     if out_path.exists() and not force:
@@ -113,8 +113,8 @@ def auto_fetch_and_save(stock_code: str, force: bool = False) -> Optional[Path]:
             import akshare  # noqa
             extra = fetch_from_akshare(stock_code)
             signals.update(extra)
-        except ImportError:
-            pass  # akshare 未安装, 继续用已有的
+        except (ImportError, NameError):
+            pass  # akshare未安装/函数不存在，继续
     
     if not signals:
         print("  ❌ 未能获取任何数据")
@@ -136,7 +136,7 @@ def auto_fetch_and_save(stock_code: str, force: bool = False) -> Optional[Path]:
     
     data["real_signals"].update(signals)
     data["_last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M")
-    data["_data_source"] = "akshare_auto"
+    data["_data_source"] = "eastmoney_push2"
     
     # 计算缺失计数
     core_fields = ["revenue_growth", "gross_margin", "order_backlog",
