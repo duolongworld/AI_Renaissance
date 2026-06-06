@@ -40,7 +40,12 @@ class ArbitrationStrategy(Protocol):
 
 
 class RuleBasedArbitrationStrategy:
-    """包装现有固定规则仲裁引擎，保持默认行为不变。"""
+    """
+    包装现有固定规则仲裁引擎，保持默认行为不变。
+
+    引擎本身已包含场景对象（scenario），策略层只透传调用。
+    场景信息可通过 engine.scenario 访问。
+    """
 
     def __init__(self, engine: ArbitrationEngine):
         self.engine = engine
@@ -51,6 +56,11 @@ class RuleBasedArbitrationStrategy:
         execution_trace: Optional[Dict[str, Any]] = None,
     ) -> ArbitrationResult:
         return self.engine.arbitrate(signal_bundle, execution_trace=execution_trace)
+
+    @property
+    def scenario(self) -> Any:
+        """返回当前引擎使用的场景对象。"""
+        return self.engine.scenario
 
 
 @dataclass
