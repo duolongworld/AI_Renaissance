@@ -13,6 +13,9 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional, Tuple
 import math
+import time
+
+import requests
 
 try:
     import pandas as pd
@@ -34,6 +37,17 @@ class AkshareDataSource(DataSourceBase):
     """AkShare 数据源"""
 
     VALID_MARKET_FLOW_INDICATORS = {"今日", "5日", "10日"}
+    EASTMONEY_DELAY_HOST = "https://push2delay.eastmoney.com"
+    EASTMONEY_HIS_HOST = "http://push2his.eastmoney.com"
+    EASTMONEY_DATACENTER_HOST = "https://datacenter-web.eastmoney.com"
+    EASTMONEY_HEADERS = {
+        "User-Agent": (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+        ),
+        "Accept": "application/json, text/plain, */*",
+        "Referer": "https://data.eastmoney.com/",
+    }
 
     def __init__(self):
         super().__init__(name="AkShare数据源")
@@ -66,7 +80,7 @@ class AkshareDataSource(DataSourceBase):
             )
 
         try:
-            info_df = ak.stock_individual_info_em(symbol=code)
+            info_df = self._fetch_stock_individual_info_em(code, market)
         except Exception as e:
             return self._error_result(
                 "stock_basic_info",
@@ -174,7 +188,7 @@ class AkshareDataSource(DataSourceBase):
             )
 
         try:
-            df = ak.stock_individual_fund_flow(stock=code, market=market)
+            df = self._fetch_stock_individual_fund_flow(code, market)
         except Exception as e:
             return self._error_result(
                 "stock_fund_flow",
@@ -232,8 +246,8 @@ class AkshareDataSource(DataSourceBase):
             )
 
         try:
-            industry_df = ak.stock_sector_fund_flow_rank(indicator=indicator, sector_type="行业资金流")
-            concept_df = ak.stock_sector_fund_flow_rank(indicator=indicator, sector_type="概念资金流")
+            industry_df = self._fetch_stock_sector_fund_flow_rank(indicator=indicator, sector_type="行业资金流")
+            concept_df = self._fetch_stock_sector_fund_flow_rank(indicator=indicator, sector_type="概念资金流")
         except Exception as e:
             return self._error_result(
                 "sector_fund_flow",
@@ -288,8 +302,8 @@ class AkshareDataSource(DataSourceBase):
             return ready
 
         try:
-            market_df = ak.stock_market_fund_flow()
-            north_df = ak.stock_hsgt_fund_flow_summary_em()
+            market_df = self._fetch_stock_market_fund_flow()
+            north_df = self._fetch_stock_hsgt_fund_flow_summary_em()
         except Exception as e:
             return self._error_result("market_fund_flow", f"AkShare 获取大盘/北向资金失败：{e}")
 
@@ -367,6 +381,345 @@ class AkshareDataSource(DataSourceBase):
         }
         result.update(extra)
         return result
+
+    def _request_json(self, url: str, params: Dict[str, Any], timeout: float = 15) -> Dict[str, Any]:
+        """请求东方财富 JSON 接口。
+
+        AkShare 1.18.x 里部分函数仍通过 HTTPS 访问 ``push2.eastmoney.com`` / ``push2his.eastmoney.com``，
+        在当前环境会被服务端直接断开连接。这里保留 AkShare 的字段契约，但改为显式访问当前可用的
+        东方财富接口域名：实时/板块使用 ``push2delay``，历史资金流使用 HTTP ``push2his``。
+        """
+        response = requests.get(url, params=params, headers=self.EASTMONEY_HEADERS, timeout=timeout)
+        response.raise_for_status()
+        return response.json()
+
+    def _fetch_stock_individual_info_em(self, code: str, market: str):
+        market_code = 1 if market == "sh" else 0
+        data_json = self._request_json(
+            f"{self.EASTMONEY_DELAY_HOST}/api/qt/stock/get",
+            {
+                "fltt": "2",
+                "invt": "2",
+                "fields": "f57,f58,f84,f85,f127,f116,f117,f189,f43",
+                "secid": f"{market_code}.{code}",
+                "_": int(time.time() * 1000),
+            },
+        )
+        data = data_json.get("data") or {}
+        if not data:
+            raise ValueError(f"东方财富未返回个股基础信息：{code}")
+        code_name_map = {
+            "f57": "股票代码",
+            "f58": "股票简称",
+            "f84": "总股本",
+            "f85": "流通股",
+            "f127": "行业",
+            "f116": "总市值",
+            "f117": "流通市值",
+            "f189": "上市时间",
+            "f43": "最新",
+        }
+        rows = [{"item": name, "value": data.get(field)} for field, name in code_name_map.items()]
+        return pd.DataFrame(rows)
+
+    def _fetch_stock_individual_fund_flow(self, code: str, market: str):
+        market_map = {"sh": 1, "sz": 0, "bj": 0}
+        data_json = self._request_json(
+            f"{self.EASTMONEY_HIS_HOST}/api/qt/stock/fflow/daykline/get",
+            {
+                "lmt": "0",
+                "klt": "101",
+                "secid": f"{market_map[market]}.{code}",
+                "fields1": "f1,f2,f3,f7",
+                "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65",
+                "ut": "b2884a393a59ad64002292a3e90d46a5",
+                "_": int(time.time() * 1000),
+            },
+        )
+        klines = ((data_json.get("data") or {}).get("klines")) or []
+        if not klines:
+            raise ValueError(f"东方财富未返回个股资金流：{code}")
+        temp_df = pd.DataFrame([item.split(",") for item in klines])
+        temp_df.columns = [
+            "日期",
+            "主力净流入-净额",
+            "小单净流入-净额",
+            "中单净流入-净额",
+            "大单净流入-净额",
+            "超大单净流入-净额",
+            "主力净流入-净占比",
+            "小单净流入-净占比",
+            "中单净流入-净占比",
+            "大单净流入-净占比",
+            "超大单净流入-净占比",
+            "收盘价",
+            "涨跌幅",
+            "-",
+            "--",
+        ]
+        temp_df = temp_df[
+            [
+                "日期",
+                "收盘价",
+                "涨跌幅",
+                "主力净流入-净额",
+                "主力净流入-净占比",
+                "超大单净流入-净额",
+                "超大单净流入-净占比",
+                "大单净流入-净额",
+                "大单净流入-净占比",
+                "中单净流入-净额",
+                "中单净流入-净占比",
+                "小单净流入-净额",
+                "小单净流入-净占比",
+            ]
+        ]
+        return self._coerce_fund_flow_frame(temp_df, ["收盘价", "涨跌幅"])
+
+    def _fetch_stock_market_fund_flow(self):
+        data_json = self._request_json(
+            f"{self.EASTMONEY_HIS_HOST}/api/qt/stock/fflow/daykline/get",
+            {
+                "lmt": "0",
+                "klt": "101",
+                "secid": "1.000001",
+                "secid2": "0.399001",
+                "fields1": "f1,f2,f3,f7",
+                "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65",
+                "ut": "b2884a393a59ad64002292a3e90d46a5",
+                "_": int(time.time() * 1000),
+            },
+        )
+        klines = ((data_json.get("data") or {}).get("klines")) or []
+        if not klines:
+            raise ValueError("东方财富未返回大盘资金流")
+        temp_df = pd.DataFrame([item.split(",") for item in klines])
+        temp_df.columns = [
+            "日期",
+            "主力净流入-净额",
+            "小单净流入-净额",
+            "中单净流入-净额",
+            "大单净流入-净额",
+            "超大单净流入-净额",
+            "主力净流入-净占比",
+            "小单净流入-净占比",
+            "中单净流入-净占比",
+            "大单净流入-净占比",
+            "超大单净流入-净占比",
+            "上证-收盘价",
+            "上证-涨跌幅",
+            "深证-收盘价",
+            "深证-涨跌幅",
+        ]
+        ordered = [
+            "日期",
+            "上证-收盘价",
+            "上证-涨跌幅",
+            "深证-收盘价",
+            "深证-涨跌幅",
+            "主力净流入-净额",
+            "主力净流入-净占比",
+            "超大单净流入-净额",
+            "超大单净流入-净占比",
+            "大单净流入-净额",
+            "大单净流入-净占比",
+            "中单净流入-净额",
+            "中单净流入-净占比",
+            "小单净流入-净额",
+            "小单净流入-净占比",
+        ]
+        return self._coerce_fund_flow_frame(temp_df[ordered], ["上证-收盘价", "上证-涨跌幅", "深证-收盘价", "深证-涨跌幅"])
+
+    def _coerce_fund_flow_frame(self, df, extra_numeric_fields: List[str]):
+        df = df.copy()
+        df["日期"] = pd.to_datetime(df["日期"], errors="coerce").dt.date
+        numeric_fields = [
+            "主力净流入-净额",
+            "小单净流入-净额",
+            "中单净流入-净额",
+            "大单净流入-净额",
+            "超大单净流入-净额",
+            "主力净流入-净占比",
+            "小单净流入-净占比",
+            "中单净流入-净占比",
+            "大单净流入-净占比",
+            "超大单净流入-净占比",
+            *extra_numeric_fields,
+        ]
+        for field in numeric_fields:
+            if field in df.columns:
+                df[field] = pd.to_numeric(df[field], errors="coerce")
+        return df
+
+    def _fetch_stock_sector_fund_flow_rank(self, indicator: str = "今日", sector_type: str = "行业资金流"):
+        sector_type_map = {"行业资金流": "2", "概念资金流": "3", "地域资金流": "1"}
+        indicator_map = {
+            "今日": {
+                "fid0": "f62",
+                "stat": "1",
+                "fields": "f12,f14,f2,f3,f62,f184,f66,f69,f72,f75,f78,f81,f84,f87,f204,f205,f124",
+                "columns": {
+                    "f14": "名称",
+                    "f3": "今日涨跌幅",
+                    "f62": "今日主力净流入-净额",
+                    "f184": "今日主力净流入-净占比",
+                    "f66": "今日超大单净流入-净额",
+                    "f69": "今日超大单净流入-净占比",
+                    "f72": "今日大单净流入-净额",
+                    "f75": "今日大单净流入-净占比",
+                    "f78": "今日中单净流入-净额",
+                    "f81": "今日中单净流入-净占比",
+                    "f84": "今日小单净流入-净额",
+                    "f87": "今日小单净流入-净占比",
+                    "f204": "今日主力净流入最大股",
+                },
+                "sort": "今日主力净流入-净额",
+            },
+            "5日": {
+                "fid0": "f164",
+                "stat": "5",
+                "fields": "f12,f14,f2,f109,f164,f165,f166,f167,f168,f169,f170,f171,f172,f173,f257,f258,f124",
+                "columns": {
+                    "f14": "名称",
+                    "f109": "5日涨跌幅",
+                    "f164": "5日主力净流入-净额",
+                    "f165": "5日主力净流入-净占比",
+                    "f166": "5日超大单净流入-净额",
+                    "f167": "5日超大单净流入-净占比",
+                    "f168": "5日大单净流入-净额",
+                    "f169": "5日大单净流入-净占比",
+                    "f170": "5日中单净流入-净额",
+                    "f171": "5日中单净流入-净占比",
+                    "f172": "5日小单净流入-净额",
+                    "f173": "5日小单净流入-净占比",
+                    "f257": "5日主力净流入最大股",
+                },
+                "sort": "5日主力净流入-净额",
+            },
+            "10日": {
+                "fid0": "f174",
+                "stat": "10",
+                "fields": "f12,f14,f2,f160,f174,f175,f176,f177,f178,f179,f180,f181,f182,f183,f260,f261,f124",
+                "columns": {
+                    "f14": "名称",
+                    "f160": "10日涨跌幅",
+                    "f174": "10日主力净流入-净额",
+                    "f175": "10日主力净流入-净占比",
+                    "f176": "10日超大单净流入-净额",
+                    "f177": "10日超大单净流入-净占比",
+                    "f178": "10日大单净流入-净额",
+                    "f179": "10日大单净流入-净占比",
+                    "f180": "10日中单净流入-净额",
+                    "f181": "10日中单净流入-净占比",
+                    "f182": "10日小单净流入-净额",
+                    "f183": "10日小单净流入-净占比",
+                    "f260": "10日主力净流入最大股",
+                },
+                "sort": "10日主力净流入-净额",
+            },
+        }
+        config = indicator_map[indicator]
+        params = {
+            "pn": "1",
+            "pz": "100",
+            "po": "1",
+            "np": "1",
+            "ut": "b2884a393a59ad64002292a3e90d46a5",
+            "fltt": "2",
+            "invt": "2",
+            "fid0": config["fid0"],
+            "fs": f"m:90 t:{sector_type_map[sector_type]}",
+            "stat": config["stat"],
+            "fields": config["fields"],
+            "rt": "52975239",
+            "_": int(time.time() * 1000),
+        }
+        first_page = self._request_json(f"{self.EASTMONEY_DELAY_HOST}/api/qt/clist/get", params)
+        total = ((first_page.get("data") or {}).get("total")) or 0
+        total_page = max(1, math.ceil(total / 100))
+        rows = list(((first_page.get("data") or {}).get("diff")) or [])
+        for page in range(2, total_page + 1):
+            params.update({"pn": page})
+            page_json = self._request_json(f"{self.EASTMONEY_DELAY_HOST}/api/qt/clist/get", params)
+            rows.extend(((page_json.get("data") or {}).get("diff")) or [])
+        if not rows:
+            raise ValueError(f"东方财富未返回{sector_type}排名")
+        temp_df = pd.DataFrame(rows)
+        temp_df = temp_df.rename(columns=config["columns"])
+        keep_columns = ["名称", *[value for value in config["columns"].values() if value != "名称"]]
+        temp_df = temp_df[[column for column in keep_columns if column in temp_df.columns]].copy()
+        for column in temp_df.columns:
+            if column != "名称" and not column.endswith("最大股"):
+                temp_df[column] = pd.to_numeric(temp_df[column], errors="coerce")
+        sort_column = config["sort"]
+        if sort_column in temp_df.columns:
+            temp_df.sort_values([sort_column], ascending=False, inplace=True)
+        temp_df.reset_index(drop=True, inplace=True)
+        temp_df.insert(0, "序号", range(1, len(temp_df) + 1))
+        return temp_df
+
+    def _fetch_stock_hsgt_fund_flow_summary_em(self):
+        data_json = self._request_json(
+            f"{self.EASTMONEY_DATACENTER_HOST}/api/data/v1/get",
+            {
+                "reportName": "RPT_MUTUAL_QUOTA",
+                "columns": "TRADE_DATE,MUTUAL_TYPE,BOARD_TYPE,MUTUAL_TYPE_NAME,FUNDS_DIRECTION,INDEX_CODE,INDEX_NAME,BOARD_CODE",
+                "quoteColumns": "status~07~BOARD_CODE,dayNetAmtIn~07~BOARD_CODE,dayAmtRemain~07~BOARD_CODE,"
+                "dayAmtThreshold~07~BOARD_CODE,f104~07~BOARD_CODE,f105~07~BOARD_CODE,"
+                "f106~07~BOARD_CODE,f3~03~INDEX_CODE~INDEX_f3,netBuyAmt~07~BOARD_CODE",
+                "quoteType": "0",
+                "pageNumber": "1",
+                "pageSize": "2000",
+                "sortTypes": "1",
+                "sortColumns": "MUTUAL_TYPE",
+                "source": "WEB",
+                "client": "WEB",
+            },
+        )
+        rows = ((data_json.get("result") or {}).get("data")) or []
+        if not rows:
+            raise ValueError("东方财富未返回沪深港通资金流")
+        temp_df = pd.DataFrame(rows).rename(
+            columns={
+                "TRADE_DATE": "交易日",
+                "BOARD_TYPE": "类型",
+                "MUTUAL_TYPE_NAME": "板块",
+                "FUNDS_DIRECTION": "资金方向",
+                "status": "交易状态",
+                "netBuyAmt": "成交净买额",
+                "dayNetAmtIn": "资金净流入",
+                "dayAmtRemain": "当日资金余额",
+                "f104": "上涨数",
+                "f106": "持平数",
+                "f105": "下跌数",
+                "INDEX_NAME": "相关指数",
+                "INDEX_f3": "指数涨跌幅",
+            }
+        )
+        columns = [
+            "交易日",
+            "类型",
+            "板块",
+            "资金方向",
+            "交易状态",
+            "成交净买额",
+            "资金净流入",
+            "当日资金余额",
+            "上涨数",
+            "持平数",
+            "下跌数",
+            "相关指数",
+            "指数涨跌幅",
+        ]
+        temp_df = temp_df[[column for column in columns if column in temp_df.columns]].copy()
+        temp_df["交易日"] = pd.to_datetime(temp_df["交易日"], errors="coerce").dt.date
+        for column in ["成交净买额", "资金净流入", "当日资金余额", "上涨数", "持平数", "下跌数", "指数涨跌幅"]:
+            if column in temp_df.columns:
+                temp_df[column] = pd.to_numeric(temp_df[column], errors="coerce")
+        for column in ["成交净买额", "资金净流入", "当日资金余额"]:
+            if column in temp_df.columns:
+                temp_df[column] = temp_df[column] / 10000
+        return temp_df
 
     def _normalize_stock_input(self, stock_code: str) -> Tuple[str, str, str]:
         raw = (stock_code or "").strip().upper()
