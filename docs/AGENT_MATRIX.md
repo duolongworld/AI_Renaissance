@@ -144,17 +144,17 @@ Orchestrator Agent（编排，开发2组）
 | 目录 | `agents/industry/` |
 | 负责团队 | 专家5组 |
 | signal_type | `industry` |
-| Skill 目录 | `skills/industry/` |
+| Skill 目录 | `skills/industry/industrial_sentinel/` |
 | 核心能力 | 产业链景气度、行业拐点、竞争格局 |
 
-**待开发 Skill：**
+**已接入 Skill：**
 
 | Skill | 说明 | 优先级 |
 |-------|------|--------|
-| 行业对比 | 同行业公司对比 | P1 |
+| Industrial Sentinel | 产业链景气度、生命周期、拐点与竞争格局分析；项目级输出标准 `Signal`，HTML 仅保留给独立 CLI/调试路径 | P1 |
+| 行业数据降级 | 网络或实时数据不可用时，通过 data_sources 缓存、preset 路由和 `needs_data` meta 降级 | P1 |
+| 行业对比 | 同行业公司对比 | P2 |
 | 行业轮动 | 行业强弱分析 | P2 |
-| 产业链联动 | 上下游分析 | P2 |
-| 竞争格局 | 市场份额 | P3 |
 
 ---
 
@@ -219,6 +219,8 @@ Orchestrator Agent（编排，开发2组）
 | Market OHLCV | `data_sources/market_ohlcv.py` | ✅ 统一 OHLCV 入口，支持 CSV / EastMoney / Tencent 兜底 |
 | 腾讯行情 | `data_sources/tencent_technical.py` | ✅ K 线与基础技术指标数据源 |
 | 行情数据接口说明 | `skills/data/market_ohlcv/`、`skills/data/tencent_technical/` | ✅ 数据接口说明已成稿 |
+| 行业景气复合数据源 | `data_sources/industrial_sentinel.py` | ✅ 封装行业情绪与财务数据，供 IndustryAgent 注入 Skill runtime |
+| 行业 preset 识别 | `data_sources/industry_preset_detection.py` | ✅ 股票/行业到 preset 的数据层识别入口 |
 | 资金流向 | `data_sources/` | 📝 待实现 |
 
 ---
