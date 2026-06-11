@@ -10,9 +10,11 @@ A股大盘市场情绪数据源
 v0.4: 6阶段市场情绪（无人问津/暗度陈仓/人声渐起/人声鼎沸/恐慌抛售/绝望冰点）
 """
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Tuple
-import threading
+
+from .community_sentiment import CommunitySentimentDataSource
 
 from loguru import logger
 
@@ -133,8 +135,9 @@ class MarketSentimentDataSource:
         if not AKSHARE_AVAILABLE:
             return self._fallback_result("akshare 未安装，无法采集大盘数据")
 
-        indicators = {}
-        raw_data = {}
+        indicators: Dict[str, Any] = {}
+        raw_data: Dict[str, Any] = {}
+        community_data: Optional[Dict[str, Any]] = None
 
         # 1. 涨跌停数据
         try:
@@ -191,32 +194,32 @@ class MarketSentimentDataSource:
             logger.warning(f"[{self.name}] 技术指标计算失败: {e}")
 
         # 6. 社区讨论数据（v0.4 新增）
-        community_data = None
-        try:
-            from .community_sentiment import CommunitySentimentDataSource
-            community_source = CommunitySentimentDataSource()
-            community_data = community_source.get_community_sentiment()
-            if community_data.get("status") in ("success", "partial"):
-                aggregate = community_data["aggregate"]
-                indicators["discussion_volume"] = aggregate["discussion_volume_score"]
-                indicators["community_sentiment"] = self._normalize_community_sentiment(
-                    aggregate["bullish_ratio"]
-                )
-                raw_data["community"] = community_data
-                logger.info(
-                    f"[{self.name}] 社区: {aggregate['total_posts']}帖, "
-                    f"热度{aggregate['discussion_volume_score']:.0f}, "
-                    f"多{aggregate['bullish_ratio']:.1%}/空{aggregate['bearish_ratio']:.1%}"
-                )
-        except Exception as e:
-            logger.warning(f"[{self.name}] 社区数据获取失败: {e}")
+        community_source = CommunitySentimentDataSource()
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            community_future = executor.submit(community_source.get_community_sentiment)
+            try:
+                community_data = community_future.result(timeout=90)
+                if community_data and community_data.get("status") in ("success", "partial"):
+                    aggregate = community_data["aggregate"]
+                    indicators["discussion_volume"] = aggregate["discussion_volume_score"]
+                    indicators["community_sentiment"] = self._normalize_community_sentiment(
+                        aggregate["bullish_ratio"]
+                    )
+                    raw_data["community"] = community_data
+                    logger.info(
+                        f"[{self.name}] 社区: {aggregate['total_posts']}帖, "
+                        f"热度{aggregate['discussion_volume_score']:.0f}, "
+                        f"多{aggregate['bullish_ratio']:.1%}/空{aggregate['bearish_ratio']:.1%}"
+                    )
+            except Exception as e:
+                logger.warning(f"[{self.name}] 社区数据获取超时或异常: {e}")
+                community_data = None
 
         # 计算综合得分
         score = self._calculate_score(indicators)
 
         # 判定阶段（使用6阶段规则引擎）
         stage = self._determine_phase(score, community_data, raw_data)
-
         direction = stage["direction"]
         special_signals = self._detect_special_signals(raw_data, score, community_data)
 

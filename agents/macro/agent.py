@@ -225,7 +225,7 @@ class MacroAgent(BaseAgent):
         设置 LLM 调用客户端。
         
         Args:
-            llm_client: 实现 call_llm(prompt: str, system: str) -> str 的客户端
+            llm_client: 实现 __call__(prompt: str, system: str) -> str 的客户端
         """
         self._llm_client = llm_client
         logger.info(f"[{self.name}] LLM客户端已设置")

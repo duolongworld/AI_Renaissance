@@ -41,6 +41,9 @@ logs/
 .env
 .<环境影响>
 
+# Local private configuration
+config/*.private.yaml
+
 # Data (only root-level data/, not skills/data/)
 /data/
 data_sources/data/
