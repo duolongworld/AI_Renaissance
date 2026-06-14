@@ -230,13 +230,14 @@ class MacroAgent(BaseAgent):
         self._llm_client = llm_client
         logger.info(f"[{self.name}] LLM客户端已设置")
 
-    def analyze(self, stock_code: str, period: str = None) -> Signal:
+    def analyze(self, stock_code: str, period: str = None, prefetched_data: Dict[str, Any] = None) -> Signal:
         """
         执行7层流水线分析。
 
         Args:
             stock_code: 股票代码（与其他 Agent 签名对齐）
-            period: 分析时段，如 "2026-05-05至2026-05-12"
+            period: 目标日期 (YYYY-MM-DD) 或时段，如 "2026-05-31"
+            prefetched_data: 可选的预取数据（格式同 fetch_agent_data 返回），避免重复采集
         
         Returns:
             标准 Signal 对象（signal_type="macro"）
@@ -246,7 +247,12 @@ class MacroAgent(BaseAgent):
         
         try:
             # Step 1: 数据获取
-            data = self._fetch_macro_data()
+            if prefetched_data is not None:
+                data = prefetched_data
+                self.log(f"使用预取数据 ({data.get('_report_date', '')})")
+            else:
+                target_date = period if period else None
+                data = self._fetch_macro_data(target_date=target_date)
             
             # Step 2: Layer 0 - 双经济体追踪
             layer0_result = self._run_layer0(data)
@@ -325,14 +331,30 @@ class MacroAgent(BaseAgent):
     # 数据获取层（伪代码）
     # =============================================================================
 
-    def _fetch_macro_data(self) -> Dict[str, Any]:
+    def _fetch_macro_data(self, target_date: Optional[str] = None) -> Dict[str, Any]:
         """
         获取宏观数据。
 
-        当前使用 2024-06-28 的真实历史数据集（macro_test_data_2024_06_28.py）。
-        后续替换为 data_sources/ 调用即可切换至实时数据。
+        优先使用 data_sources/macro_data.py 的实时数据采集（FRED + akshare）。
+        若提供 target_date，FRED 数据按 observation_end 截断以模拟历史时点。
+        若实时数据源不可用，自动降级到 2024-06-28 历史 Mock 数据集。
         """
-        logger.info("[数据获取] 使用 2024-06-28 真实历史数据集")
+        # ── 尝试实时数据 ──
+        try:
+            from data_sources.macro_data import fetch_agent_data
+            logger.info(f"[数据获取] 尝试实时数据 (target={target_date or 'today'})...")
+            real_data = fetch_agent_data(target_date=target_date)
+            if real_data and not real_data.get("_is_mock", True):
+                logger.info(f"[数据获取] 实时数据采集成功 ({real_data.get('_report_date', '')})")
+                return real_data
+            logger.warning("[数据获取] 实时数据返回了mock标记，降级到历史数据集")
+        except ImportError as e:
+            logger.warning(f"[数据获取] macro_data 模块不可用: {e}")
+        except Exception as e:
+            logger.error(f"[数据获取] 实时数据采集失败: {e}")
+
+        # ── 降级：使用 Mock 数据 ──
+        logger.info("[数据获取] 降级使用 2024-06-28 真实历史数据集")
         return build_complete_mock_data()
 
     # =============================================================================
