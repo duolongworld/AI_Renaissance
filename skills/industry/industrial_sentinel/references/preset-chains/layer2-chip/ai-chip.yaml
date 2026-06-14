@@ -1,0 +1,161 @@
+chain_name: ai-chip
+industry_name: AI芯片层
+source: 黄仁勋AI五层蛋糕结构投研报告
+tags: [AI, 芯片, GPU, HBM, 光互连, 先进封装]
+
+upstream:
+  nodes:
+    - name: 半导体材料
+      key_players: ["信越化学", "SUMCO", "沪硅产业", "江丰电子"]
+      key_metrics:
+        - 12英寸硅片出货量
+        - 光刻胶价格
+        - 电子特气供应量
+      profit_pool: "材料利润池 10-15%"
+      barrier: "技术+认证：光刻胶日本垄断，国产替代周期长"
+      bargain_power: "强 — 日本垄断，买方无替代方案"
+    - name: 半导体设备
+      key_players: ["ASML", "AMAT", "LAM", "北方华创", "中微公司"]
+      key_metrics:
+        - EUV光刻机交付数量
+        - 刻蚀机产能利用率
+        - 薄膜沉积设备订单
+      price_benchmark: "EUV单台$2亿+，交付周期18-24个月"
+      shortage_indicator: "台积电/中芯国际扩产受限"
+      profit_pool: "设备利润池 15-20%"
+      barrier: "技术壁垒极高：EUV光学系统、精密机械"
+      bargain_power: "极强 — ASML垄断EUV，预订排期至2027年+"
+    - name: 先进封装材料
+      key_players: ["揖斐电(IBIDEN)", "欣兴电子", "深南电路"]
+      key_metrics:
+        - ABF载板交期(周)
+        - FC-BGA出货量
+        - 底部填充胶价格
+      profit_pool: "封装材料利润池 8-12%"
+      barrier: "工艺+可靠性：ABF载板尺寸变大→良率降低"
+      bargain_power: "中等 — 日本/台湾垄断，但扩产中"
+
+midstream:
+  nodes:
+    - name: 晶圆制造
+      key_players: ["台积电(TSMC)", "三星", "中芯国际", "华虹半导体"]
+      key_metrics:
+        - 晶圆代工收入
+        - 产能利用率(%)
+        - 先进制程占比(%)
+      profit_pool: "代工利润池 30-35%"
+      barrier: "制程+产能：3nm需EUV，产能建设周期3年+"
+      bargain_power: "极强 — 台积电垄断3nm，议价权极高"
+    - name: 先进封装
+      key_players: ["台积电", "日月光", "长电科技", "通富微电"]
+      key_metrics:
+        - CoWoS产能利用率
+        - SoIC出货量
+        - HBM堆叠良率
+      shortage_indicator: "CoWoS产能缺口持续"
+      profit_pool: "封装利润池 15-20%"
+      barrier: "工艺know-how：CoWoS良率爬坡慢"
+      bargain_power: "强 — 台积电垄断2.5D/3D封装"
+    - name: 存储制造
+      key_players: ["SK海力士", "三星", "美光", "长鑫存储"]
+      key_metrics:
+        - HBM3E/HBM4出货量
+        - HBM良率(%)
+        - DRAM/NAND价格
+      profit_pool: "存储利润池 20-25%"
+      barrier: "堆叠技术+良率：HBM4需12层堆叠"
+      bargain_power: "强 — SK海力士HBM3E垄断，但扩产中"
+
+downstream:
+  nodes:
+    - name: GPU/加速器设计
+      key_players: ["英伟达(NVDA)", "AMD", "Intel", "寒武纪", "海光信息", "芯原股份"]
+      key_metrics:
+        - GPU/ASIC出货量
+        - 推理vs训练占比
+        - 市场份额变化
+      profit_pool: "芯片设计利润池 25-30%"
+      barrier: "生态+软件：CUDA生态壁垒，国产替代需软件适配"
+      bargain_power: "英伟达极强，国产较弱"
+    - name: 光互连/CPO
+      key_players: ["博通(AVGO)", "Marvell", "中际旭创", "新易盛"]
+      key_metrics:
+        - 光模块出货量(800G/1.6T)
+        - 硅光芯片渗透率
+        - CPO(共封装光学)进展
+      shortage_indicator: "DSP/EML芯片缺口60-70%"
+      profit_pool: "光互连利润池 10-15%"
+      barrier: "集成+测试：硅光与传统方案的良率差异"
+      bargain_power: "中等 — 光模块厂商分散"
+    - name: CPU/配套芯片
+      key_players: ["Intel", "AMD", "ARM", "澜起科技"]
+      key_metrics:
+        - CPU出货量
+        - 服务器BOM占比
+        - Retimer/Redriver需求
+      profit_pool: "CPU利润池 15-20%"
+      barrier: "生态+指令集：x86/ARM生态壁垒"
+      bargain_power: "Intel/AMD双寡头，国产替代初期"
+
+value_allocation:
+  upstream_share: "15-20%"
+  midstream_share: "40-45%"
+  downstream_share: "35-40%"
+  bargain_power: "中游制造端(台积电/SK海力士)议价权最强，下游设计端英伟达垄断"
+
+cross_verify:
+  upstream:
+    - name: 半导体材料（硅片/光刻胶/特气）
+      metrics:
+        - "12英寸硅片价格趋势"
+        - "光刻胶国产化率<5%"
+      pool: ["688981.SH", "688012.SH"]
+    - name: 半导体设备（光刻/刻蚀/薄膜）
+      metrics:
+        - "国产设备采购占比突破30%"
+        - "光刻机交付周期>18个月"
+      pool: ["002371.SZ", "688012.SH"]
+    - name: 先进封装材料（ABF/Underfill）
+      metrics:
+        - "ABF载板供需缺口>15%"
+        - "Underfill需求量年增40%"
+      pool: ["002916.SZ"]
+  midstream:
+    - name: 晶圆制造/先进制程
+      metrics:
+        - "台积电3nm/2nm产能利用率>95%"
+        - "CoWoS产能缺口50-60%"
+      pool: ["688981.SH"]
+    - name: 存储制造（HBM3E/4）
+      metrics:
+        - "HBM3E占DRAM产能15%→25%"
+        - "SK海力士2026HBM产能已售罄"
+      pool: ["688525.SH"]
+  downstream:
+    - name: GPU/加速器芯片设计
+      metrics:
+        - "英伟达B200出货量环比+60%"
+        - "ASIC芯片设计案同比+80%"
+      pool: ["688256.SH", "688041.SH"]
+    - name: 光互连/CPO
+      metrics:
+        - "CPO渗透率从3%→8%"
+        - "硅光集成良率突破85%"
+      pool: ["688313.SH"]
+  external_indicators:
+    - name: "全球半导体设备销售额"
+      metric: "$1250亿，+18% YoY"
+      source: "SEMI 2026Q1"
+    - name: "台积电CAPEX指引"
+      metric: "$400亿+，主要投向2nm/CoWoS"
+      source: "台积电法说会"
+
+investment_thesis: |
+  芯片层是AI的引擎，正经历从训练到推理的结构性转变。
+  核心矛盾：推理需求爆发(千倍增长) vs 产能扩张刚性(18-24个月扩产周期)。
+  三层机会：
+  1. 上游材料设备：半导体设备和材料是"卖铲人"，但扩产周期长
+  2. 中游制造封装：CoWoS/HBM是超级瓶颈，产能缺口50-60%
+  3. 下游芯片设计：GPU→ASIC迁移趋势明确，国产替代空间大
+  关键转折：推理占比首次超过训练(52%)，标志着AI从实验室走向规模化部署。
+  投资特性：中层制造封装确定性最高(产能为王)，下游芯片设计波动大但弹性大。

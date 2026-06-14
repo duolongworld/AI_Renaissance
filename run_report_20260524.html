@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Renaissance 运行报告</title>
+<style>
+  :root{--bg-0:#0a0e1a;--bg-1:#111827;--bg-2:#1a2234;--bg-3:#243049;--border:#2a3654;--text-1:#e8edf5;--text-2:#94a3c0;--text-3:#5b6d8a;--cyan:#00e5ff;--green:#00e676;--red:#ff5252;--amber:#ffab40;--purple:#b388ff;--radius:8px}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg-0);color:var(--text-1);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.7;padding:32px;max-width:1100px;margin:0 auto}
+  h1{font-size:28px;font-weight:700;margin-bottom:6px;background:linear-gradient(135deg,var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .subtitle{color:var(--text-3);font-size:14px;margin-bottom:32px}
+  h2{font-size:18px;font-weight:600;color:var(--cyan);margin:28px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  h3{font-size:15px;font-weight:600;color:var(--text-2);margin:18px 0 10px}
+  .card{background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:20px}
+  .stat{background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center}
+  .stat .num{font-size:32px;font-weight:700;color:var(--cyan)}
+  .stat .label{font-size:12px;color:var(--text-3);margin-top:4px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{background:var(--bg-3);color:var(--text-2);text-align:left;padding:10px 14px;font-weight:600;white-space:nowrap}
+  td{padding:9px 14px;border-bottom:1px solid var(--border);color:var(--text-1)}
+  tr:hover td{background:var(--bg-2)}
+  .badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.3px}
+  .b-green{background:#00e67622;color:var(--green)}
+  .b-red{background:#ff525222;color:var(--red)}
+  .b-cyan{background:#00e5ff22;color:var(--cyan)}
+  .b-amber{background:#ffab4022;color:var(--amber)}
+  .b-purple{background:#b388ff22;color:var(--purple)}
+  .b-gray{background:#94a3c022;color:var(--text-3)}
+  .ok{color:var(--green)} .fail{color:var(--red)}
+  .mono{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12px;color:var(--cyan)}
+  .sep{height:1px;background:var(--border);margin:20px 0}
+  .tag-list{display:flex;flex-wrap:wrap;gap:6px}
+  .tag{background:var(--bg-3);border:1px solid var(--border);border-radius:4px;padding:3px 10px;font-size:12px;color:var(--text-2)}
+  .footer{color:var(--text-3);font-size:12px;margin-top:40px;text-align:center}
+</style>
+</head>
+<body>
+
+<h1>AI Renaissance 运行报告</h1>
+<p class="subtitle">2026-05-24 · develop@32dcbca · 8 Agent + N Skill + 数据层架构</p>
+
+<!-- 核心指标 -->
+<div class="grid">
+  <div class="stat"><div class="num">7</div><div class="label">专家 Agent</div></div>
+  <div class="stat"><div class="num">24</div><div class="label">Skill 模块</div></div>
+  <div class="stat"><div class="num">10</div><div class="label">数据源</div></div>
+  <div class="stat"><div class="num">41/41</div><div class="label">测试通过</div></div>
+  <div class="stat"><div class="num">27,089</div><div class="label">Python 代码行</div></div>
+</div>
+
+<!-- Agent 运行状态 -->
+<h2>Agent 运行状态（600519 贵州茅台）</h2>
+<div class="card">
+<table>
+<tr><th>Agent</th><th>signal_type</th><th>方向</th><th>置信度</th><th>已加载 Skill</th><th>状态</th></tr>
+<tr><td>财务分析Agent</td><td class="mono">financial</td><td><span class="badge b-gray">neutral</span></td><td>0.10</td><td>1 · financial_report_analysis</td><td class="ok">✅ 正常</td></tr>
+<tr><td>技术指标Agent</td><td class="mono">technical</td><td><span class="badge b-gray">neutral</span></td><td>0.45</td><td>3+5 · company_evolution_analysis, traditional_model_fusion, volume_price_reversal, data×5</td><td class="ok">✅ 正常</td></tr>
+<tr><td>资金流向Agent</td><td class="mono">fundflow</td><td><span class="badge b-gray">neutral</span></td><td>0.10</td><td>1+5 · crowding_state2x2, data×5</td><td class="ok">✅ 正常</td></tr>
+<tr><td>宏观周期Agent</td><td class="mono">macro</td><td><span class="badge b-red">bearish</span></td><td>0.80</td><td>7 · layer0~layer5 七层宏观框架</td><td class="ok">✅ 正常</td></tr>
+<tr><td>行业景气Agent</td><td class="mono">industry</td><td><span class="badge b-gray">neutral</span></td><td>0.10</td><td>1 · Industry (大Skill)</td><td class="ok">✅ 正常</td></tr>
+<tr><td>舆情情感Agent</td><td class="mono">news</td><td><span class="badge b-green">bullish</span></td><td>0.53</td><td>3+5 · market_emotion_discovery, market_sentiment_tracker, industry_sentiment_tracker, data×5</td><td class="ok">✅ 正常</td></tr>
+<tr><td>风险预警Agent</td><td class="mono">risk</td><td><span class="badge b-gray">neutral</span></td><td>0.10</td><td>0 · 骨架</td><td class="ok">✅ 正常</td></tr>
+</table>
+</div>
+
+<!-- Skill 分布 -->
+<h2>Skill 分布</h2>
+<div class="card">
+<table>
+<tr><th>域</th><th>Skill 数</th><th>Skill 列表</th></tr>
+<tr><td class="mono">data/</td><td>5</td><td>akshare_fundflow_snapshot, cninfo, eastmoney_guba, market_ohlcv, tencent_technical</td></tr>
+<tr><td class="mono">financial/</td><td>1</td><td>financial_report_analysis</td></tr>
+<tr><td class="mono">technical/</td><td>3</td><td>company_evolution_analysis, traditional_model_fusion, volume_price_reversal</td></tr>
+<tr><td class="mono">fundflow/</td><td>1</td><td>crowding_state2x2</td></tr>
+<tr><td class="mono">macro/</td><td>7</td><td>layer0_tracking, layer1_cai_fci(内置), layer2_cycle_positioning, layer2_5_hub_variable, layer3_market_pricing, layer4_expected_diff, layer4_5_reflexivity, layer5_asset_allocation</td></tr>
+<tr><td class="mono">news/</td><td>3</td><td>market_emotion_discovery, market_sentiment_tracker, industry_sentiment_tracker</td></tr>
+<tr><td class="mono">industry/</td><td>1</td><td>Industry (含 system_a/b + pipeline + backtest)</td></tr>
+<tr><td class="mono">orchestrator/</td><td>1</td><td>llm_arbitration_policy</td></tr>
+<tr><td class="mono">examples/</td><td>1</td><td>cash_flow_quality_check</td></tr>
+</table>
+</div>
+
+<!-- 数据源 -->
+<h2>数据源层</h2>
+<div class="card">
+<div class="tag-list">
+<span class="tag">eastmoney.py — 三大财报</span>
+<span class="tag">eastmoney_guba.py — 股吧帖子</span>
+<span class="tag">akshare.py — 资金流全景</span>
+<span class="tag">cninfo.py — 巨潮信披</span>
+<span class="tag">community_sentiment.py — 社区情绪</span>
+<span class="tag">industry_sentiment.py — 行业情绪</span>
+<span class="tag">market_sentiment.py — 大盘情绪</span>
+<span class="tag">market_ohlcv.py — OHLCV 行情</span>
+<span class="tag">tencent_technical.py — 腾讯K线</span>
+<span class="tag">keywords.py — 关键词库</span>
+</div>
+</div>
+
+<!-- 测试结果 -->
+<h2>测试结果</h2>
+<div class="card">
+<p><span class="ok">41/41 PASSED</span> · 8.54s · 3 warnings (numpy divide_by_zero, 非阻塞)</p>
+<table>
+<tr><th>测试文件</th><th>用例数</th><th>覆盖</th></tr>
+<tr><td class="mono">test_agentscope_message_bridge</td><td>9</td><td>Msg↔Signal 桥接、ArbitrationResult 包装、stock_code 提取</td></tr>
+<tr><td class="mono">test_base_agent_agentscope</td><td>5</td><td>AgentScope 原生继承、reply()调用、非Signal拒绝</td></tr>
+<tr><td class="mono">test_expert_agent_contract</td><td>7</td><td>7个专家Agent离线运行契约</td></tr>
+<tr><td class="mono">test_orchestrator_scope</td><td>8</td><td>并行编排、超时/异常隔离、Signal收集</td></tr>
+<tr><td class="mono">test_arbitration_contract</td><td>1</td><td>单Signal仲裁</td></tr>
+<tr><td class="mono">test_traditional_model_fusion</td><td>7</td><td>技术模型融合、趋势/震荡/量价</td></tr>
+<tr><td class="mono">test_technical_agent</td><td>4</td><td>TechnicalAgent 离线/合成/样本模式</td></tr>
+</table>
+</div>
+
+<!-- 模块导入检查 -->
+<h2>模块导入检查</h2>
+<div class="card">
+<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+<div>
+<h3>Agent 模块（15/15 ✅）</h3>
+<p class="ok">agents.base · agents.registry · agents.signal · agents.agentscope_message<br>
+agents.orchestrator.agent · agents.orchestrator.arbitration · agents.orchestrator.arbitration_strategy · agents.orchestrator.scope<br>
+agents.financial.agent · agents.technical.agent · agents.fundflow.agent<br>
+agents.macro.agent · agents.industry.agent · agents.news_agent.agent · agents.risk.agent</p>
+</div>
+<div>
+<h3>数据源模块（12/12 ✅）</h3>
+<p class="ok">data_sources · base · eastmoney · akshare · cninfo<br>
+community_sentiment · eastmoney_guba · industry_sentiment<br>
+keywords · market_sentiment · market_ohlcv · tencent_technical</p>
+</div>
+</div>
+</div>
+
+<!-- Debug UI -->
+<h2>Debug UI</h2>
+<div class="card">
+<p>Flask 服务运行于 <span class="mono">http://localhost:8080</span></p>
+<ul style="margin:10px 0 0 20px;color:var(--text-2);font-size:13px">
+<li><span class="mono">GET /</span> — Agent 调试面板（深色未来感主题）</li>
+<li><span class="mono">GET /data</span> — 数据 Skill 测试面板</li>
+<li><span class="mono">GET /api/agents</span> — Agent 列表</li>
+<li><span class="mono">GET /api/data_skills</span> — 数据 Skill 列表</li>
+<li><span class="mono">POST /api/debug</span> — 单 Agent 调试</li>
+<li><span class="mono">POST /api/technical_debug</span> — 技术 Agent 专项</li>
+<li><span class="mono">POST /api/orchestrate</span> — 全流程编排</li>
+<li><span class="mono">POST /api/test_skill</span> — 数据 Skill 测试</li>
+</ul>
+</div>
+
+<!-- 本次更新摘要 -->
+<h2>本次更新摘要（3759abe → 32dcbca）</h2>
+<div class="card">
+<table>
+<tr><th>类别</th><th>新增/变更</th></tr>
+<tr><td>Agent</td><td>agentscope 原生集成（BaseAgent→AgentScope AgentBase）、agentscope_message 桥接、orchestrator scope 并行编排</td></tr>
+<tr><td>Skill</td><td>+7 macro 分层 Skill、+3 technical Skill（company_evolution/traditional_model_fusion/volume_price_reversal）、+1 fundflow（crowding_state2x2）、+2 news（market_sentiment_tracker/industry_sentiment_tracker）、+2 data（market_ohlcv/cninfo）、+1 orchestrator（llm_arbitration_policy）、+1 Industry 大Skill</td></tr>
+<tr><td>数据源</td><td>+7 数据源（akshare/cninfo/community_sentiment/eastmoney_guba/industry_sentiment/market_sentiment/market_ohlcv/tencent_technical）</td></tr>
+<tr><td>测试</td><td>+8 测试文件（41 用例），CI GitHub Actions</td></tr>
+<tr><td>Debug UI</td><td>+数据面板（data.html）、+技术 Agent 专项接口、K线图 + 技术指标渲染</td></tr>
+<tr><td>配置</td><td>+config/default.yaml、+pytest.ini、+requirements.txt 更新</td></tr>
+</table>
+</div>
+
+<div class="footer">
+AI Renaissance · 8 Agent + N Skill + 数据层 · Apache 2.0 · github.com/duolongworld/AI_Renaissance
+</div>
+</body>
+</html>

@@ -71,7 +71,7 @@ def calc_sentiment_ratio(
     for post in posts:
         text = post.get("title", "")
         if post.get("content"):
-            text = text + " " + post["content"]
+            text = text + " " + str(post["content"])
 
         weight = 1.0
         if post.get("source_type") == "hot":

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI Renaissance · Debug Console</title>
+<script src="/static/echarts.min.js"></script>
 <style>
   /* ===== Reset & Variables ===== */
   *{margin:0;padding:0;box-sizing:border-box}
@@ -55,8 +56,14 @@
     font-size:13px;color:var(--text-1);background:var(--bg-2);outline:none;transition:border .15s;
     font-family:inherit;
   }
-  .ctrl-group select:focus,.ctrl-group input:focus{border-color:var(--cyan);box-shadow:0 0 0 2px var(--cyan-dim)}
+  .ctrl-group textarea{
+    min-height:104px;border:1px solid var(--border);border-radius:6px;padding:10px 12px;
+    font-size:12px;color:var(--text-1);background:var(--bg-2);outline:none;transition:border .15s;
+    font-family:var(--font-mono);resize:vertical;
+  }
+  .ctrl-group select:focus,.ctrl-group input:focus,.ctrl-group textarea:focus{border-color:var(--cyan);box-shadow:0 0 0 2px var(--cyan-dim)}
   .ctrl-group select option{background:var(--bg-2);color:var(--text-1)}
+  .ctrl-group .hint{margin-top:6px;font-size:11px;color:var(--text-3);line-height:1.5}
   .btn-run{
     height:38px;padding:0 28px;border:1px solid var(--cyan);border-radius:6px;
     background:var(--cyan-bg);color:var(--cyan);font-size:13px;font-weight:600;
@@ -70,6 +77,12 @@
     cursor:pointer;transition:all .15s;white-space:nowrap;
   }
   .btn-orch:hover{box-shadow:0 0 20px #b388ff22}
+  .btn-secondary{
+    height:38px;padding:0 18px;border:1px solid var(--border-light);border-radius:6px;
+    background:var(--bg-2);color:var(--text-2);font-size:13px;font-weight:600;
+    cursor:pointer;transition:all .15s;white-space:nowrap;
+  }
+  .btn-secondary:hover{border-color:var(--cyan);color:var(--cyan)}
 
   /* ===== Agent Info ===== */
   .agent-info{
@@ -92,6 +105,9 @@
 
   /* ===== Result Area ===== */
   .result-area{display:none}
+  .chart-box{background:var(--bg-1);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:18px}
+  .chart-title{font-size:13px;font-weight:700;color:var(--text-1);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .chart-inner{height:360px;width:100%}
 
   /* ===== Signal Header Bar ===== */
   .sig-bar{
@@ -140,6 +156,19 @@
     letter-spacing:.8px;margin-bottom:14px;display:flex;align-items:center;gap:8px;
   }
   .sec-title::before{content:"";width:3px;height:12px;background:var(--cyan);border-radius:2px}
+  .sentiment-section .sec-title.technical-report-title{
+    font-size:18px;font-weight:800;color:var(--text-1);text-transform:none;
+    letter-spacing:.2px;margin:22px 0 16px;line-height:1.35;
+  }
+  .sec-title.technical-report-title::before{height:20px;width:4px;box-shadow:var(--glow-cyan)}
+  .source-link-group{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .source-link{
+    display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border:1px solid var(--cyan-dim);
+    border-radius:999px;background:var(--cyan-bg);color:var(--cyan);font-size:11px;font-weight:600;
+    text-decoration:none;transition:border .15s,background .15s;
+  }
+  .source-link:hover{border-color:var(--cyan);background:var(--cyan-dim)}
+  .source-link-note{font-size:11px;color:var(--text-3);margin-top:6px;line-height:1.5}
 
   .gauge-wrap{display:flex;gap:20px;align-items:center;margin-bottom:20px;flex-wrap:wrap}
   .gauge-ring{position:relative;width:140px;height:140px;flex-shrink:0}
@@ -320,6 +349,54 @@
     </div>
   </div>
 
+  <!-- Technical Agent 专项调试选项：仅选择「技术指标Agent」时展示 -->
+  <div class="ctrl" id="technicalOptions" style="display:none;">
+    <div class="ctrl-group" style="max-width:180px;">
+      <label>Technical Data Mode</label>
+      <select id="technicalDataMode" onchange="onTechnicalModeChange()">
+        <option value="live">实时行情（推荐）</option>
+        <option value="offline">离线样本</option>
+        <option value="sample">自定义 OHLCV JSON</option>
+      </select>
+      <div class="hint">实时模式优先走 data/market_ohlcv，未配置 EASTMONEY_UT 时自动使用腾讯财经 K 线。</div>
+    </div>
+    <div class="ctrl-group" style="max-width:150px;">
+      <label>Fusion Threshold</label>
+      <input id="technicalThreshold" type="number" value="0.6" min="0" max="1" step="0.05" />
+    </div>
+    <div class="ctrl-group technical-live" style="max-width:150px;display:none;">
+      <label>Start</label>
+      <input id="technicalStart" type="date" />
+    </div>
+    <div class="ctrl-group technical-live" style="max-width:150px;display:none;">
+      <label>End</label>
+      <input id="technicalEnd" type="date" />
+    </div>
+    <div class="ctrl-group technical-live" style="max-width:120px;display:none;">
+      <label>Freq</label>
+      <select id="technicalFreq">
+        <option value="D">日线</option>
+        <option value="W">周线</option>
+        <option value="M">月线</option>
+      </select>
+    </div>
+    <div class="ctrl-group technical-live" style="max-width:130px;display:none;">
+      <label>Adjust</label>
+      <select id="technicalAdjust">
+        <option value="qfq" selected>qfq（前复权）</option>
+        <option value="none">none（不复权）</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+      <button class="btn-secondary" onclick="fillTechnicalSampleRows()">填充样例 OHLCV</button>
+    </div>
+    <div class="ctrl-group technical-sample" style="min-width:100%;display:none;">
+      <label>OHLCV Rows JSON</label>
+      <textarea id="technicalOhlcvRows" placeholder='[{"date":"2025-01-01","open":10,"high":10.5,"low":9.8,"close":10.2,"volume":1000000}]'></textarea>
+      <div class="hint">自定义模式用于验证 TechnicalAgent 的 config["ohlcv_rows"] 注入链路。</div>
+    </div>
+  </div>
+
   <!-- Agent Info -->
   <div class="agent-info" id="agentInfo"></div>
 
@@ -373,11 +450,74 @@ async function init() {
 // ── Agent select change ──────────────────────────────
 document.getElementById("agentSelect").addEventListener("change", function() {
   const info = document.getElementById("agentInfo");
-  if (!this.value) { info.style.display = "none"; return; }
+  if (!this.value) {
+    info.style.display = "none";
+    updateTechnicalOptions(false);
+    return;
+  }
   const opt = this.options[this.selectedIndex];
   info.innerHTML = `<strong>${this.value}</strong> — ${opt.dataset.description || ""}`;
   info.style.display = "block";
+  updateTechnicalOptions(this.value === "技术指标Agent");
 });
+
+// ── Technical Agent options ───────────────────────────
+function updateTechnicalOptions(show) {
+  document.getElementById("technicalOptions").style.display = show ? "flex" : "none";
+  if (show) onTechnicalModeChange();
+}
+
+function onTechnicalModeChange() {
+  const mode = document.getElementById("technicalDataMode").value;
+  document.querySelectorAll(".technical-live").forEach(el => el.style.display = mode === "live" ? "flex" : "none");
+  document.querySelectorAll(".technical-sample").forEach(el => el.style.display = mode === "sample" ? "flex" : "none");
+}
+
+function fillTechnicalSampleRows() {
+  const rows = [];
+  let prev = 20;
+  for (let i = 0; i < 90; i++) {
+    const close = 20 + i * 0.03 + Math.sin(i / 5) * 0.15;
+    const open = prev + Math.sin(i / 6) * 0.04;
+    rows.push({
+      date: `2025-02-${String((i % 28) + 1).padStart(2, "0")}`,
+      open: +open.toFixed(4),
+      high: +(Math.max(open, close) + 0.2).toFixed(4),
+      low: +(Math.min(open, close) - 0.2).toFixed(4),
+      close: +close.toFixed(4),
+      volume: 1000000 + i * 1000,
+    });
+    prev = close;
+  }
+  document.getElementById("technicalDataMode").value = "sample";
+  onTechnicalModeChange();
+  document.getElementById("technicalOhlcvRows").value = JSON.stringify(rows, null, 2);
+}
+
+function buildTechnicalPayload(stockCode) {
+  const mode = document.getElementById("technicalDataMode").value;
+  const payload = {
+    stock_code: stockCode,
+    data_mode: mode,
+    fusion_threshold: parseFloat(document.getElementById("technicalThreshold").value || "0.6"),
+  };
+  if (mode === "live") {
+    const start = document.getElementById("technicalStart").value;
+    const end = document.getElementById("technicalEnd").value;
+    if (start) payload.start = start;
+    if (end) payload.end = end;
+    payload.freq = document.getElementById("technicalFreq").value || "D";
+    payload.adjust = document.getElementById("technicalAdjust").value || "qfq";
+  }
+  if (mode === "sample") {
+    try {
+      payload.ohlcv_rows = JSON.parse(document.getElementById("technicalOhlcvRows").value || "[]");
+    } catch (e) {
+      throw new Error("OHLCV JSON 解析失败: " + e.message);
+    }
+  }
+  return payload;
+}
 
 // ── Run Agent ────────────────────────────────────────
 async function runAgent() {
@@ -393,10 +533,15 @@ async function runAgent() {
   document.getElementById("runBtn").disabled = true;
 
   try {
-    const resp = await fetch("/api/debug", {
+    const isTechnical = agentName === "技术指标Agent";
+    const url = isTechnical ? "/api/technical_debug" : "/api/debug";
+    const body = isTechnical
+      ? buildTechnicalPayload(stockCode)
+      : {agent_name: agentName, stock_code: stockCode};
+    const resp = await fetch(url, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({agent_name: agentName, stock_code: stockCode}),
+      body: JSON.stringify(body),
     });
     const data = await resp.json();
     if (data.error) {
@@ -452,6 +597,7 @@ function renderResult(sig, agentName, stockCode) {
   const confPct = Math.round(conf * 100);
   const meta = sig.meta || {};
   const isNews = (sig.signal_type === "news" || agentName.includes("舆情"));
+  const isTechnical = (sig.signal_type === "technical" || agentName.includes("技术指标"));
   const hasTriple = isNews && meta.market && meta.industry && meta.stock; // v0.3 大盘+行业+个股
   const hasDual = isNews && meta.market && meta.stock; // v0.2 大盘+个股
   let html = "";
@@ -465,6 +611,12 @@ function renderResult(sig, agentName, stockCode) {
     </div>
     <div class="sig-body">
   `;
+
+  // === Technical Agent: 数据起止日期置顶展示，方便校验数据与模型结果 ===
+  if (isTechnical) {
+    html += renderTechnicalDataPeriodBanner(meta);
+    html += renderTechnicalKlineChartBox(meta);
+  }
 
   // === Reasoning ===
   html += `<div class="sig-reasoning">${sig.reasoning || "No reasoning provided"}</div>`;
@@ -489,6 +641,13 @@ function renderResult(sig, agentName, stockCode) {
     html += `</ul></div>`;
   }
 
+  // === Technical Agent: 三段分析报告 ===
+  if (isTechnical && (meta.analysis_reports || meta.reports)) {
+    html += renderTechnicalReportsDashboard(sig, meta);
+  } else if (isTechnical && meta.traditional_model_fusion) {
+    html += renderTechnicalFusionDashboard(sig, meta);
+  }
+
   // === Core Metrics Row ===
   const metrics = [];
   if (meta.risk_level) metrics.push(["Risk Level", meta.risk_level]);
@@ -508,6 +667,7 @@ function renderResult(sig, agentName, stockCode) {
 
   document.getElementById("resultArea").innerHTML = html;
   document.getElementById("resultArea").style.display = "block";
+  if (isTechnical) setTimeout(() => renderTechnicalKlineChart(meta), 0);
 
   // Animate gauge after render
   if (hasTriple) {
@@ -518,6 +678,382 @@ function renderResult(sig, agentName, stockCode) {
   } else if (isNews && meta.bullish_count !== undefined) {
     setTimeout(() => animateGauge(confPct, dir), 100);
   }
+}
+
+// ── Technical Agent Reports Dashboard ─────────────────
+function renderTechnicalDataPeriodBanner(meta) {
+  const period = meta.data_period || {};
+  const start = period.start || meta.analysis_start_date || "—";
+  const end = period.end || meta.analysis_end_date || "—";
+  const rows = period.rows_count ?? meta.rows_count ?? "—";
+  if (start === "—" && end === "—" && rows === "—") return "";
+  return `<div class="sentiment-section" style="border-color:var(--cyan);background:var(--cyan-dim);margin-bottom:12px">
+    <div class="sec-title" style="margin-bottom:10px">🗓️ 本次模型分析数据区间</div>
+    <div class="detail-grid">
+      <div class="detail-cell"><div class="detail-lbl">实际起始交易日</div><div class="detail-val">${escapeHtml(start)}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">实际结束交易日</div><div class="detail-val">${escapeHtml(end)}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">参与分析样本数</div><div class="detail-val">${escapeHtml(rows)}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">数据源</div><div class="detail-val">${escapeHtml(meta.data_status || "—")}</div></div>
+    </div>
+    <div style="font-size:12px;color:var(--text-2);margin-top:8px">说明：这里展示的是实际参与模型计算的行情首尾日期，可能不同于请求的 start/end（非交易日或数据源返回范围会被过滤）。</div>
+  </div>`;
+}
+
+function renderTechnicalKlineChartBox(meta) {
+  const rows = meta.ohlcv_rows || [];
+  if (!rows.length) return "";
+  const period = meta.data_period || {};
+  return `<div class="chart-box">
+    <div class="chart-title">📊 OHLCV K线图 · ${escapeHtml(formatDataPeriod(period))}</div>
+    <div class="chart-inner" id="technicalKlineChart"></div>
+  </div>`;
+}
+
+function renderTechnicalKlineChart(meta) {
+  const rows = (meta.ohlcv_rows || []).filter(r => r && r.open != null && r.close != null && r.low != null && r.high != null);
+  const el = document.getElementById("technicalKlineChart");
+  if (!el || !rows.length || typeof echarts === "undefined") return;
+  const chart = echarts.init(el);
+  const dates = rows.map(r => r.date || "");
+  const ohlc = rows.map(r => [Number(r.open), Number(r.close), Number(r.low), Number(r.high)]);
+  const volumes = rows.map(r => Number(r.volume || 0));
+  chart.setOption({
+    backgroundColor: "transparent",
+    animation: false,
+    legend: { data: ["K线", "成交量"], top: 4, textStyle: { color: "#94a3c0", fontSize: 11 } },
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "cross" },
+      backgroundColor: "#111827ee",
+      borderColor: "#2a3654",
+      textStyle: { color: "#e8edf5", fontSize: 11, fontFamily: "SF Mono, monospace" },
+      formatter: function(params) {
+        if (!params || !params.length) return "";
+        const idx = params[0].dataIndex;
+        const r = rows[idx] || {};
+        const volUnit = r.volume_unit || "手";
+        return `<b>${escapeHtml(r.date || "")}</b><br/>` +
+          `开:${fmtNumber(r.open, 2)} 高:${fmtNumber(r.high, 2)}<br/>` +
+          `低:${fmtNumber(r.low, 2)} 收:${fmtNumber(r.close, 2)}<br/>` +
+          `量:${fmtNumber(r.volume, r.volume_raw_unit === "股" ? 2 : 0)}${escapeHtml(volUnit)}`;
+      },
+    },
+    grid: [
+      { left: 60, right: 58, top: 46, height: 210 },
+      { left: 60, right: 58, top: 278, height: 54 },
+    ],
+    xAxis: [
+      { type: "category", data: dates, scale: true, boundaryGap: true, axisLine: { lineStyle: { color: "#2a3654" } }, axisLabel: { color: "#5b6d8a", fontSize: 10, rotate: rows.length > 80 ? 45 : 0 } },
+      { type: "category", data: dates, gridIndex: 1, scale: true, boundaryGap: true, axisLine: { lineStyle: { color: "#2a3654" } }, axisLabel: { show: false } },
+    ],
+    yAxis: [
+      { scale: true, position: "right", splitLine: { lineStyle: { color: "#1a2234" } }, axisLabel: { color: "#5b6d8a", fontSize: 10 } },
+      { scale: true, gridIndex: 1, position: "right", splitLine: { show: false }, axisLabel: { color: "#5b6d8a", fontSize: 10 } },
+    ],
+    dataZoom: [
+      { type: "inside", xAxisIndex: [0, 1], start: Math.max(0, 100 - 80 * 100 / rows.length), end: 100 },
+      { show: true, xAxisIndex: [0, 1], bottom: 4, height: 18, borderColor: "#2a3654", textStyle: { color: "#5b6d8a" }, start: Math.max(0, 100 - 80 * 100 / rows.length), end: 100 },
+    ],
+    series: [
+      { name: "K线", type: "candlestick", data: ohlc, itemStyle: { color: "#00e676", color0: "#ff5252", borderColor: "#00e676", borderColor0: "#ff5252" } },
+      { name: "成交量", type: "bar", xAxisIndex: 1, yAxisIndex: 1, data: volumes, itemStyle: { color: "#00e5ff55" } },
+    ],
+  });
+  window.addEventListener("resize", () => chart.resize(), { once: false });
+}
+
+function renderTechnicalReportsDashboard(sig, meta) {
+  const reports = meta.analysis_reports || meta.reports || {};
+  const order = meta.report_order || ["traditional_model_fusion", "company_evolution_analysis", "volume_price_reversal"];
+  const policy = meta.technical_agent_policy || {};
+  const period = meta.data_period || {};
+  let html = `<div class="market-section">
+    <div class="sec-title" style="font-size:15px;margin-bottom:12px">📈 技术指标Agent · 专家2组三段分析报告</div>
+    <div class="detail-grid">
+      <div class="detail-cell"><div class="detail-lbl">Data Status</div><div class="detail-val">${escapeHtml(meta.data_status || "—")}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Rows</div><div class="detail-val">${meta.rows_count ?? "—"}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Analysis Start</div><div class="detail-val">${escapeHtml(period.start || meta.analysis_start_date || "—")}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Analysis End</div><div class="detail-val">${escapeHtml(period.end || meta.analysis_end_date || "—")}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Primary Skill</div><div class="detail-val">${escapeHtml(policy.primary_skill || "traditional_model_fusion")}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Report Parts</div><div class="detail-val">${Object.keys(reports).length}</div></div>
+    </div>`;
+
+  order.forEach(key => {
+    if (!reports[key]) return;
+    if (key === "traditional_model_fusion") html += renderTraditionalModelFusionReport(reports[key]);
+    else if (key === "company_evolution_analysis") html += renderCompanyEvolutionReport(reports[key]);
+    else if (key === "volume_price_reversal") html += renderVolumePriceReversalReport(reports[key]);
+  });
+
+  html += renderTechnicalTags("全局不确定性", meta.uncertainties || [], "uncertain");
+  html += `</div>`;
+  return html;
+}
+
+function renderTraditionalModelFusionReport(report) {
+  const summary = report.summary || {};
+  const json = report.json_result || {};
+  const validation = (json.validation_report || report.validation_report || {});
+  const period = report.data_period || {};
+  const sections = report.sections || [];
+  const voteSection = sections.find(s => String(s.title || "").startsWith("3.")) || {};
+  const modelRows = voteSection.table || [];
+  let html = `<div class="sentiment-section">
+    <div class="sec-title technical-report-title">① 传统模型融合分析报告</div>
+    <div class="detail-grid">
+      <div class="detail-cell"><div class="detail-lbl">Direction</div><div class="detail-val"><span class="ev-sent ${(summary.direction || 'neutral').toLowerCase()}">${escapeHtml(summary.direction || "neutral")}</span></div></div>
+      <div class="detail-cell"><div class="detail-lbl">Confidence</div><div class="detail-val">${fmtNumber(summary.confidence, 4)}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Risk</div><div class="detail-val">${escapeHtml(summary.risk_level || "—")}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Total Vote</div><div class="detail-val">${fmtNumber(summary.total_vote ?? validation.total_vote, 4)}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Threshold</div><div class="detail-val">${fmtNumber(summary.threshold ?? validation.final_thresholds?.threshold, 2)}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Data Period</div><div class="detail-val">${escapeHtml(formatDataPeriod(period))}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Human Review</div><div class="detail-val">${summary.needs_human_review ? "⚠ Yes" : "✓ No"}</div></div>
+    </div>`;
+
+  if (modelRows.length) {
+    html += `<table class="evidence-table"><thead><tr><th>模型</th><th>方向</th><th>置信</th><th>风险</th><th>有效权重</th><th>投票分</th><th>说明</th></tr></thead><tbody>`;
+    html += modelRows.map(row => `<tr>
+      <td>${escapeHtml(row.model_label || row.model)}</td>
+      <td><span class="ev-sent ${(row.direction || 'neutral').toLowerCase()}">${escapeHtml(row.direction || "neutral")}</span></td>
+      <td>${fmtNumber(row.confidence, 4)}</td>
+      <td>${escapeHtml(row.risk_level || "—")}${row.needs_human_review ? ' <span class="step-badge warn">review</span>' : ''}</td>
+      <td>${fmtNumber(row.effective_weight, 2)}</td>
+      <td>${fmtNumber(row.vote, 4)}</td>
+      <td>${escapeHtml(row.reasoning || "").slice(0, 180)}</td>
+    </tr>`).join("");
+    html += `</tbody></table>`;
+  }
+
+  html += renderReportSections(sections.filter(s => !String(s.title || "").startsWith("3.")), 5);
+  html += renderTechnicalObjectList("门控规则", validation.gates_triggered || []);
+  html += renderTechnicalObjectList("模型冲突", validation.conflicts || []);
+  html += `</div>`;
+  return html;
+}
+
+function renderCompanyEvolutionReport(report) {
+  const summary = report.summary || {};
+  const period = report.data_period || {};
+  const sourceMeta = summary.data_source_meta || report.data_source_meta || {};
+  const sourceLinkHtml = renderCompanySourceLinks(summary, sourceMeta);
+  let html = `<div class="sentiment-section">
+    <div class="sec-title technical-report-title">② 公司发展分析</div>
+    <div class="detail-grid">
+      <div class="detail-cell"><div class="detail-lbl">Status</div><div class="detail-val">${escapeHtml(report.status || "—")}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Source</div><div class="detail-val">${escapeHtml(summary.source || sourceMeta.provider || "—")}${sourceLinkHtml}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Direction</div><div class="detail-val"><span class="ev-sent ${(summary.direction || 'neutral').toLowerCase()}">${escapeHtml(summary.direction || "neutral")}</span></div></div>
+      <div class="detail-cell"><div class="detail-lbl">Confidence</div><div class="detail-val">${fmtNumber(summary.confidence, 4)}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Market Data Period</div><div class="detail-val">${escapeHtml(formatDataPeriod(period))}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Disclosure Period</div><div class="detail-val">${escapeHtml(sourceMeta.since && sourceMeta.until ? `${sourceMeta.since} ~ ${sourceMeta.until}` : "—")}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Announcements</div><div class="detail-val">${sourceMeta.announcements_total ?? "—"}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Needs Web Search</div><div class="detail-val">${summary.requires_web_search_for_full_report ? "⚠ Yes" : "No"}</div></div>
+    </div>
+    <div style="font-size:12px;color:var(--text-2);margin:8px 0 10px">${escapeHtml(summary.integrity_note || "")}</div>`;
+  html += renderReportSections(report.sections || [], 8);
+  html += `</div>`;
+  return html;
+}
+
+function renderCompanySourceLinks(summary, sourceMeta) {
+  const sourceText = String(summary.source || sourceMeta.provider || "").toLowerCase();
+  const provider = String(sourceMeta.provider || "").toLowerCase();
+  const stockCode = sourceMeta.stock_code || sourceMeta.stockCode || document.getElementById("stockCode")?.value || "";
+  const links = [];
+
+  if (provider === "cninfo" || sourceText.includes("cninfo")) {
+    const query = [stockCode, "公告"].filter(Boolean).join(" ");
+    links.push({
+      label: "打开巨潮公告检索",
+      url: `https://www.cninfo.com.cn/new/fulltextSearch?notautosubmit=&keyWord=${encodeURIComponent(query || "公告")}`,
+    });
+    links.push({ label: "巨潮资讯首页", url: "https://www.cninfo.com.cn/new/index" });
+  }
+
+  if (sourceMeta.source_url) links.push({ label: "数据源原文", url: sourceMeta.source_url });
+  if (sourceMeta.url) links.push({ label: "来源链接", url: sourceMeta.url });
+  if (!links.length) return "";
+
+  const uniqueLinks = [];
+  const seen = new Set();
+  links.forEach(link => {
+    const safeUrl = safeExternalUrl(link.url);
+    if (!safeUrl || seen.has(safeUrl)) return;
+    seen.add(safeUrl);
+    uniqueLinks.push({ label: link.label, url: safeUrl });
+  });
+
+  return `<div class="source-link-group">${uniqueLinks.map(link => `<a class="source-link" href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">↗ ${escapeHtml(link.label)}</a>`).join("")}</div><div class="source-link-note">点击可跳转到原始披露来源，便于核验公告窗口和事实锚。</div>`;
+}
+
+function safeExternalUrl(url) {
+  try {
+    const parsed = new URL(String(url || ""), window.location.origin);
+    if (!["http:", "https:"].includes(parsed.protocol)) return "";
+    return parsed.href;
+  } catch (e) {
+    return "";
+  }
+}
+
+function renderVolumePriceReversalReport(report) {
+  const std = report.standard_json || {};
+  const meta = std.meta || {};
+  const md = report.markdown_summary || {};
+  const metrics = md.metrics || {};
+  const period = report.data_period || {};
+  const rows = report.summary_table || [];
+  let html = `<div class="sentiment-section">
+    <div class="sec-title technical-report-title">③ 高盛量价背离与反转</div>`;
+  if (rows.length) {
+    html += `<table class="evidence-table"><thead><tr><th>标的</th><th>方向 / 置信 / 风险</th><th>触发形态</th><th>信号说明</th></tr></thead><tbody>`;
+    html += rows.map(r => `<tr>
+      <td>${escapeHtml(r.target || "—")}</td>
+      <td><span class="ev-sent ${(r.direction || 'neutral').toLowerCase()}">${escapeHtml(r.direction || "neutral")}</span> / ${fmtNumber(r.confidence, 2)} / ${escapeHtml(r.risk_level || "—")}</td>
+      <td>${escapeHtml(r.trigger_pattern || "—")}</td>
+      <td>${escapeHtml(r.signal_brief || "")}</td>
+    </tr>`).join("");
+    html += `</tbody></table>`;
+  }
+  html += `<div class="detail-grid">
+      <div class="detail-cell"><div class="detail-lbl">当日成交量</div><div class="detail-val">${escapeHtml(metrics.latest_volume_display || fmtNumber(metrics.latest_volume, 0))}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">20日均量</div><div class="detail-val">${escapeHtml(metrics.avg_volume_20_display || fmtNumber(metrics.avg_volume_20, 0))}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">成交量超预期（VolSurp）</div><div class="detail-val">${fmtNumber(metrics.vol_surp, 4)}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">20日量比（Volume Ratio 20D）</div><div class="detail-val">${fmtNumber(metrics.volume_ratio_20, 4)}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">当日涨跌幅（Day Return）</div><div class="detail-val">${fmtNumber(metrics.day_return, 4)}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">成交额（元）</div><div class="detail-val">${fmtNumber(metrics.amount, 0)}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">成交量口径</div><div class="detail-val">${escapeHtml(metrics.volume_unit || "—")}${metrics.volume_share_multiplier ? ` × ${fmtNumber(metrics.volume_share_multiplier, 0)}股` : ""}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Data Period</div><div class="detail-val">${escapeHtml(formatDataPeriod(period))}</div></div>
+    </div>`;
+  html += `<div style="font-size:12px;color:var(--text-2);margin:8px 0 10px;line-height:1.7">
+      指标说明：成交量超预期（VolSurp）=（当日成交量 - 20日均量）/ 60日成交量标准差；
+      20日量比 = 当日成交量 / 20日均量；
+      当日涨跌幅 =（当日收盘价 - 前收盘价）/ 前收盘价。
+    </div>`;
+  html += renderTechnicalTags("核心信号", std.signals || [], "finding");
+  html += renderTechnicalTags("关键发现 / 执行约束", meta.key_findings || [], "risk");
+  html += renderTechnicalTags("不确定性", meta.uncertainties || [], "uncertain");
+  if ((meta.evidence || []).length) html += renderEvidenceMiniTable(meta.evidence);
+  html += `</div>`;
+  return html;
+}
+
+function renderReportSections(sections, limit) {
+  if (!sections || !sections.length) return "";
+  return sections.slice(0, limit || sections.length).map(section => {
+    const content = section.content || [];
+    const items = section.items || [];
+    let html = `<div class="risk-section"><div class="sec-title">${escapeHtml(section.title || "报告小节")}</div>`;
+    if (content.length) html += `<ul class="sig-list">${content.map(x => `<li>${escapeHtml(x)}</li>`).join("")}</ul>`;
+    else if (items.length) html += `<div class="risk-tags">${items.slice(0, 8).map(x => `<span class="risk-tag finding">${escapeHtml(formatReportSectionItem(x))}</span>`).join("")}</div>`;
+    else if (section.empty_state) html += `<div style="font-size:12px;color:var(--text-3)">${escapeHtml(section.empty_state)}</div>`;
+    if (section.gates_triggered) html += renderTechnicalObjectList("Gates", section.gates_triggered);
+    if (section.conflicts) html += renderTechnicalObjectList("Conflicts", section.conflicts);
+    html += `</div>`;
+    return html;
+  }).join("");
+}
+
+function formatReportSectionItem(item) {
+  if (!item || typeof item !== 'object') return item || "";
+  const parts = [];
+  if (item.date) parts.push(item.date);
+  if (item.title) parts.push(item.title);
+  if (item.node_type) parts.push(`[${item.node_type}]`);
+  if (item.interpretation) parts.push(item.interpretation);
+  return parts.length ? parts.join(" · ") : JSON.stringify(item);
+}
+
+function renderEvidenceMiniTable(rows) {
+  return `<table class="evidence-table"><thead><tr><th>Metric</th><th>Value</th><th>Comparison</th><th>Note</th></tr></thead><tbody>${rows.slice(0, 8).map(r => `<tr>
+    <td>${escapeHtml(r.metric || "—")}</td>
+    <td>${escapeHtml(fmtVal(r.value))}</td>
+    <td>${escapeHtml(r.comparison || "")}</td>
+    <td>${escapeHtml(r.note || "")}</td>
+  </tr>`).join("")}</tbody></table>`;
+}
+
+// ── Technical Agent Fusion Dashboard ─────────────────
+function renderTechnicalFusionDashboard(sig, meta) {
+  const fusion = meta.traditional_model_fusion || {};
+  const validation = fusion.validation_report || {};
+  const modelSignals = fusion.model_signals || [];
+  const policy = meta.technical_agent_policy || {};
+  const auxiliary = meta.auxiliary_signals || {};
+  let html = "";
+
+  html += `<div class="market-section">
+    <div class="sec-title" style="font-size:15px;margin-bottom:12px">📈 专家2组 · 四模型融合（最终信号口径）</div>
+    <div class="detail-grid">
+      <div class="detail-cell"><div class="detail-lbl">Data Status</div><div class="detail-val">${escapeHtml(meta.data_status || "—")}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Rows</div><div class="detail-val">${meta.rows_count ?? "—"}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Primary Skill</div><div class="detail-val">${escapeHtml(policy.primary_skill || "traditional_model_fusion")}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Aligned With run_models</div><div class="detail-val">${policy.final_signal_aligned_with_run_models ? "✓ Yes" : "—"}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Total Vote</div><div class="detail-val">${fmtNumber(validation.total_vote, 4)}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Threshold</div><div class="detail-val">${fmtNumber(validation.final_thresholds?.threshold, 2)}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Gates</div><div class="detail-val">${(validation.gates_triggered || []).length}</div></div>
+      <div class="detail-cell"><div class="detail-lbl">Conflicts</div><div class="detail-val">${(validation.conflicts || []).length}</div></div>
+    </div>`;
+
+  if (modelSignals.length) {
+    html += `<div class="sentiment-section"><div class="sec-title">Four Model Votes</div>
+      <table class="evidence-table">
+        <thead><tr><th>Model</th><th>Direction</th><th>Conf</th><th>Base W</th><th>Eff W</th><th>Vote</th><th>Risk</th><th>Reasoning</th></tr></thead>
+        <tbody>${modelSignals.map(row => {
+          const signal = row.signal || {};
+          const m = signal.meta || {};
+          const direction = (signal.direction || "neutral").toLowerCase();
+          return `<tr>
+            <td style="font-family:var(--font-mono)">${escapeHtml(row.name || "—")}</td>
+            <td><span class="ev-sent ${direction}">${escapeHtml(direction)}</span></td>
+            <td style="font-family:var(--font-mono)">${fmtNumber(signal.confidence, 4)}</td>
+            <td style="font-family:var(--font-mono)">${fmtNumber(row.base_weight, 2)}</td>
+            <td style="font-family:var(--font-mono)">${fmtNumber(row.effective_weight, 2)}</td>
+            <td style="font-family:var(--font-mono)">${fmtNumber(row.vote, 4)}</td>
+            <td>${escapeHtml(m.risk_level || "—")}${m.needs_human_review ? ' <span class="step-badge warn">review</span>' : ''}</td>
+            <td>${escapeHtml((signal.reasoning || "").slice(0, 180))}</td>
+          </tr>`;
+        }).join("")}</tbody>
+      </table>
+    </div>`;
+  }
+
+  const auxNames = Object.keys(auxiliary);
+  if (auxNames.length) {
+    html += `<div class="sentiment-section"><div class="sec-title">Auxiliary Technical Skills（仅辅助，不覆盖最终方向）</div>
+      <table class="evidence-table">
+        <thead><tr><th>Skill</th><th>Direction</th><th>Conf</th><th>Reasoning</th><th>Signals</th></tr></thead>
+        <tbody>${auxNames.map(name => {
+          const item = auxiliary[name] || {};
+          const direction = (item.direction || "neutral").toLowerCase();
+          return `<tr>
+            <td style="font-family:var(--font-mono)">${escapeHtml(name)}</td>
+            <td><span class="ev-sent ${direction}">${escapeHtml(direction)}</span></td>
+            <td style="font-family:var(--font-mono)">${fmtNumber(item.confidence, 4)}</td>
+            <td>${escapeHtml((item.reasoning || "").slice(0, 220))}</td>
+            <td>${escapeHtml((item.signals || []).slice(0, 3).join("；"))}</td>
+          </tr>`;
+        }).join("")}</tbody>
+      </table>
+    </div>`;
+  }
+
+  html += renderTechnicalObjectList("Gates Triggered", validation.gates_triggered || []);
+  html += renderTechnicalObjectList("Conflicts", validation.conflicts || []);
+  html += renderTechnicalTags("Key Findings", meta.key_findings || [], "finding");
+  html += renderTechnicalTags("Risk Notes", meta.risk_notes || [], "risk");
+  html += renderTechnicalTags("Uncertainties", meta.uncertainties || [], "uncertain");
+  html += `</div>`;
+  return html;
+}
+
+function renderTechnicalObjectList(title, rows) {
+  if (!rows || !rows.length) return "";
+  return `<div class="risk-section"><div class="sec-title">${escapeHtml(title)}</div><div class="risk-tags">${rows.map(r => `<span class="risk-tag uncertain">${escapeHtml(JSON.stringify(r))}</span>`).join("")}</div></div>`;
+}
+
+function renderTechnicalTags(title, rows, cls) {
+  if (!rows || !rows.length) return "";
+  return `<div class="risk-section"><div class="sec-title">${escapeHtml(title)}</div><div class="risk-tags">${rows.map(r => `<span class="risk-tag ${cls}">${escapeHtml(r)}</span>`).join("")}</div></div>`;
 }
 
 // ── Market Sentiment (大盘温度计) ────────────
@@ -1069,6 +1605,15 @@ function rerun(i) {
 // ── Helpers ──────────────────────────────────────────
 function dirLabel(d) { return d==="bullish"?"BULLISH":d==="bearish"?"BEARISH":"NEUTRAL"; }
 function dirIcon(d) { return d==="bullish"?"▲":d==="bearish"?"▼":"◆"; }
+function escapeHtml(text) { return String(text ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;"); }
+function fmtNumber(v, d) { d = d ?? 2; return v !== null && v !== undefined && !Number.isNaN(Number(v)) ? Number(v).toFixed(d) : "—"; }
+function formatDataPeriod(period) {
+  period = period || {};
+  const start = period.start || "—";
+  const end = period.end || "—";
+  const rows = period.rows_count !== undefined ? ` / ${period.rows_count} rows` : "";
+  return `${start} ~ ${end}${rows}`;
+}
 function fmtVal(v) {
   if (v === null || v === undefined) return "—";
   if (typeof v === "object") return Array.isArray(v) ? `(${v.length} items)` : JSON.stringify(v);

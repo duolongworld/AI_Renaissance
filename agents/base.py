@@ -8,11 +8,16 @@ Agent基类 - 所有Agent的父类
   - Orchestrator Agent 不加载 Skill，负责编排仲裁
 """
 
+from __future__ import annotations
+
 import asyncio
 from typing import Optional, Dict, Any, List
 from pathlib import Path
 from loguru import logger
-from agentscope.agent import AgentBase as AgentScopeAgentBase
+try:
+    from agentscope.agent import AgentBase as AgentScopeAgentBase
+except ModuleNotFoundError:  # AgentScope 0.1.x exposes AgentBase from agentscope.agents.
+    from agentscope.agents import AgentBase as AgentScopeAgentBase
 
 from agents.agentscope_message import (
     AgentScopeMessageError,
@@ -47,13 +52,33 @@ class BaseAgent(AgentScopeAgentBase):
         if self.__class__.analyze is BaseAgent.analyze:
             raise TypeError(f"{self.__class__.__name__} must implement analyze()")
 
-        super().__init__()
+        self._init_agentscope_base(name)
         self.name = name
         self.config = config or {}
         self._skills: Dict[str, str] = {}  # skill_name -> skill_content
         self._skill_paths: Dict[str, Path] = {}  # skill_name -> skill_path
         self._observed_messages: List[Any] = []
         logger.info(f"[{self.name}] Agent initialized (signal_type={self.signal_type})")
+
+    def _init_agentscope_base(self, name: str) -> None:
+        """兼容不同 AgentScope 版本的 AgentBase 构造签名。
+
+        AgentScope 0.x 支持 `AgentBase(name=...)`，部分版本只接受位置参数
+        或无参构造。项目层仍统一在 `BaseAgent.name` 保存名称，避免 CI 环境
+        的 AgentScope 版本差异影响 Agent 初始化。
+        """
+        try:
+            super().__init__(name=name)
+            return
+        except TypeError as exc:
+            if "name" not in str(exc):
+                raise
+
+        try:
+            super().__init__(name)
+            return
+        except TypeError:
+            super().__init__()
 
     # ── Skill 管理 ──────────────────────────────────────────
 

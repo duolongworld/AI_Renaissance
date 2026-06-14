@@ -200,6 +200,85 @@ def debug_agent():
     return jsonify({"success": True, "result": result})
 
 
+@app.route("/api/technical_debug", methods=["POST"])
+def debug_technical_agent():
+    """
+    Technical Agent 专项测试接口。
+
+    POST /api/technical_debug
+    Body: {
+      "stock_code": "600519",
+      "data_mode": "live|offline|sample",
+      "fusion_threshold": 0.6,
+      "ohlcv_rows": [{date, open, high, low, close, volume}, ...]
+    }
+    """
+    data = request.get_json(force=True)
+    stock_code = data.get("stock_code", "").strip()
+    data_mode = data.get("data_mode", "live")
+
+    if not stock_code:
+        return jsonify({"error": "请输入股票代码"}), 400
+
+    config = {
+        "fusion_threshold": float(data.get("fusion_threshold", 0.6) or 0.6),
+    }
+
+    if data_mode == "live":
+        config["use_live_data"] = True
+        config["adjust"] = data.get("adjust") or "qfq"
+        for key in ("start", "end", "freq", "adjust"):
+            if data.get(key):
+                config[key] = data[key]
+    elif data_mode == "offline":
+        config["use_live_data"] = False
+        config["allow_synthetic_ohlcv"] = True
+    elif data_mode == "sample":
+        rows = data.get("ohlcv_rows") or []
+        if not isinstance(rows, list) or not rows:
+            return jsonify({"error": "sample 模式需要提供非空 ohlcv_rows 数组"}), 400
+        config["ohlcv_rows"] = rows
+    else:
+        return jsonify({"error": f"未知 technical data_mode: {data_mode}"}), 400
+
+    try:
+        from agents.technical.agent import TechnicalAgent
+
+        agent = TechnicalAgent(config=config)
+        signal = agent.analyze(stock_code)
+        result = signal.to_dict() if hasattr(signal, "to_dict") else dict(signal)
+        if hasattr(agent, "list_skills"):
+            result["loaded_skills"] = agent.list_skills()
+        meta = result.get("meta", {}) or {}
+        analysis_reports = meta.get("analysis_reports") or meta.get("reports") or {}
+        company_report = analysis_reports.get("company_evolution_analysis", {}) if isinstance(analysis_reports, dict) else {}
+        return jsonify({
+            "success": True,
+            "result": result,
+            "config": config,
+            "technical_reports": analysis_reports,
+            "technical_debug": {
+                "data_mode": data_mode,
+                "data_status": meta.get("data_status"),
+                "rows_count": meta.get("rows_count"),
+                "data_period": meta.get("data_period", {}),
+                "analysis_start_date": meta.get("analysis_start_date"),
+                "analysis_end_date": meta.get("analysis_end_date"),
+                "primary_skill": meta.get("technical_agent_policy", {}).get("primary_skill"),
+                "final_signal_aligned_with_run_models": meta.get("technical_agent_policy", {}).get("final_signal_aligned_with_run_models"),
+                "report_order": meta.get("report_order", []),
+                "report_parts": list(analysis_reports.keys()) if isinstance(analysis_reports, dict) else [],
+                "company_data_source": (company_report.get("summary", {}) or {}).get("source"),
+                "company_data_source_meta": company_report.get("data_source_meta", {}),
+            },
+        })
+    except Exception as e:
+        return jsonify({
+            "error": f"Technical Agent 执行失败：{str(e)}",
+            "traceback": traceback.format_exc(),
+        }), 500
+
+
 @app.route("/api/orchestrate", methods=["POST"])
 def orchestrate():
     """

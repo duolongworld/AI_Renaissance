@@ -52,6 +52,8 @@ def fake_news_source():
 @pytest.fixture
 def offline_config(fake_news_source):
     def build(signal_type: str):
+        if signal_type == "technical":
+            return {"use_live_data": False, "allow_synthetic_ohlcv": True, "use_cninfo_company_data": False}
         if signal_type != "news":
             return {}
 

@@ -9,8 +9,9 @@ A股大盘社区讨论情绪数据源
 设计原则：单个数据源失败不影响整体输出，优雅降级。
 """
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from loguru import logger
 
@@ -33,6 +34,13 @@ MARKET_BOARD_CODES = {
 # 抓取页数（每页约20条帖子）
 DEFAULT_PAGES = 3
 
+# 并发控制：最大并发页面数
+MAX_WORKERS = 6
+# 单页超时（秒），超时则跳过该页
+PAGE_TIMEOUT_SECONDS = 15
+# 社区数据总体超时（秒），超时则返回已收集的部分数据
+COMMUNITY_COLLECTION_TIMEOUT = 90
+
 
 class CommunitySentimentDataSource:
     """大盘社区讨论情绪数据源"""
@@ -45,7 +53,7 @@ class CommunitySentimentDataSource:
 
     def get_community_sentiment(self, pages: int = DEFAULT_PAGES) -> Dict[str, Any]:
         """
-        采集大盘级社区讨论数据
+        采集大盘级社区讨论数据（并行抓取，整体限时保护）
 
         Returns:
             {
@@ -70,29 +78,53 @@ class CommunitySentimentDataSource:
                 "raw_data": {...},
             }
         """
-        all_posts: List[Dict[str, Any]] = []
-        seen_ids = set()
-        board_results = {}
-        errors = []
-
+        # 构建所有待抓取任务：(board_name, board_code, page)
+        tasks: List[Tuple[str, str, int]] = []
         for board_name, board_code in MARKET_BOARD_CODES.items():
-            try:
-                posts = self._fetch_board_posts(board_name, board_code, pages)
-                new_posts = [p for p in posts if p["post_id"] not in seen_ids]
-                for p in new_posts:
-                    seen_ids.add(p["post_id"])
-                all_posts.extend(new_posts)
-                board_results[board_name] = {
-                    "code": board_code,
-                    "posts_fetched": len(new_posts),
+            for page in range(1, pages + 1):
+                tasks.append((board_name, board_code, page))
+
+        # 并行抓取所有页面
+        all_posts: List[Dict[str, Any]] = []
+        seen_ids: set = set()
+        board_results: Dict[str, Any] = {}
+        errors: List[str] = []
+
+        try:
+            with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                futures = {
+                    executor.submit(self._fetch_one_task, bname, bcode, page): (bname, bcode, page)
+                    for bname, bcode, page in tasks
                 }
-                logger.info(
-                    f"[{self.name}] {board_name}({board_code}) 获取 {len(new_posts)} 条帖子"
-                )
-            except Exception as e:
-                logger.warning(f"[{self.name}] {board_name} 抓取失败: {e}")
-                board_results[board_name] = {"code": board_code, "error": str(e)}
-                errors.append(f"{board_name}: {e}")
+                for future in as_completed(futures, timeout=PAGE_TIMEOUT_SECONDS * len(tasks)):
+                    board_name, board_code, page = futures[future]
+                    try:
+                        bname, bcode, pnum, posts, err = future.result(timeout=PAGE_TIMEOUT_SECONDS)
+                    except Exception as e:
+                        logger.warning(f"[{self.name}] {board_name} 第{page}页执行异常: {e}")
+                        errors.append(f"{board_name}第{page}页: {e}")
+                        continue
+
+                    if err:
+                        errors.append(f"{bname}第{pnum}页: {err}")
+                        board_results.setdefault(bname, {"code": bcode, "posts_fetched": 0, "errors": []})
+                        board_results[bname]["errors"].append(err)
+                    else:
+                        new_posts = [pt for pt in posts if pt["post_id"] not in seen_ids]
+                        for pt in new_posts:
+                            seen_ids.add(pt["post_id"])
+                        all_posts.extend(new_posts)
+
+                        board_info = board_results.setdefault(
+                            bname, {"code": bcode, "posts_fetched": 0, "errors": []}
+                        )
+                        board_info["posts_fetched"] += len(new_posts)
+
+                        logger.info(f"[{self.name}] {bname}({bcode}) 第{pnum}页获取 {len(new_posts)} 条帖子")
+
+        except Exception as e:
+            logger.warning(f"[{self.name}] 并行抓取超时或异常: {e}")
+            errors.append(f"并行抓取异常: {e}")
 
         if not all_posts:
             return self._error_result(errors or ["未获取到任何帖子"])
@@ -141,27 +173,20 @@ class CommunitySentimentDataSource:
                 "weighted_bearish": round(sentiment["weighted_bearish"], 2),
             },
         }
+    
+    def _fetch_one_task(self, board_name: str, board_code: str, page: int) -> Tuple[str, str, int, List[Dict[str, Any]], Optional[str]]:
+        """单任务抓取：单页抓取 + 异常捕获，返回 (board_name, board_code, page, posts, error)"""
+        url = f"https://guba.eastmoney.com/list,{board_code}_{page}.html"
+        try:
+            posts = fetch_and_parse_page(url)
+            for p in posts:
+                p["board_name"] = board_name
+                p["board_code"] = board_code
+            return (board_name, board_code, page, posts, None)
+        except Exception as e:
+            logger.warning(f"[{self.name}] {board_name} 第{page}页抓取失败: {e}")
+            return (board_name, board_code, page, [], str(e))
 
-    # ── 内部方法 ──────────────────────────────
-
-    def _fetch_board_posts(
-        self, board_name: str, board_code: str, pages: int
-    ) -> List[Dict[str, Any]]:
-        """抓取大盘板块股吧帖子"""
-        all_posts = []
-        for page in range(1, pages + 1):
-            url = f"https://guba.eastmoney.com/list,{board_code}_{page}.html"
-            try:
-                posts = fetch_and_parse_page(url)
-                for p in posts:
-                    p["board_name"] = board_name
-                    p["board_code"] = board_code
-                all_posts.extend(posts)
-            except Exception as e:
-                logger.warning(
-                    f"[{self.name}] {board_name} 第{page}页抓取失败: {e}"
-                )
-        return all_posts
 
     def _calculate_discussion_volume_score(
         self, total_posts: int, total_reads: int, total_replies: int

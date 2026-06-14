@@ -1,0 +1,257 @@
+chain_name: semi-equipment
+industry_name: 半导体设备
+tags: [半导体设备, 光刻, 刻蚀, 薄膜, 国产替代]
+
+upstream:
+  nodes:
+    - name: 精密零部件/材料
+      key_players: [江丰电子, 新莱应材, 石英股份, 华特气体]
+      key_metrics:
+        - 靶材/石英/特种气体价格
+        - 零部件交货周期
+        - 国产化率
+      price_benchmark: "靶材价格稳定，高端石英玻璃供应紧张"
+      shortage_indicator: "高端零部件仍依赖进口"
+    - name: 光学系统/光源
+      key_players: [蔡司, Cymer, 科益虹源]
+      key_metrics:
+        - EUV光源供应
+        - DUV光源交货周期
+        - 物镜系统供应
+      price_benchmark: "EUV光源极度紧缺，ASML垄断"
+      shortage_indicator: "全球仅ASML能供EUV光源"
+    - name: 精密运动系统
+      key_players: [ Aerotech, 汇川技术]
+      key_metrics:
+        - 纳米级运动平台精度
+        - 交货周期
+      price_benchmark: "高精度平台交货周期12-18个月"
+
+midstream:
+  nodes:
+    - name: 光刻设备
+      key_players: [ASML, 尼康, 佳能, 上海微电子]
+      key_metrics:
+        - EUV/DUV出货量
+        - 订单 backlog
+        - 交付周期
+        - 技术节点覆盖
+      price_benchmark: "EUV单价$1.5-2亿，DUV $3000-6000万"
+      shortage_indicator: "ASML订单排至2028年"
+    - name: 刻蚀设备
+      key_players: [Lam Research, TEL, 中微公司, 北方华创]
+      key_metrics:
+        - 刻蚀机出货量
+        - 3D NAND/先进逻辑刻蚀份额
+        - 国产替代进度
+      price_benchmark: "国产刻蚀机在成熟制程份额提升"
+    - name: 薄膜沉积设备
+      key_players: [AMAT, LAM, TEL, 拓荆科技, 北方华创]
+      key_metrics:
+        - CVD/PVD/ALD设备出货量
+        - 先进制程覆盖
+      price_benchmark: "国产薄膜设备在逻辑/存储产线渗透率提升"
+    - name: 量测/检测设备
+      key_players: [KLA, AMAT, 精测电子, 中科飞测]
+      key_metrics:
+        - 检测设备出货量
+        - 国产化率
+      price_benchmark: "量测检测设备国产替代空间大"
+    - name: 清洗/热处理设备
+      key_players: [Screen, TEL, 盛美上海, 至纯科技]
+      key_metrics:
+        - 清洗设备出货量
+        - 单片/槽式清洗占比
+      price_benchmark: "国产清洗设备在成熟制程已实现突破"
+
+downstream:
+  nodes:
+    - name: 晶圆厂/IDM
+      key_players: [台积电, 三星, 英特尔, 中芯国际, 华虹]
+      key_metrics:
+        - 资本开支（CapEx）
+        - 新增产线数量
+        - 设备采购计划
+      capex_benchmark: "全球半导体CapEx $1200亿(2026)，中国占比持续提升"
+    - name: 存储厂商
+      key_players: [三星, SK海力士, 美光, 长江存储, 长鑫存储]
+      key_metrics:
+        - 3D NAND层数升级
+        - DRAM制程微缩
+        - 新增产线
+      demand_indicator: "存储扩产驱动设备需求"
+    - name: 逻辑芯片/Foundry
+      key_players: [台积电, 中芯国际, 联电]
+      key_metrics:
+        - 先进制程（3nm/5nm/7nm）产能
+        - 成熟制程（28nm/40nm）扩产
+      demand_indicator: "国产替代驱动成熟制程设备需求井喷"
+
+value_allocation:
+  upstream_share: 25
+  midstream_share: 45
+  downstream_share: 30
+  bargaining_power: "中游设备商（尤其光刻/刻蚀龙头）议价权极强；下游晶圆厂集中度高但资本开支刚性"
+
+life_cycle:
+  stage: 成长期
+  penetration_range: "30-50%"
+  growth_driver: "国产替代（美国出口管制倒逼）+ 国内晶圆厂扩产 + 存储/逻辑双线投资"
+  risk_factor: "美国出口管制升级可能影响设备零部件供应；周期性强"
+
+signal_weights:
+  barometric: 1.2
+  mid_axis: 1.1
+  ebb_warning: 0.7
+
+key_catalysts:
+  - "国产光刻机突破（28nm/14nm）"
+  - "美国出口管制政策变化"
+  - "国内晶圆厂招标节点"
+  - "长江存储/长鑫存储扩产计划"
+  - "中芯国际临港/北京新厂建设"
+
+preset_indicators:
+  barometric:
+    - indicator: 晶圆厂CapEx增速
+      unit: '%'
+      trigger: 同比≥+20%
+      current: "国内+25-30%"
+      source: "SEMI/券商报告"
+    - indicator: 设备零部件交货周期
+      unit: 月
+      trigger: 延长至12个月+
+      current: "12-18个月"
+      source: "产业链调研"
+    - indicator: 国产零部件认证进度
+      unit: '%'
+      trigger: 突破≥50%
+      current: "30-40%"
+      source: "产业调研"
+    - indicator: 特种气体价格
+      unit: '%'
+      trigger: 涨价≥15%
+      current: "稳定"
+      source: "产业调研"
+
+  mid_axis:
+    - indicator: 设备厂商订单增速
+      unit: '%'
+      trigger: 同比增长≥30%
+      current: "国产设备+40-50%"
+      source: "财报数据"
+    - indicator: 设备毛利率
+      unit: '%'
+      trigger: 环比提升≥2pp
+      current: "稳中有升"
+      source: "财报数据"
+    - indicator: 订单能见度
+      unit: 月
+      trigger: 延伸至12个月+
+      current: "12-18个月"
+      source: "产业调研"
+    - indicator: 新中标产线数量
+      unit: 条
+      trigger: 季度新增≥3条
+      current: "国内持续扩产"
+      source: "产业调研"
+
+  ebb_warning:
+    - indicator: 全球半导体CapEx
+      unit: '%'
+      trigger: 同比下跌≥-15%
+      current: "国内增长，全球分化"
+      source: "SEMI"
+    - indicator: 设备库存周转天数
+      unit: 天
+      trigger: 从90天升至150天+
+      current: "90-120天"
+      source: "财报数据"
+    - indicator: 成熟制程产能过剩
+      unit: '%'
+      trigger: 利用率降至70%以下
+      current: "80-85%"
+      source: "产业调研"
+    - indicator: 美国管制升级风险
+      unit: 等级
+      trigger: 新增管制清单
+      current: "持续高压"
+      source: "政策跟踪"
+
+cross_verify:
+  upstream:
+    - name: 精密零部件/材料
+      metrics:
+        - "陶瓷/石英件国产化率25%"
+        - "真空阀门交货周期>6个月"
+      pool: ["688012.SH"]
+    - name: 光学系统/光源
+      metrics:
+        - "DUV光源被Cymer/Gigaphoton垄断"
+        - "EUV光源仅ASML供货"
+      pool: []
+    - name: 精密运动系统
+      metrics:
+        - "纳米级运动台国产突破"
+        - "激光干涉仪精度达到1nm"
+      pool: ["002371.SZ"]
+  midstream:
+    - name: 刻蚀设备
+      metrics:
+        - "国产刻蚀设备市占率突破20%"
+        - "CCP刻蚀5nm以下验证通过"
+      pool: ["688012.SH"]
+    - name: 薄膜沉积设备
+      metrics:
+        - "PECVD国产化率15%"
+        - "ALD设备进入量产验证"
+      pool: ["688072.SH"]
+    - name: 量测/检测设备
+      metrics:
+        - "半导体量测设备国产化率<10%"
+        - "光学检测精度达到28nm节点"
+      pool: ["688361.SH", "300567.SZ"]
+  downstream:
+    - name: 晶圆代工厂
+      metrics:
+        - "中芯国际CAPEX $75亿+"
+        - "国内12英寸产能扩至300万片/月"
+      pool: ["688981.SH"]
+    - name: 存储厂商
+      metrics:
+        - "长江存储/长鑫存储扩产"
+        - "DRAM国产化率从5%→15%"
+      pool: ["688525.SH"]
+  external_indicators:
+    - name: "美国出口管制动态"
+      metric: "BIS实体清单更新频率"
+      source: "美国商务部BIS"
+    - name: "国内晶圆厂招标量"
+      metric: "2026H1招标金额同比+45%"
+      source: "中国国际招标网"
+
+preset_companies:
+  - code: "688012.SH"
+    name: 中微公司
+    position: "中游刻蚀设备"
+    logic: "刻蚀设备国产龙头，CCP/ICP双平台，5nm以下突破"
+  - code: "002371.SZ"
+    name: 北方华创
+    position: "中游平台型设备"
+    logic: "半导体设备平台龙头，刻蚀/薄膜/清洗/热处理全覆盖"
+  - code: "688072.SH"
+    name: 拓荆科技
+    position: "中游薄膜沉积"
+    logic: "PECVD/ALD/SACVD薄膜设备，国产替代核心标的"
+  - code: "688082.SH"
+    name: 盛美上海
+    position: "中游清洗设备"
+    logic: "清洗设备龙头，单片/槽式/电镀铜全覆盖"
+  - code: "688361.SH"
+    name: 中科飞测
+    position: "中游量测检测"
+    logic: "量测检测设备国产替代，技术壁垒高"
+  - code: "300567.SZ"
+    name: 精测电子
+    position: "中游量测检测"
+    logic: "平板显示+半导体检测设备，多赛道布局"

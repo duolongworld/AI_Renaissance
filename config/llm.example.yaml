@@ -1,0 +1,31 @@
+# External LLM arbitration example.
+#
+# This file is not loaded by default.
+# It is a complete runtime config, not a patch merged with config/default.yaml.
+# Copy it to config/llm.private.yaml and pass it with --config for private use.
+# Replace placeholder URL/key values only in ignored private config files.
+
+confidence_threshold: 0.6
+bullish_weight: 1.0
+bearish_weight: 1.0
+risk_coefficient: 0.2
+agent_timeout_seconds: 120
+
+llm:
+  model:
+    provider: openai_compatible
+    model_name: your-model-name
+    base_url: https://your-llm-gateway.example.com/v1
+    api_key: your-api-key
+    generate_kwargs:
+      temperature: 0.2
+
+orchestrator:
+  arbitration_mode: llm_framework
+  llm_arbitration:
+    skills:
+      - name: llm_arbitration_policy
+        path: skills/orchestrator/llm_arbitration_policy/SKILL.md
+
+    # Optional. Leave empty when using only the expert Signals and arbitration Skill.
+    mcp_servers: []

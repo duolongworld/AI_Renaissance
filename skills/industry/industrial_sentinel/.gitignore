@@ -1,0 +1,10 @@
+.DS_Store
+__pycache__/
+*.pyc
+
+# Local CLI/runtime artifacts. Project Agent mode does not depend on these.
+reports/*.html
+data/*_real_data.json
+data/*_financial_cache.json
+data/*_industry_cache.json
+data/*_collection_tasks.json

@@ -1,7 +1,10 @@
 import asyncio
 
 import pytest
-from agentscope.agent import AgentBase as AgentScopeAgentBase
+try:
+    from agentscope.agent import AgentBase as AgentScopeAgentBase
+except ModuleNotFoundError:
+    from agentscope.agents import AgentBase as AgentScopeAgentBase
 
 from agents.agentscope_message import msg_to_signal, stock_task_to_msg
 from agents.base import AgentContractError, BaseAgent

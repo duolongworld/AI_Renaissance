@@ -8,6 +8,31 @@ status: stable
 
 # 腾讯财经 K线数据获取 Skill
 
+## 实现位置
+
+本 Skill 只描述腾讯财经 K 线数据接口和输出形态；真实 HTTP 请求、响应解析、指标计算实现位于：
+
+```python
+data_sources.tencent_technical
+```
+
+`skills/data/tencent_technical/scripts/fetch_kline.py` 仅作为薄包装保留历史导入路径和 CLI 入口，不承载核心数据源逻辑。
+
+推荐业务代码直接调用：
+
+```python
+from data_sources.tencent_technical import fetch_kline, fetch_kline_with_indicators
+
+raw = fetch_kline("600519", k_type="day", num=120)
+with_indicators = fetch_kline_with_indicators("600519", k_type="day", num=120)
+```
+
+兼容旧脚本路径的 CLI 调试方式：
+
+```bash
+python skills/data/tencent_technical/scripts/fetch_kline.py --stock_code 600519 --k_type day --num 120
+```
+
 ## 1. 适用范围
 
 所属小组：开发3组（数据）
@@ -71,7 +96,7 @@ status: stable
 - **MA5/MA10/MA20/MA60**：数据不足 N 条时输出 null
 - **BOLL(20,2σ)**：至少需要 20 条数据，不足时 upper/middle/lower 均为 null
 - **RSI6/RSI12/RSI24**：至少需要 N+1 条数据（计算涨跌幅），不足时输出 null
-- **成交量**：直接从 API 获取，无额外计算
+- **成交量**：输出统一为 A 股常用口径“手”。腾讯日 K 对科创板 `sh688***` 原始字段可能返回“股”，运行时会先除以 100 归一为“手”，并保留 `volume_raw` / `volume_raw_unit` 便于排查口径。
 
 ## 5. 标准输出
 

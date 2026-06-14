@@ -18,6 +18,7 @@ status: draft
 边界说明：
 - 本 Skill 只描述数据契约，不直接产出投资判断
 - 底层仍由多个 AkShare 接口拼装，但对上层只暴露一个统一入口
+- `data_sources/akshare.py` 已对 AkShare 1.18.x 中失效的东方财富 `push2/push2his` HTTPS 访问做兼容：基础信息/板块榜使用可用的 `push2delay`，历史资金流使用 HTTP `push2his`，调用方无需感知底层端点差异
 - 某个子模块失败时，顶层结果仍可能返回 `success`，调用方需要检查各子模块自己的 `status`
 
 ## 2. 执行数据源
@@ -56,7 +57,7 @@ data = source.get_fundflow_snapshot(
 | 参数 | 类型 | 默认值 | 说明 |
 |---|---|---|---|
 | indicator | string | `"今日"` | 板块资金口径，仅支持 `今日` / `5日` / `10日` |
-| flow_limit | int | 20 | 个股资金流与大盘主力资金返回最近多少条记录 |
+| flow_limit | int | 20 | 个股资金流与大盘主力资金返回最近多少条记录；底层通常可提供约 120 个交易日历史，实际条数以接口返回为准 |
 | sector_top_n | int | 20 | 行业 / 概念资金榜返回前多少条 |
 | concept_limit | int | 10 | 个股概念标签最多返回多少条 |
 
@@ -67,7 +68,7 @@ data = source.get_fundflow_snapshot(
   "status": "success",
   "source": "akshare",
   "dataset": "fundflow_snapshot",
-  "fetch_time": "2026-05-06T00:00:00",
+  "fetch_time": "2026年06月09日",
   "stock_code": "600519",
   "basic_info": {
     "status": "success",
@@ -80,8 +81,13 @@ data = source.get_fundflow_snapshot(
   },
   "stock_fund_flow": {
     "status": "success",
+    "total": 120,
+    "latest": {
+      "日期": "2026年06月09日",
+      "主力净流入-净额": -200521888.0
+    },
     "summary": {
-      "最新主力净流入": -1381366192.0,
+      "最新主力净流入": -200521888.0,
       "近5日主力净流入": -2068522512.0
     }
   },
@@ -97,7 +103,7 @@ data = source.get_fundflow_snapshot(
   "market_fund_flow": {
     "status": "success",
     "northbound": {
-      "trade_date": "2026-05-05",
+      "trade_date": "2026年06月09日",
       "northbound_net_buy": 0.0
     }
   }
@@ -119,7 +125,7 @@ data = source.get_fundflow_snapshot(
 
 1. 标准化输入股票代码
 2. 获取个股基础信息：市值、行业、概念标签、指数归属
-3. 获取个股主力资金流向：主力 / 超大单 / 大单 / 中单 / 小单
+3. 获取个股主力资金流向：主力 / 超大单 / 大单 / 中单 / 小单，按日期升序计算摘要，`recent` 按最新日期在前返回
 4. 获取行业 / 概念板块资金排名，并筛出该股票相关板块
 5. 获取大盘主力资金与最新交易日北向 / 南向资金概览
 6. 聚合为单一 `fundflow_snapshot` 结果返回

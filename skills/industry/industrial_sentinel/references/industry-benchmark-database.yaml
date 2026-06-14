@@ -1,0 +1,497 @@
+# =============================================================================
+# 行业基准参考数据库 (Industry Benchmark Database)
+# Industrial Sentinel — 行业基准参考模块
+# =============================================================================
+# 
+# 设计目标：
+#   提供各行业的关键财务指标基准区间（毛利率、ROE、PE、营收增速等），
+#   用于生命周期判定和估值参考。不同行业的基准差异大，成长期科技公司
+#   和成熟期制造业公司需要区分对待。
+#
+# 数据来源：
+#   - 公开财报数据（同花顺、Wind、公司年报）
+#   - 券商研报一致性预期
+#   - 行业产业调研
+#   - 历史估值分位统计
+#
+# 更新频率：季度（随财报季更新）
+# 最后更新：2026-05-22
+# =============================================================================
+
+meta:
+  last_updated: "2026-05-09"
+  update_frequency: "quarterly"
+  owner: "industry"
+  description: "行业基准参考数据库，提供各行业关键财务指标基准区间，用于生命周期判定和估值参考"
+
+# =============================================================================
+# 通用基准（全A股中位数）——当某行业基准缺失时使用，标注🟡
+# =============================================================================
+generic_benchmarks:
+  roic:
+    growth_stage: { min: 8, max: 15, unit: "%" }
+    mature_stage: { min: 5, max: 10, unit: "%" }
+  gross_margin:
+    growth_stage: { min: 25, max: 40, unit: "%" }
+    mature_stage: { min: 15, max: 25, unit: "%" }
+  pe_ttm:
+    growth_stage: { min: 25, max: 60, unit: "x" }
+    mature_stage: { min: 10, max: 20, unit: "x" }
+  ps_ttm:
+    growth_stage: { min: 3, max: 8, unit: "x" }
+    mature_stage: { min: 1, max: 3, unit: "x" }
+  revenue_growth:
+    growth_stage: { min: 20, max: 50, unit: "%" }
+    mature_stage: { min: 5, max: 15, unit: "%" }
+  net_margin:
+    growth_stage: { min: 8, max: 18, unit: "%" }
+    mature_stage: { min: 5, max: 12, unit: "%" }
+  inventory_days:
+    growth_stage: { min: 45, max: 75, unit: "days" }
+    mature_stage: { min: 60, max: 90, unit: "days" }
+  # 通用偏离系数计算参数
+  deviation_params:
+    mild_threshold: 0.20    # 偏离20%以内为轻度
+    moderate_threshold: 0.50 # 偏离20-50%为中度
+    severe_threshold: 1.00   # 偏离50-100%为重度
+    extreme_threshold: 2.00  # 偏离>100%为极端
+
+# =============================================================================
+# 行业1：光通信/光模块 (Optical Communication / Optical Module)
+# =============================================================================
+# 代表公司：中际旭创(300308.SZ)、新易盛(300502.SZ)、光迅科技(002281.SZ)、
+#           某DCI光模块公司(688YYY.SH)、天孚通信(300394.SZ)
+# 生命周期：成长期中期（渗透率15-40%）
+# 核心特征：技术迭代快、资本密集、客户集中度高、海外收入占比大
+# =============================================================================
+industry_optical_module:
+  display_name: "光通信/光模块"
+  english_name: "Optical Communication / Optical Module"
+  life_cycle: "growth_mid"   # 成长期中期
+  representative_companies:
+    - { code: "300308.SZ", name: "中际旭创", role: "全球龙头" }
+    - { code: "300502.SZ", name: "新易盛", role: "成本领先" }
+    - { code: "002281.SZ", name: "光迅科技", role: "央企背景" }
+    - { code: "688YYY.SH", name: "某DCI光模块公司", role: "DCI差异化" }
+    - { code: "300394.SZ", name: "天孚通信", role: "光器件平台" }
+
+  benchmarks:
+    roic:
+      growth_stage: { min: 12, max: 25, unit: "%", note: "新易盛ROIC可达20%+，成熟期后回落至10-15%" }
+      mature_stage: { min: 8, max: 15, unit: "%", note: "400G时代成熟期ROIC约8-12%" }
+    gross_margin:
+      growth_stage: { min: 30, max: 50, unit: "%", note: "新易盛47%，中际旭创40%，硅光方案毛利率更高" }
+      mature_stage: { min: 20, max: 30, unit: "%", note: "100G时代成熟期毛利率20-25%" }
+    pe_ttm:
+      growth_stage: { min: 20, max: 80, unit: "x", note: "历史分位：中际旭创近5年均值39x，峰值80x+" }
+      mature_stage: { min: 15, max: 30, unit: "x", note: "增速放缓后PE向20x收敛" }
+    ps_ttm:
+      growth_stage: { min: 5, max: 15, unit: "x", note: "PS 8-12x为光模块整机正常区间" }
+      mature_stage: { min: 2, max: 5, unit: "x", note: "成熟期PS 2-4x" }
+    revenue_growth:
+      growth_stage: { min: 30, max: 150, unit: "%", note: "800G→1.6T迭代期，头部增速50-300%" }
+      mature_stage: { min: 10, max: 25, unit: "%", note: "成熟期增速10-20%" }
+    net_margin:
+      growth_stage: { min: 12, max: 25, unit: "%", note: "新易盛净利率20%+，中际旭创15-18%" }
+      mature_stage: { min: 8, max: 15, unit: "%", note: "成熟期净利率8-12%" }
+    inventory_days:
+      growth_stage: { min: 40, max: 70, unit: "days", note: "订单驱动备货，头部<45天" }
+      mature_stage: { min: 60, max: 90, unit: "days", note: "成熟期库存周转60-80天" }
+
+  # 行业特有校正因子
+  special_adjustments:
+    overseas_revenue_premium: 0.05   # 海外收入>50%的公司，评分+5%（客户质量溢价）
+    silicon_photonics_premium: 0.08  # 硅光产品占比>30%，评分+8%（技术路线溢价）
+    vertical_integration_premium: 0.06 # 自研光芯片/器件，评分+6%（垂直整合溢价）
+    customer_concentration_penalty: 0.05 # 单一大客户>40%，评分-5%（客户集中风险）
+
+# =============================================================================
+# 行业2：光芯片/半导体 (Optical Chip / Semiconductor)
+# =============================================================================
+# 代表公司：某CW光源公司(688XXX.SH)、源杰科技(688498.SH)、长光华芯(688048.SH)
+# 生命周期：成长期早期→中期（渗透率5-20%→15-35%）
+# 核心特征：IDM模式、技术壁垒极高、国产替代核心环节、产品验证周期长
+# =============================================================================
+industry_optical_chip:
+  display_name: "光芯片/半导体"
+  english_name: "Optical Chip / Semiconductor"
+  life_cycle: "growth_early_to_mid"
+  representative_companies:
+    - { code: "688XXX.SH", name: "某CW光源公司", role: "无源+有源双平台" }
+    - { code: "688498.SH", name: "源杰科技", role: "高速EML芯片" }
+    - { code: "688048.SH", name: "长光华芯", role: "VCSEL/高功率" }
+
+  benchmarks:
+    roic:
+      growth_stage: { min: 5, max: 15, unit: "%", note: "成长期ROIC偏低（高研发投入），5-10%正常" }
+      mature_stage: { min: 10, max: 20, unit: "%", note: "成熟期后ROIC可达15%+（轻资产IDM模式）" }
+    gross_margin:
+      growth_stage: { min: 25, max: 45, unit: "%", note: "某CW光源公司光芯片毛利率33-35%，源杰科技41%" }
+      mature_stage: { min: 35, max: 55, unit: "%", note: "成熟期光芯片IDM毛利率40-50%" }
+    pe_ttm:
+      growth_stage: { min: 50, max: 150, unit: "x", note: "光芯片稀缺性溢价，50-130x为正常区间" }
+      mature_stage: { min: 25, max: 50, unit: "x", note: "成熟期后PE向30-40x收敛" }
+    ps_ttm:
+      growth_stage: { min: 7, max: 20, unit: "x", note: "PS 10-15x为光芯片正常区间" }
+      mature_stage: { min: 3, max: 8, unit: "x", note: "成熟期PS 4-6x" }
+    revenue_growth:
+      growth_stage: { min: 30, max: 120, unit: "%", note: "AI驱动下，头部增速40-100%+" }
+      mature_stage: { min: 15, max: 35, unit: "%", note: "成熟期增速15-25%" }
+    net_margin:
+      growth_stage: { min: 5, max: 15, unit: "%", note: "成长期净利率5-10%（高研发摊薄）" }
+      mature_stage: { min: 12, max: 25, unit: "%", note: "成熟期净利率15-20%（规模效应）" }
+    inventory_days:
+      growth_stage: { min: 60, max: 120, unit: "days", note: "芯片验证周期长，库存较高正常" }
+      mature_stage: { min: 45, max: 75, unit: "days", note: "成熟期周转改善" }
+
+  special_adjustments:
+    idm_premium: 0.10              # IDM模式（设计+制造一体化），评分+10%
+    high_speed_chip_premium: 0.08  # 100G/200G EML已量产，评分+8%
+    telecom_only_penalty: 0.05     # 仅电信市场，无数据中心业务，评分-5%
+    customer_validation_penalty: 0.03 # 核心产品仍在客户验证中，评分-3%
+
+# =============================================================================
+# 行业3：InP衬底/原材料 (InP Substrate / Raw Materials)
+# =============================================================================
+# 代表公司：某InP衬底公司(002XXX.SZ)、AXT(美股)
+# 生命周期：导入期→成长期早期（InP业务渗透率<10%→15%）
+# 核心特征：资源壁垒+技术壁垒双重护城河、产能锁定、国产替代硬逻辑
+# =============================================================================
+industry_inp_substrate:
+  display_name: "InP衬底/原材料"
+  english_name: "InP Substrate / Raw Materials"
+  life_cycle: "introduction_to_growth_early"
+  representative_companies:
+    - { code: "002XXX.SZ", name: "某InP衬底公司", role: "国内唯一InP量产" }
+    - { code: "AXT", name: "AXT(美股)", role: "全球最大InP衬底" }
+
+  benchmarks:
+    roic:
+      growth_stage: { min: -5, max: 10, unit: "%", note: "导入期ROIC可能为负（产能爬坡期）" }
+      mature_stage: { min: 15, max: 30, unit: "%", note: "成熟期InP衬底ROIC极高（资源+技术壁垒）" }
+    gross_margin:
+      growth_stage: { min: 20, max: 45, unit: "%", note: "当前某InP衬底公司整体毛利率低，InP部分预期40-60%" }
+      mature_stage: { min: 50, max: 70, unit: "%", note: "成熟期InP衬底毛利率50-65%" }
+    pe_ttm:
+      growth_stage: { min: 60, max: 250, unit: "x", note: "导入期估值极高（预期驱动），80-200x" }
+      mature_stage: { min: 20, max: 50, unit: "x", note: "成熟期PE向25-35x收敛" }
+    ps_ttm:
+      growth_stage: { min: 10, max: 40, unit: "x", note: "InP部分PS极高（营收基数小），15-30x" }
+      mature_stage: { min: 3, max: 10, unit: "x", note: "成熟期PS 4-8x" }
+    revenue_growth:
+      growth_stage: { min: 50, max: 300, unit: "%", note: "InP业务增速极快，100-200%正常" }
+      mature_stage: { min: 20, max: 50, unit: "%", note: "成熟期增速20-30%" }
+    net_margin:
+      growth_stage: { min: -10, max: 15, unit: "%", note: "导入期可能亏损，爬坡期5-10%" }
+      mature_stage: { min: 20, max: 40, unit: "%", note: "成熟期净利率25-35%" }
+    inventory_days:
+      growth_stage: { min: 90, max: 180, unit: "days", note: "衬底长晶周期长，库存较高" }
+      mature_stage: { min: 60, max: 100, unit: "days", note: "成熟期周转改善" }
+
+  special_adjustments:
+    capacity_locked_premium: 0.15   # 产能100%被客户锁定（预付>20%），评分+15%
+    six_inch_breakthrough_premium: 0.10 # 6英寸突破，评分+10%
+    raw_material_diversification_penalty: 0.05 # 非InP业务占比>80%，评分-5%（主业分散）
+    export_restrictions_premium: 0.08 # 受益于出口管制（铟出口限制），评分+8%
+
+# =============================================================================
+# 行业4：PCB/覆铜板 (PCB / CCL)
+# =============================================================================
+# 代表公司：沪电股份(002463.SZ)、深南电路(002916.SZ)、生益科技(600183.SH)、
+#           胜宏科技(300476.SZ)、鹏鼎控股(002938.SZ)
+# 生命周期：成熟期→成长期过渡期（传统PCB成熟期，AI服务器PCB成长期）
+# 核心特征：重资产、价格敏感、技术升级驱动价值量提升
+# =============================================================================
+industry_pcb_ccl:
+  display_name: "PCB/覆铜板"
+  english_name: "PCB / Copper Clad Laminate"
+  life_cycle: "mature_to_growth_transition"
+  representative_companies:
+    - { code: "002463.SZ", name: "沪电股份", role: "AI服务器PCB龙头" }
+    - { code: "002916.SZ", name: "深南电路", role: "PCB+载板双轮" }
+    - { code: "600183.SH", name: "生益科技", role: "覆铜板龙头" }
+    - { code: "300476.SZ", name: "胜宏科技", role: "高多层板弹性" }
+    - { code: "002938.SZ", name: "鹏鼎控股", role: "FPC全球龙头" }
+
+  benchmarks:
+    roic:
+      growth_stage: { min: 10, max: 20, unit: "%", note: "AI服务器PCB公司ROIC 12-18%" }
+      mature_stage: { min: 6, max: 12, unit: "%", note: "传统PCB成熟期ROIC 6-10%" }
+    gross_margin:
+      growth_stage: { min: 28, max: 38, unit: "%", note: "AI服务器PCB毛利率30-35%" }
+      mature_stage: { min: 18, max: 25, unit: "%", note: "传统PCB毛利率18-22%" }
+    pe_ttm:
+      growth_stage: { min: 20, max: 45, unit: "x", note: "AI PCB成长期PE 25-35x" }
+      mature_stage: { min: 10, max: 20, unit: "x", note: "传统PCB成熟期PE 12-18x" }
+    ps_ttm:
+      growth_stage: { min: 2, max: 6, unit: "x", note: "AI PCB PS 2-4x" }
+      mature_stage: { min: 0.8, max: 2, unit: "x", note: "传统PCB PS 1-1.5x" }
+    revenue_growth:
+      growth_stage: { min: 20, max: 50, unit: "%", note: "AI驱动下增速30-40%" }
+      mature_stage: { min: 5, max: 15, unit: "%", note: "传统PCB增速5-10%" }
+    net_margin:
+      growth_stage: { min: 10, max: 18, unit: "%", note: "AI PCB净利率12-16%" }
+      mature_stage: { min: 5, max: 10, unit: "%", note: "传统PCB净利率6-8%" }
+    inventory_days:
+      growth_stage: { min: 40, max: 65, unit: "days", note: "订单饱满，周转加快" }
+      mature_stage: { min: 55, max: 80, unit: "days", note: "传统PCB周转55-70天" }
+
+  special_adjustments:
+    ai_server_pcb_premium: 0.08      # AI服务器PCB占比>30%，评分+8%
+    high_layer_count_premium: 0.05   # 高多层板(20层+)占比>20%，评分+5%
+    ic_substrate_premium: 0.06       # IC载板业务，评分+6%
+    overcapacity_penalty: 0.05       # 低端产能占比>50%，评分-5%
+    copper_price_exposure_penalty: 0.03 # 铜价波动敏感度高，评分-3%
+
+# =============================================================================
+# 行业5：半导体设备 (Semiconductor Equipment)
+# =============================================================================
+# 代表公司：北方华创(002371.SZ)、中微公司(688012.SH)、拓荆科技(688072.SH)
+# 生命周期：成长期早期→中期（国产替代渗透率10-30%）
+# 核心特征：技术壁垒极高、研发密集、客户认证周期长、订单可见性强
+# =============================================================================
+industry_semiconductor_equipment:
+  display_name: "半导体设备"
+  english_name: "Semiconductor Equipment"
+  life_cycle: "growth_early_to_mid"
+  representative_companies:
+    - { code: "002371.SZ", name: "北方华创", role: "平台型设备龙头" }
+    - { code: "688012.SH", name: "中微公司", role: "刻蚀设备龙头" }
+    - { code: "688072.SH", name: "拓荆科技", role: "薄膜沉积设备" }
+
+  benchmarks:
+    roic:
+      growth_stage: { min: 8, max: 18, unit: "%", note: "北方华创ROE 16-20%，ROIC约10-15%" }
+      mature_stage: { min: 12, max: 25, unit: "%", note: "国际龙头AMAT/LAM ROIC 20%+" }
+    gross_margin:
+      growth_stage: { min: 38, max: 50, unit: "%", note: "北方华创40%，中微公司45%+" }
+      mature_stage: { min: 45, max: 55, unit: "%", note: "国际龙头毛利率45-50%" }
+    pe_ttm:
+      growth_stage: { min: 35, max: 80, unit: "x", note: "国产替代溢价，PE 40-70x" }
+      mature_stage: { min: 20, max: 35, unit: "x", note: "成熟期PE向25-30x收敛" }
+    ps_ttm:
+      growth_stage: { min: 5, max: 12, unit: "x", note: "PS 6-10x" }
+      mature_stage: { min: 3, max: 6, unit: "x", note: "成熟期PS 3-5x" }
+    revenue_growth:
+      growth_stage: { min: 25, max: 50, unit: "%", note: "国产替代驱动增速30-40%" }
+      mature_stage: { min: 10, max: 20, unit: "%", note: "成熟期增速10-15%" }
+    net_margin:
+      growth_stage: { min: 10, max: 20, unit: "%", note: "北方华创净利率14%，中微公司15%+" }
+      mature_stage: { min: 15, max: 25, unit: "%", note: "成熟期净利率18-22%" }
+    inventory_days:
+      growth_stage: { min: 120, max: 200, unit: "days", note: "设备验证+交付周期长" }
+      mature_stage: { min: 90, max: 150, unit: "days", note: "成熟期周转改善" }
+
+  special_adjustments:
+    platform_strategy_premium: 0.08    # 平台型设备公司（多品类），评分+8%
+    single_product_risk_penalty: 0.05  # 单一产品占比>70%，评分-5%
+    advanced_node_premium: 0.10      # 先进制程(<14nm)设备突破，评分+10%
+    import_substitution_premium: 0.06  # 国产替代核心设备，评分+6%
+    order_visibility_premium: 0.05     # 订单能见度>12个月，评分+5%
+
+# =============================================================================
+# 行业6：存储器 (Memory / Storage)
+# =============================================================================
+# 代表公司：兆易创新(603986.SH)、江波龙(301308.SZ)、佰维存储(688525.SH)、
+#           澜起科技(688008.SH)、德明利(001309.SZ)
+# 生命周期：强周期行业（周期底部→周期顶部往复）
+# 核心特征：价格周期驱动、库存敏感、技术迭代（DDR4→DDR5）
+# =============================================================================
+industry_memory:
+  display_name: "存储器"
+  english_name: "Memory / Storage"
+  life_cycle: "cyclical"   # 强周期行业
+  representative_companies:
+    - { code: "603986.SH", name: "兆易创新", role: "NOR Flash+MCU龙头" }
+    - { code: "301308.SZ", name: "江波龙", role: "存储模组龙头" }
+    - { code: "688525.SH", name: "佰维存储", role: "存储模组" }
+    - { code: "688008.SH", name: "澜起科技", role: "内存接口芯片" }
+    - { code: "001309.SZ", name: "德明利", role: "存储模组弹性" }
+
+  benchmarks:
+    # 存储器周期分为四个阶段，每个阶段基准不同
+    cycle_phase_definitions:
+      bottom: { description: "周期底部", indicators: "价格触底、库存去化、厂商亏损/微利" }
+      recovery: { description: "复苏期", indicators: "价格回升、库存回补、利润修复" }
+      boom: { description: "繁荣期", indicators: "价格大涨、供不应求、利润爆发" }
+      decline: { description: "衰退期", indicators: "价格回落、库存积压、利润收缩" }
+
+    roic:
+      cycle_bottom: { min: -5, max: 5, unit: "%", note: "周期底部ROIC接近0或负" }
+      cycle_recovery: { min: 5, max: 12, unit: "%", note: "复苏期ROIC 5-10%" }
+      cycle_boom: { min: 15, max: 35, unit: "%", note: "繁荣期ROIC 20-30%" }
+      cycle_decline: { min: 5, max: 15, unit: "%", note: "衰退期ROIC 8-12%" }
+    gross_margin:
+      cycle_bottom: { min: 10, max: 25, unit: "%", note: "周期底部毛利率10-20%" }
+      cycle_recovery: { min: 20, max: 35, unit: "%", note: "复苏期毛利率25-30%" }
+      cycle_boom: { min: 40, max: 65, unit: "%", note: "繁荣期毛利率45-60%（江波龙Q1达55%）" }
+      cycle_decline: { min: 25, max: 40, unit: "%", note: "衰退期毛利率30-35%" }
+    pe_ttm:
+      cycle_bottom: { min: 50, max: 300, unit: "x", note: "周期底部PE极高或亏损" }
+      cycle_recovery: { min: 30, max: 80, unit: "x", note: "复苏期PE 40-60x" }
+      cycle_boom: { min: 10, max: 25, unit: "x", note: "繁荣期PE 12-20x" }
+      cycle_decline: { min: 15, max: 40, unit: "%", note: "衰退期PE 20-30x" }
+    ps_ttm:
+      cycle_bottom: { min: 1, max: 3, unit: "x", note: "周期底部PS 1-2x" }
+      cycle_recovery: { min: 2, max: 5, unit: "x", note: "复苏期PS 2-4x" }
+      cycle_boom: { min: 3, max: 8, unit: "x", note: "繁荣期PS 4-6x" }
+      cycle_decline: { min: 2, max: 4, unit: "x", note: "衰退期PS 2-3x" }
+    revenue_growth:
+      cycle_bottom: { min: -20, max: 10, unit: "%", note: "周期底部营收可能负增长" }
+      cycle_recovery: { min: 10, max: 40, unit: "%", note: "复苏期增速20-30%" }
+      cycle_boom: { min: 30, max: 150, unit: "%", note: "繁荣期增速50-100%+（江波龙Q1+133%）" }
+      cycle_decline: { min: 5, max: 25, unit: "%", note: "衰退期增速10-15%" }
+    net_margin:
+      cycle_bottom: { min: -5, max: 5, unit: "%", note: "周期底部净利率0-3%" }
+      cycle_recovery: { min: 5, max: 12, unit: "%", note: "复苏期净利率6-10%" }
+      cycle_boom: { min: 15, max: 40, unit: "%", note: "繁荣期净利率20-35%（江波龙Q1达40%）" }
+      cycle_decline: { min: 8, max: 18, unit: "%", note: "衰退期净利率10-15%" }
+    inventory_days:
+      cycle_bottom: { min: 120, max: 200, unit: "days", note: "周期底部库存高企" }
+      cycle_recovery: { min: 90, max: 150, unit: "days", note: "复苏期库存去化" }
+      cycle_boom: { min: 60, max: 100, unit: "days", note: "繁荣期周转加快" }
+      cycle_decline: { min: 80, max: 140, unit: "days", note: "衰退期库存积压" }
+
+  special_adjustments:
+    self-developed_chip_premium: 0.08  # 自研存储芯片，评分+8%
+    enterprise_storage_premium: 0.06    # 企业级存储占比>20%，评分+6%
+    ddr5_transition_premium: 0.05       # DDR5产品占比提升，评分+5%
+    commodity_exposure_penalty: 0.05     # 纯大宗商品（无差异化），评分-5%
+    single_supplier_penalty: 0.08        # 单一大供应商>60%，评分-8%
+
+# =============================================================================
+# 行业映射表（股票代码 → 行业标签）
+# =============================================================================
+stock_to_industry_mapping:
+  # 光通信/光模块
+  "300308.SZ": industry_optical_module
+  "300502.SZ": industry_optical_module
+  "002281.SZ": industry_optical_module
+  "688YYY.SH": industry_optical_module
+  "300394.SZ": industry_optical_module
+  "300620.SZ": industry_optical_module   # 光库科技
+  
+  # 光芯片/半导体
+  "688XXX.SH": industry_optical_chip
+  "688498.SH": industry_optical_chip
+  "688048.SH": industry_optical_chip
+  
+  # InP衬底/原材料
+  "002XXX.SZ": industry_inp_substrate
+  
+  # PCB/覆铜板
+  "002463.SZ": industry_pcb_ccl
+  "002916.SZ": industry_pcb_ccl
+  "600183.SH": industry_pcb_ccl
+  "300476.SZ": industry_pcb_ccl
+  "002938.SZ": industry_pcb_ccl
+  "002384.SZ": industry_pcb_ccl   # 东山精密
+  "688183.SH": industry_pcb_ccl   # 生益电子
+  
+  # 半导体设备
+  "002371.SZ": industry_semiconductor_equipment
+  "688012.SH": industry_semiconductor_equipment
+  "688072.SH": industry_semiconductor_equipment
+  
+  # 存储器
+  "603986.SH": industry_memory
+  "301308.SZ": industry_memory
+  "688525.SH": industry_memory
+  "688008.SH": industry_memory
+  "001309.SZ": industry_memory
+
+# =============================================================================
+# 评分校正配置
+# =============================================================================
+scoring_correction:
+  # 启用/禁用行业校正
+  enabled: true
+  
+  # 校正强度（0=不校正，1=完全校正）
+  correction_strength: 1.0
+  
+  # 各评分维度的行业校正权重
+  # 说明：哪些维度需要行业校正，以及校正权重
+  dimension_weights:
+    layer_5_financial: 0.35     # 财报质量评分中35%的权重受行业基准影响
+    layer_6_valuation: 1.00    # 估值约束评分100%需要行业校正（核心）
+    layer_0_correction: 0.50   # Layer 0修正中50%受行业生命周期影响
+  
+  # 偏离系数计算参数
+  deviation_calculation:
+    # 偏离度 = (实际值 - 行业基准中值) / 行业基准中值
+    # 偏离系数 = 偏离度 × 敏感度系数
+    
+    metric_sensitivity:
+      roic: 1.0
+      gross_margin: 0.8
+      pe_ttm: 1.2         # PE偏离最敏感
+      ps_ttm: 1.0
+      revenue_growth: 0.9
+      net_margin: 0.8
+      inventory_days: 0.6   # 存货周转偏离最不敏感
+    
+    # 偏离系数上限/下限（防止过度校正）
+    max_deviation_coefficient: 0.30   # 最高+30%
+    min_deviation_coefficient: -0.25   # 最低-25%
+  
+  # 缺失行业基准时的处理
+  fallback_behavior:
+    use_generic_benchmarks: true
+    missing_flag: "🟡"   # 标注缺失
+    missing_penalty: 0.02  # 缺失行业基准时，额外-2%（鼓励补充基准数据）
+
+# =============================================================================
+# 校正公式说明（供开发者参考）
+# =============================================================================
+# 
+# 【核心公式】
+# 校正后评分 = 原始评分 × (1 + 行业偏离系数)
+# 
+# 【行业偏离系数计算】
+# 1. 对每个指标计算偏离度：
+#    deviation = (actual_value - benchmark_mid) / benchmark_mid
+# 
+# 2. 计算加权偏离系数：
+#    industry_deviation = Σ(deviation_i × sensitivity_i × weight_i)
+# 
+# 3. 裁剪到合理区间：
+#    industry_deviation = clip(industry_deviation, -0.25, +0.30)
+# 
+# 【分维度校正细则】
+# 
+# Layer 6 估值约束（核心校正目标）：
+#   - 原逻辑：PE>200扣8分，100-200扣5分，50-100扣2分
+#   - 校正后：使用行业基准PE区间作为扣分基准
+#     例：光模块成长期PE基准20-80x，中际旭创PE 75x → 不扣分（在区间内）
+#     例：PCB成熟期PE基准10-20x，某PCB公司PE 50x → 按偏离度扣分
+# 
+# Layer 5 财报质量：
+#   - 营收增速评分：使用行业营收增速基准
+#     例：光模块增速基准30-150%，某公司增速50% → 正常（满分）
+#     例：PCB增速基准5-15%，某公司增速50% → 超预期（加分）
+#   - ROE评分：使用行业ROIC基准
+#   - 毛利率评分：使用行业毛利率基准
+# 
+# Layer 0 前置修正：
+#   - 行业生命周期自动匹配，无需人工判断
+#     例：光模块→成长期中期（修正+1）
+#     例：PCB→成熟期→成长期过渡（修正0）
+#     例：存储器→根据周期阶段动态修正
+# 
+# 【示例】
+# 光库科技（300620.SZ）- 光模块行业（成长期）
+#   - 原评分：68分（Layer 6估值扣18分导致）
+#   - 行业校正：
+#     * PE 281x vs 行业基准20-80x → 偏离度=281/50-1=4.62 → 裁剪到+0.30
+#     * PS 40x vs 行业基准5-15x → 偏离度=40/10-1=3.00 → 裁剪到+0.30
+#     * 综合偏离系数 ≈ +0.25（估值显著高于行业）
+#   - 校正后评分：68 × (1 + 0.25) = 85 → 裁剪到原始评分上限？
+#     → 实际：Layer 6扣分减少（因为用行业基准重新计算），总分提升至75-78
+#
+# 中际旭创（300308.SZ）- 光模块行业（成长期）
+#   - PE 76x vs 行业基准20-80x → 在区间内 → 不扣分
+#   - PS 12x vs 行业基准5-15x → 在区间内 → 不扣分
+#   - 原Layer 6扣分从10分降至2分 → 总分从72提升至80+
+# 
+# =============================================================================

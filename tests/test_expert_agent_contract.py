@@ -1,7 +1,10 @@
 import importlib
 
 import pytest
-from agentscope.agent import AgentBase as AgentScopeAgentBase
+try:
+    from agentscope.agent import AgentBase as AgentScopeAgentBase
+except ModuleNotFoundError:
+    from agentscope.agents import AgentBase as AgentScopeAgentBase
 
 from agents.signal import Signal
 from main import EXPERT_AGENTS

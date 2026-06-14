@@ -192,14 +192,14 @@ Codex 的使用条件与 OpenAI 账号、订阅、网络环境相关。项目成
 
 ## 九、建议工作流程
 
-1. 按 [Git 小白协作指南](./GIT_WORKFLOW.md) 从 `develop` 新建自己的分支。
+1. 按 [Git 小白协作指南](./GIT_WORKFLOW.md) 从 `main` 新建自己的临时分支。
 2. 用自己选择的 Coding Agent 打开项目文件夹。
 3. 让 Agent 阅读项目说明、团队分工和任务相关文件。
 4. 写清楚本次任务边界。
 5. 让 Agent 小步修改。
 6. 每次修改后检查文件清单和 diff。
 7. 确认后提交 commit。
-8. 发 PR 到 `develop`。
+8. 发 PR 到 `main`。
 
 ---
 

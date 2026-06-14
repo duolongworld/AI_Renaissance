@@ -1,0 +1,12 @@
+chain_name: generic
+industry_name: 通用行业
+tags: [通用, 未分类]
+
+upstream:
+  nodes: []
+
+midstream:
+  nodes: []
+
+downstream:
+  nodes: []

@@ -208,6 +208,10 @@ ArbitrationResult
 | Skill 加载 | Agent 硬编码 Skill 路径 | 动态加载 + 全局注册表 |
 | 数据获取 | Agent 内直接调 API | Agent 调 data_sources/，skills/data/ 描述数据接口说明 |
 
+| AgentScope | 无 | BaseAgent 继承 AgentScope AgentBase，Msg 桥接 |
+| 并行编排 | 无 | scope.py 异步并行 + 超时隔离 |
+| 分支策略 | main + develop 双长期分支 | **main 唯一主线 + 临时分支 + PR + CI + tag** |
+
 ---
 
-*最后更新：2026-05-03*
+*最后更新：2026-05-24*

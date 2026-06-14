@@ -1,0 +1,362 @@
+{
+  "last_updated": "2026-05-13",
+  "industry": "光通信",
+  "description": "光通信(光模块)产业链A股全量映射表。覆盖上游材料/芯片→中游模块/器件→下游设备/应用全链条。输入股票代码自动识别产业链位置并匹配optical-module预设模板。",
+  "total_stocks": 33,
+  "upstream_count": 16,
+  "midstream_count": 13,
+  "downstream_count": 4,
+  "weight_sum": 1.0,
+
+  "mappings": {
+    "688498.SH": {
+      "name": "源杰科技",
+      "industry": "光通信",
+      "sub_sector": "光芯片/EML/CW光源",
+      "chain_position": "上游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.06,
+      "key_products": ["100G EML芯片", "300mW CW光源", "DFB激光器", "硅光外置光源"],
+      "notes": "国内光芯片龙头，高速光源'卖铲人'。100G EML商业化领先，CW光源匹配400G/800G/1.6T硅光模块需求。"
+    },
+    "688048.SH": {
+      "name": "长光华芯",
+      "industry": "光通信",
+      "sub_sector": "光芯片/高功率激光",
+      "chain_position": "上游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.05,
+      "key_products": ["100G EML光通信芯片", "高功率激光芯片", "特种光纤"],
+      "notes": "IDM全链条标杆，100G EML良率92%，已进入中际旭创供应链。高功率激光+光通信双驱动。"
+    },
+    "688313.SH": {
+      "name": "仕佳光子",
+      "industry": "光通信",
+      "sub_sector": "光芯片/CW光源/AWG",
+      "chain_position": "上游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.05,
+      "key_products": ["CW激光器", "AWG芯片", "滤波器", "PLC光器件"],
+      "notes": "CW光源国产替代核心。AWG芯片国内唯一能量产厂商，70mW CW光源已量产出货。"
+    },
+    "002428.SZ": {
+      "name": "云南锗业",
+      "industry": "光通信",
+      "sub_sector": "磷化铟(InP)衬底",
+      "chain_position": "上游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.04,
+      "key_products": ["磷化铟(InP)衬底", "锗材料", "化合物半导体衬底"],
+      "notes": "InP衬底核心供应商，15万片/年产能，规划45万片/年。InP供需缺口预计延续至2027-2028年。"
+    },
+    "600206.SH": {
+      "name": "有研新材",
+      "industry": "光通信",
+      "sub_sector": "InP衬底/新材料",
+      "chain_position": "上游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.03,
+      "key_products": ["磷化铟(InP)衬底", "稀土材料", "高纯金属"],
+      "notes": "InP衬底国产替代重要参与者，新材料平台型公司。受益光芯片上游材料国产化。"
+    },
+    "688195.SH": {
+      "name": "腾景科技",
+      "industry": "光通信",
+      "sub_sector": "光器件/耦合透镜/精密光学",
+      "chain_position": "上游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.03,
+      "key_products": ["光通信耦合透镜", "精密光学元件", "钒酸钇晶体(反酸)"],
+      "notes": "光通信精密光学核心供应商。耦合透镜、非球面透镜等是光模块必备组件。"
+    },
+    "688127.SH": {
+      "name": "蓝特光学",
+      "industry": "光通信",
+      "sub_sector": "光学元件/微棱镜/耦合透镜",
+      "chain_position": "上游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.02,
+      "key_products": ["微棱镜", "非球面透镜", "光学元件"],
+      "notes": "光学元件专精特新，微棱镜技术领先。光通信领域提供耦合透镜等精密光学组件。"
+    },
+    "688167.SH": {
+      "name": "炬光科技",
+      "industry": "光通信",
+      "sub_sector": "光器件/激光光学/耦合",
+      "chain_position": "上游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.02,
+      "key_products": ["激光光学器件", "光场匀化器", "光纤耦合器"],
+      "notes": "高功率激光光学+光通信双布局。光通信领域提供光纤耦合、光束整形等核心组件。"
+    },
+    "002222.SZ": {
+      "name": "福晶科技",
+      "industry": "光通信",
+      "sub_sector": "晶体材料/法拉第旋片",
+      "chain_position": "上游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.02,
+      "key_products": ["LBO晶体", "BBO晶体", "法拉第旋片", "非线性光学晶体"],
+      "notes": "全球非线性光学晶体龙头，光通信领域提供法拉第旋片等关键材料。"
+    },
+    "301183.SZ": {
+      "name": "东田微",
+      "industry": "光通信",
+      "sub_sector": "光通信滤光片/精密光学",
+      "chain_position": "上游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.01,
+      "key_products": ["光通信滤光片", "红外截止滤光片", "生物识别滤光片"],
+      "notes": "光通信滤光片龙头，华为/中兴供应商。滤光片是光模块中隔离不同波长光信号的关键组件。"
+    },
+    "688307.SH": {
+      "name": "中润光学",
+      "industry": "光通信",
+      "sub_sector": "光学镜头/精密光学",
+      "chain_position": "上游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.01,
+      "key_products": ["光学镜头", "精密光学组件"],
+      "notes": "光学镜头专精特新，光通信领域拓展精密光学组件供应。"
+    },
+    "300620.SZ": {
+      "name": "光库科技",
+      "industry": "光通信",
+      "sub_sector": "光器件/铌酸锂调制器/光纤激光器",
+      "chain_position": "上游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.01,
+      "key_products": ["铌酸锂调制器", "光纤激光器", "光器件"],
+      "notes": "光器件+光纤激光器核心供应商。铌酸锂调制器是高速光通信关键器件，收购武汉捷普(杰夫)强化布局。"
+    },
+    "001267.SZ": {
+      "name": "汇绿生态",
+      "industry": "光通信",
+      "sub_sector": "光通信/生态转型切入",
+      "chain_position": "上游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.01,
+      "key_products": ["光通信材料", "生态园林"],
+      "notes": "生态转型切入光通信材料领域，光通信业务占比逐步提升。"
+    },
+    "600330.SH": {
+      "name": "天通股份",
+      "industry": "光通信",
+      "sub_sector": "薄膜铌酸锂调制器/电子材料",
+      "chain_position": "上游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.01,
+      "key_products": ["薄膜铌酸锂(TFLN)调制器", "蓝宝石衬底", "磁性材料"],
+      "notes": "薄膜铌酸锂调制器核心布局者。TFLN是800G/1.6T光通信最具潜力的新一代调制器材料。"
+    },
+    "600105.SH": {
+      "name": "永鼎股份",
+      "industry": "光通信",
+      "sub_sector": "光棒-光纤-光缆/超导",
+      "chain_position": "上游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.01,
+      "key_products": ["光纤预制棒", "光纤", "光缆", "超导材料"],
+      "notes": "光棒-光纤-光缆全产业链，超导材料协同发展。光纤预制棒是光通信最上游核心材料。"
+    },
+    "603186.SH": {
+      "name": "华正新材",
+      "industry": "光通信",
+      "sub_sector": "CCL覆铜板/光模块PCB基材",
+      "chain_position": "上游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.01,
+      "key_products": ["覆铜板(CCL)", "高频高速PCB基材", "IC载板材料"],
+      "notes": "高端覆铜板供应商，高频高速CCL是高速光模块PCB的核心基材。"
+    },
+
+    "300308.SZ": {
+      "name": "中际旭创",
+      "industry": "光通信",
+      "sub_sector": "光模块(800G/1.6T)",
+      "chain_position": "中游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.11,
+      "key_products": ["800G光模块", "1.6T光模块", "硅光模块", "光引擎"],
+      "notes": "全球光模块龙头(旭创)。基金第一大重仓股，800G/1.6T批量出货，自研硅光芯片已批量出货。"
+    },
+    "300502.SZ": {
+      "name": "新易盛",
+      "industry": "光通信",
+      "sub_sector": "光模块/LPO",
+      "chain_position": "中游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.09,
+      "key_products": ["800G光模块", "1.6T光模块", "LPO光模块", "硅光模块"],
+      "notes": "光模块核心供应商(新易盛)，深度绑定头部云厂商。泰国工厂二期投产，境外收入占比超90%。"
+    },
+    "002281.SZ": {
+      "name": "光迅科技",
+      "industry": "光通信",
+      "sub_sector": "光模块+光芯片IDM",
+      "chain_position": "中游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.05,
+      "key_products": ["光模块", "光芯片", "光纤器件", "CPO/NPO/XPO"],
+      "notes": "国内稀缺的全链条IDM光通信企业。光模块+自研光芯片，定增35亿扩产，CPO/NPO/XPO全布局。"
+    },
+    "688205.SH": {
+      "name": "德科立",
+      "industry": "光通信",
+      "sub_sector": "光模块/DCI设备/相干传输",
+      "chain_position": "中游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.04,
+      "key_products": [ "电信级光模块", "DCI设备", "相干传输设备", "5G前传/中传产品" ],
+      "notes": "电信级光模块+DCI设备，受益国产替代加速。DCI需求从验证期进入爆发期，2026H2有望放量。"
+    },
+    "300394.SZ": {
+      "name": "天孚通信",
+      "industry": "光通信",
+      "sub_sector": "光器件/光引擎/CPO",
+      "chain_position": "中游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.04,
+      "key_products": ["光引擎", "光无源器件", "CPO光引擎", "光纤阵列"],
+      "notes": "光器件龙头，CPO光引擎布局领先。基金重仓154亿元，新设新加坡合资公司拓展海外。"
+    },
+    "002384.SZ": {
+      "name": "东山精密",
+      "industry": "光通信",
+      "sub_sector": "PCB+光芯片(索尔斯)",
+      "chain_position": "中游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.03,
+      "key_products": ["高端PCB", "InP PIC光芯片(索尔斯)", "1.6T LPO方案", "200G EML"],
+      "notes": "PCB+光电双主业，子公司索尔斯(索尔思)布局光芯片。InP PIC+MZM调制器1.6T LPO方案实现反超，100G EML已批量供货，200G EML通过Meta认证。"
+    },
+    "300548.SZ": {
+      "name": "博创科技",
+      "industry": "光通信",
+      "sub_sector": "PLC光分路器/硅光/光模块",
+      "chain_position": "中游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.02,
+      "key_products": ["PLC光分路器", "硅光模块", "光有源器件"],
+      "notes": "PLC光分路器全球市占率第一，硅光技术布局深化。"
+    },
+    "300570.SZ": {
+      "name": "太辰光",
+      "industry": "光通信",
+      "sub_sector": "MPO连接器/光互联器件",
+      "chain_position": "中游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.02,
+      "key_products": ["MPO连接器", "光纤连接器", "光互联器件"],
+      "notes": "光纤连接器龙头，数据中心高密度布线需求驱动增长。受益CPO高密度连接需求。"
+    },
+    "603083.SH": {
+      "name": "剑桥科技",
+      "industry": "光通信",
+      "sub_sector": "光模块+交换机",
+      "chain_position": "中游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.02,
+      "key_products": ["光模块", "交换机", "宽带接入设备"],
+      "notes": "光模块+交换机双布局，Q1净利+276%。接入网设备商，受益50G-PON商用。"
+    },
+    "301205.SZ": {
+      "name": "联特科技",
+      "industry": "光通信",
+      "sub_sector": "光模块/LPO",
+      "chain_position": "中游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.02,
+      "key_products": ["高速光模块", "LPO光模块", "数据中心光模块"],
+      "notes": "光模块新锐，LPO技术布局领先。年内活跃标的，受益高速光模块需求爆发。"
+    },
+    "688515.SH": {
+      "name": "裕太微",
+      "industry": "光通信",
+      "sub_sector": "以太网芯片/光通信DSP",
+      "chain_position": "中游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.02,
+      "key_products": ["以太网PHY芯片", "以太网交换芯片", "车载以太网芯片"],
+      "notes": "以太网芯片国产化核心标的，光通信DSP/电芯片国产替代受益。"
+    },
+    "688702.SH": {
+      "name": "盛科通信",
+      "industry": "光通信",
+      "sub_sector": "交换芯片/光通信DSP",
+      "chain_position": "中游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.02,
+      "key_products": ["以太网交换芯片", "网络芯片", "通讯网络集成电路"],
+      "notes": "国产交换芯片龙头，光通信网络核心DSP/交换芯片供应商。研发占比近60%。"
+    },
+    "300757.SZ": {
+      "name": "罗博特科",
+      "industry": "光通信",
+      "sub_sector": "光模块自动化设备/封装设备",
+      "chain_position": "中游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.01,
+      "key_products": ["光模块自动化组装设备", "测试设备", "精密贴装设备"],
+      "notes": "光模块自动化设备龙头，受益光模块扩产潮。ficonTEC收购落地强化海外布局。"
+    },
+
+    "601869.SH": {
+      "name": "长飞光纤",
+      "industry": "光通信",
+      "sub_sector": "光纤预制棒/光纤光缆",
+      "chain_position": "下游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.05,
+      "key_products": ["光纤预制棒", "光纤", "光缆", "特种光纤"],
+      "notes": "全球光纤预制棒龙头，光棒自给率最高。光棒占光纤成本65%-70%，壁垒最高。年内涨幅超100%，受益AI算力基础设施建设。"
+    },
+    "600487.SH": {
+      "name": "亨通光电",
+      "industry": "光通信",
+      "sub_sector": "光纤+海缆/海洋通信",
+      "chain_position": "下游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.03,
+      "key_products": ["光纤光缆", "海底光缆", "海洋通信", "通信工程"],
+      "notes": "海洋通信+光纤全产业链，海底光缆市占率全球前三。光纤+海缆双景气驱动。"
+    },
+    "600498.SH": {
+      "name": "烽火通信",
+      "industry": "光通信",
+      "sub_sector": "光通信设备/传输设备",
+      "chain_position": "下游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.02,
+      "key_products": ["光传输设备", "光接入设备", "交换机", "路由器"],
+      "notes": "完成对烽火藤仓全资控股，构筑光棒-光纤-光缆全产业链自主可控。光通信设备国内领先。"
+    },
+    "600522.SH": {
+      "name": "中天科技",
+      "industry": "光通信",
+      "sub_sector": "光纤+海缆/多元化",
+      "chain_position": "下游",
+      "preset_matched": "optical-module",
+      "weight_in_industry": 0.02,
+      "key_products": ["光纤光缆", "海底光缆", "储能系统", "电力传输"],
+      "notes": "光纤+海缆+储能多元化布局，光通信业务稳健增长。海缆业务国内领先。"
+    }
+  },
+
+  "metadata": {
+    "data_sources": [
+      "同花顺行情数据",
+      "券商研报聚合(申万/中信/高盛)",
+      "行业新闻(新浪财经/东方财富/雪球)",
+      "用户知识库"
+    ],
+    "verification_date": "2026-05-13",
+    "verification_method": "kimi_search交叉验证 + 同花顺数据确认",
+    "next_update_trigger": "新上市公司纳入或重大业务转型",
+    "known_aliases": {
+      "旭创": "中际旭创",
+      "新易盛": "新易盛",
+      "新Y盛": "新易盛"
+    }
+  }
+}

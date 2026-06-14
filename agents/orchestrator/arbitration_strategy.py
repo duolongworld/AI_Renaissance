@@ -8,14 +8,21 @@ LLM 分支只搭建 AgentScope Model、Skill、MCP 的调用框架，
 
 from __future__ import annotations
 
+import inspect
 import json
-import os
 import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 
+from agents.llm import (
+    LLMConfigurationError,
+    create_agentscope_formatter,
+    create_agentscope_model,
+    get_shared_llm_model_config,
+    run_awaitable_sync,
+)
 from agents.orchestrator.arbitration import ArbitrationEngine, ArbitrationResult
 from agents.signal import SignalBundle
 
@@ -40,7 +47,12 @@ class ArbitrationStrategy(Protocol):
 
 
 class RuleBasedArbitrationStrategy:
-    """包装现有固定规则仲裁引擎，保持默认行为不变。"""
+    """
+    包装现有固定规则仲裁引擎，保持默认行为不变。
+
+    引擎本身已包含场景对象（scenario），策略层只透传调用。
+    场景信息可通过 engine.scenario 访问。
+    """
 
     def __init__(self, engine: ArbitrationEngine):
         self.engine = engine
@@ -51,6 +63,11 @@ class RuleBasedArbitrationStrategy:
         execution_trace: Optional[Dict[str, Any]] = None,
     ) -> ArbitrationResult:
         return self.engine.arbitrate(signal_bundle, execution_trace=execution_trace)
+
+    @property
+    def scenario(self) -> Any:
+        """返回当前引擎使用的场景对象。"""
+        return self.engine.scenario
 
 
 @dataclass
@@ -131,24 +148,47 @@ class ConfiguredMCPToolProvider:
 
     def __init__(self, config: Dict[str, Any]):
         self.config = config
+        self._clients_to_close: List[Any] = []
 
     def register_tools(self, toolkit: Any) -> Dict[str, Any]:
         servers = self.config.get("mcp_servers")
         if not servers:
-            raise LLMArbitrationConfigurationError("llm_framework 需要配置 orchestrator.llm_arbitration.mcp_servers")
+            return {"servers": [], "tools": []}
 
         try:
             from agentscope.mcp import HttpStatefulClient, HttpStatelessClient, StdIOStatefulClient
         except Exception as exc:
             raise LLMArbitrationConfigurationError(f"AgentScope MCP 模块不可用：{exc}") from exc
 
+        return run_awaitable_sync(
+            self._register_tools_async(
+                toolkit,
+                servers,
+                HttpStatefulClient,
+                HttpStatelessClient,
+                StdIOStatefulClient,
+            )
+        )
+
+    async def _register_tools_async(
+        self,
+        toolkit: Any,
+        servers: List[Dict[str, Any]],
+        http_stateful_cls: Any,
+        http_stateless_cls: Any,
+        stdio_cls: Any,
+    ) -> Dict[str, Any]:
         registered_tools = []
         server_traces = []
+        self._clients_to_close = []
 
         for server_config in servers:
-            client = self._create_client(server_config, HttpStatefulClient, HttpStatelessClient, StdIOStatefulClient)
+            client = self._create_client(server_config, http_stateful_cls, http_stateless_cls, stdio_cls)
+            if hasattr(client, "connect"):
+                await client.connect()
+                self._clients_to_close.append(client)
             try:
-                tools = client.list_tools()
+                tools = await client.list_tools()
             except Exception as exc:
                 name = server_config.get("name", "未命名MCP")
                 raise LLMArbitrationExecutionError(f"MCP 工具列表读取失败：{name}: {exc}") from exc
@@ -164,7 +204,7 @@ class ConfiguredMCPToolProvider:
                 tool_name = getattr(tool, "name", "")
                 if not tool_name:
                     continue
-                callable_tool = client.get_callable_function(
+                callable_tool = await client.get_callable_function(
                     tool_name,
                     wrap_tool_result=True,
                     execution_timeout=server_config.get("execution_timeout"),
@@ -182,6 +222,23 @@ class ConfiguredMCPToolProvider:
             server_traces.append(server_trace)
 
         return {"servers": server_traces, "tools": registered_tools}
+
+    def close(self) -> None:
+        """Close stateful MCP clients opened during tool registration."""
+        run_awaitable_sync(self._close_clients_async())
+
+    async def _close_clients_async(self) -> None:
+        while self._clients_to_close:
+            client = self._clients_to_close.pop()
+            close = getattr(client, "close", None)
+            if not callable(close):
+                continue
+            try:
+                close_result = close(ignore_errors=True)
+            except TypeError:
+                close_result = close()
+            if inspect.isawaitable(close_result):
+                await close_result
 
     def _create_client(
         self,
@@ -243,7 +300,7 @@ class AgentScopeLLMArbitrationAgent:
         )
 
         try:
-            response = self.agent(msg)
+            response = run_awaitable_sync(self.agent(msg))
         except Exception as exc:
             raise LLMArbitrationExecutionError(f"AgentScope ReActAgent 执行失败：{exc}") from exc
 
@@ -261,8 +318,11 @@ class AgentScopeLLMArbitrationAgentFactory:
         except Exception as exc:
             raise LLMArbitrationConfigurationError(f"AgentScope agent 模块不可用：{exc}") from exc
 
-        model = create_agentscope_model(config.get("model", {}))
-        formatter = create_agentscope_formatter(config.get("model", {}))
+        try:
+            model = create_agentscope_model(config.get("model", {}))
+            formatter = create_agentscope_formatter(config.get("model", {}))
+        except LLMConfigurationError as exc:
+            raise LLMArbitrationConfigurationError(str(exc)) from exc
         agent = ReActAgent(
             name=config.get("agent_name", "LLMArbitrationAgent"),
             sys_prompt=build_llm_arbitration_system_prompt(),
@@ -273,75 +333,6 @@ class AgentScopeLLMArbitrationAgentFactory:
             max_iters=int(config.get("max_iters", 6)),
         )
         return AgentScopeLLMArbitrationAgent(agent)
-
-
-def create_agentscope_model(model_config: Dict[str, Any]) -> Any:
-    """根据配置创建 AgentScope Model。"""
-    if not model_config:
-        raise LLMArbitrationConfigurationError("llm_framework 需要配置 orchestrator.llm_arbitration.model")
-
-    provider = model_config.get("provider", "").lower()
-    model_name = model_config.get("model_name")
-    if not provider or not model_name:
-        raise LLMArbitrationConfigurationError("模型配置必须包含 provider 和 model_name")
-
-    api_key = _expand_env_value(model_config.get("api_key"))
-    generate_kwargs = model_config.get("generate_kwargs")
-    client_kwargs = model_config.get("client_kwargs", {}).copy()
-    base_url = model_config.get("base_url")
-    if base_url:
-        client_kwargs["base_url"] = base_url
-
-    try:
-        from agentscope.model import DashScopeChatModel, OllamaChatModel, OpenAIChatModel
-    except Exception as exc:
-        raise LLMArbitrationConfigurationError(f"AgentScope model 模块不可用：{exc}") from exc
-
-    if provider == "ollama":
-        return OllamaChatModel(
-            model_name=model_name,
-            host=model_config.get("host"),
-            options=model_config.get("options"),
-            generate_kwargs=generate_kwargs,
-        )
-
-    if provider == "dashscope":
-        if not api_key:
-            raise LLMArbitrationConfigurationError("DashScope 模型配置缺少 api_key")
-        return DashScopeChatModel(
-            model_name=model_name,
-            api_key=api_key,
-            generate_kwargs=generate_kwargs,
-            base_http_api_url=base_url,
-        )
-
-    if provider in ("openai", "openai_compatible"):
-        if not api_key:
-            raise LLMArbitrationConfigurationError("OpenAI 模型配置缺少 api_key")
-        return OpenAIChatModel(
-            model_name=model_name,
-            api_key=api_key,
-            client_kwargs=client_kwargs or None,
-            generate_kwargs=generate_kwargs,
-        )
-
-    raise LLMArbitrationConfigurationError(f"不支持的模型 provider：{provider}")
-
-
-def create_agentscope_formatter(model_config: Dict[str, Any]) -> Any:
-    """根据模型 provider 创建 AgentScope Formatter。"""
-    provider = model_config.get("provider", "").lower()
-    try:
-        from agentscope.formatter import DashScopeChatFormatter, OllamaChatFormatter, OpenAIChatFormatter
-    except Exception as exc:
-        raise LLMArbitrationConfigurationError(f"AgentScope formatter 模块不可用：{exc}") from exc
-
-    if provider == "dashscope":
-        return DashScopeChatFormatter()
-    if provider in ("openai", "openai_compatible"):
-        return OpenAIChatFormatter()
-    return OllamaChatFormatter()
-
 
 def build_llm_arbitration_system_prompt() -> str:
     """构建框架级系统提示，不写具体裁决规则。"""
@@ -386,24 +377,31 @@ class LLMArbitrationStrategy:
             raise LLMArbitrationConfigurationError("llm_framework 至少需要加载一个仲裁 Skill")
         toolkit = self._create_toolkit()
         self._register_skill_tools(toolkit, skills)
-        mcp_trace = self.mcp_tool_provider.register_tools(toolkit)
+        mcp_trace = {"servers": [], "tools": []}
 
-        agent = self.agent_factory.create(self.config, toolkit)
-        payload = self._build_payload(signal_bundle, execution_trace or {}, skills, mcp_trace)
-        raw_response = agent.run(payload)
-        result_data = self._parse_response(raw_response)
-        result = self._build_result(result_data)
+        try:
+            mcp_trace = self.mcp_tool_provider.register_tools(toolkit)
 
-        trace["llm_arbitration"] = {
-            "mode": "llm_framework",
-            "model": self._model_trace(),
-            "skills": [skill.to_dict(include_content=False) for skill in skills],
-            "mcp": mcp_trace,
-            "duration_seconds": round(time.perf_counter() - started_at, 4),
-            "raw_response_preview": self._preview(raw_response),
-        }
-        result.scope_trace = trace
-        return result
+            agent = self.agent_factory.create(self.config, toolkit)
+            payload = self._build_payload(signal_bundle, execution_trace or {}, skills, mcp_trace)
+            raw_response = agent.run(payload)
+            result_data = self._parse_response(raw_response)
+            result = self._build_result(result_data)
+
+            trace["llm_arbitration"] = {
+                "mode": "llm_framework",
+                "model": self._model_trace(),
+                "skills": [skill.to_dict(include_content=False) for skill in skills],
+                "mcp": mcp_trace,
+                "duration_seconds": round(time.perf_counter() - started_at, 4),
+                "raw_response_preview": self._preview(raw_response),
+            }
+            result.scope_trace = trace
+            return result
+        finally:
+            close = getattr(self.mcp_tool_provider, "close", None)
+            if callable(close):
+                close()
 
     def _create_toolkit(self) -> Any:
         if self.toolkit_factory:
@@ -417,16 +415,27 @@ class LLMArbitrationStrategy:
     def _register_skill_tools(self, toolkit: Any, skills: List[ArbitrationSkill]) -> None:
         skill_map = {skill.name: skill for skill in skills}
 
-        def list_arbitration_skills() -> str:
-            """列出 LLM 仲裁框架可读取的 Skill 名称。"""
-            return json.dumps([skill.to_dict(include_content=False) for skill in skills], ensure_ascii=False)
+        try:
+            from agentscope.message import TextBlock
+            from agentscope.tool import ToolResponse
+        except Exception as exc:
+            raise LLMArbitrationConfigurationError(f"AgentScope tool response 模块不可用：{exc}") from exc
 
-        def get_arbitration_skill(skill_name: str) -> str:
+        def tool_text_response(text: str) -> Any:
+            return ToolResponse(content=[TextBlock(type="text", text=text)])
+
+        def list_arbitration_skills() -> Any:
+            """列出 LLM 仲裁框架可读取的 Skill 名称。"""
+            return tool_text_response(
+                json.dumps([skill.to_dict(include_content=False) for skill in skills], ensure_ascii=False)
+            )
+
+        def get_arbitration_skill(skill_name: str) -> Any:
             """按名称读取 LLM 仲裁 Skill 内容。"""
             skill = skill_map.get(skill_name)
             if not skill:
                 raise LLMArbitrationExecutionError(f"Skill 未加载：{skill_name}")
-            return skill.content
+            return tool_text_response(skill.content)
 
         toolkit.register_tool_function(
             list_arbitration_skills,
@@ -451,8 +460,8 @@ class LLMArbitrationStrategy:
         return {
             "task": "使用外部 Skill 与 MCP 工具完成仲裁，并返回 ArbitrationResult JSON。",
             "stock_code": signal_bundle.stock_code,
-            "signal_bundle": signal_bundle.to_dict(),
-            "execution_trace": execution_trace,
+            "signal_bundle": self._compact_signal_bundle(signal_bundle),
+            "execution_trace": self._compact_execution_trace(execution_trace),
             "available_skills": [skill.to_dict(include_content=False) for skill in skills],
             "mcp_tools": mcp_trace,
             "required_output_schema": {
@@ -466,6 +475,81 @@ class LLMArbitrationStrategy:
                 "reasoning_chain": "array[string]",
             },
         }
+
+    def _compact_signal_bundle(self, signal_bundle: SignalBundle) -> Dict[str, Any]:
+        return {
+            "stock_code": signal_bundle.stock_code,
+            "signal_count": len(signal_bundle.signals),
+            "signals": [
+                {
+                    "source": signal.source,
+                    "signal_type": signal.signal_type,
+                    "direction": signal.direction,
+                    "confidence": signal.confidence,
+                    "weight": signal.weight,
+                    "stock_code": signal.stock_code,
+                    "signals": self._limit_list(signal.signals, 20),
+                    "reasoning": self._preview_text(signal.reasoning, 1200),
+                    "meta_summary": self._summarize_meta(signal.meta),
+                }
+                for signal in signal_bundle.signals
+            ],
+        }
+
+    def _compact_execution_trace(self, execution_trace: Dict[str, Any]) -> Dict[str, Any]:
+        compact_results = []
+        for result in execution_trace.get("execution_results", []) or []:
+            signal = result.get("signal") or {}
+            compact_results.append(
+                {
+                    "agent_name": result.get("agent_name", ""),
+                    "signal_type": result.get("signal_type", ""),
+                    "status": result.get("status", ""),
+                    "duration_seconds": result.get("duration_seconds", 0),
+                    "error": self._preview_text(result.get("error", ""), 300),
+                    "signal_direction": signal.get("direction"),
+                    "signal_confidence": signal.get("confidence"),
+                }
+            )
+
+        return {
+            "framework": execution_trace.get("framework", ""),
+            "stock_code": execution_trace.get("stock_code", ""),
+            "duration_seconds": execution_trace.get("duration_seconds", 0),
+            "summary": execution_trace.get("summary", {}),
+            "execution_results": compact_results,
+        }
+
+    def _summarize_meta(self, meta: Dict[str, Any]) -> Dict[str, Any]:
+        summary = {}
+        for key, value in (meta or {}).items():
+            if isinstance(value, (str, int, float, bool)) or value is None:
+                summary[key] = self._preview_text(value, 300) if isinstance(value, str) else value
+            elif isinstance(value, list):
+                summary[key] = {
+                    "type": "list",
+                    "count": len(value),
+                    "preview": self._preview_text(value[:3], 500),
+                }
+            elif isinstance(value, dict):
+                summary[key] = {
+                    "type": "dict",
+                    "keys": list(value.keys())[:20],
+                }
+            else:
+                summary[key] = {"type": type(value).__name__}
+        return summary
+
+    def _limit_list(self, values: List[Any], limit: int) -> List[Any]:
+        if len(values) <= limit:
+            return values
+        return values[:limit] + [f"... truncated {len(values) - limit} items"]
+
+    def _preview_text(self, value: Any, limit: int) -> str:
+        text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, default=str)
+        if len(text) <= limit:
+            return text
+        return text[:limit] + f"... truncated {len(text) - limit} chars"
 
     def _parse_response(self, raw_response: Any) -> Dict[str, Any]:
         if isinstance(raw_response, dict):
@@ -580,14 +664,10 @@ def create_arbitration_strategy(config: Dict[str, Any], engine: ArbitrationEngin
 
     if mode == "llm_framework":
         llm_config = orchestrator_config.get("llm_arbitration", config.get("llm_arbitration", {}))
+        if "model" not in llm_config:
+            shared_model = get_shared_llm_model_config(config)
+            if shared_model:
+                llm_config = {**llm_config, "model": shared_model}
         return LLMArbitrationStrategy(llm_config)
 
     raise LLMArbitrationConfigurationError(f"不支持的仲裁模式：{mode}")
-
-
-def _expand_env_value(value: Optional[str]) -> Optional[str]:
-    if not value:
-        return value
-    if value.startswith("${") and value.endswith("}"):
-        return os.environ.get(value[2:-1])
-    return value

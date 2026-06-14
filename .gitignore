@@ -31,6 +31,7 @@ logs/
 # IDEs
 .vscode/
 .idea/
+.codebuddy/
 *.swp
 *.swo
 *~
@@ -40,6 +41,9 @@ logs/
 .env
 .<环境影响>
 
+# Local private configuration
+config/*.private.yaml
+
 # Data (only root-level data/, not skills/data/)
 /data/
 data_sources/data/
@@ -47,6 +51,12 @@ data_sources/data/
 *.sqlite
 *.csv
 *.xlsx
+
+# Industry skill generated artifacts
+skills/industry/industrial_sentinel/reports/*.html
+skills/industry/industrial_sentinel/data/*_real_data.json
+skills/industry/industrial_sentinel/data/*_collection_tasks.json
+skills/industry/industrial_sentinel/data/*_cache.json
 
 # Jupyter Notebook
 .ipynb_checkpoints
