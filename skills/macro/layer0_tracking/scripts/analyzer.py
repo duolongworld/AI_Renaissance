@@ -480,13 +480,17 @@ def _calculate_cross_border_signals(
         }
     
     # 地缘政治评分（通道6专用）
-    if "geopolitical_score" in cross_metrics:
-        geo_score = cross_metrics["geopolitical_score"]
-        signals["geopolitical"] = {
-            "raw": geo_score,
-            "z_score": (geo_score - 5.0) / 2.5,  # 以5为均值、2.5为标准差
-            "direction": "negative" if geo_score > 5.0 else "neutral",
-        }
+    # 框架内部计算变量 — 基于 NLP 事件追踪 / 地缘风险评估
+    # 当前 NLP 模块未就绪时使用中性默认值 5.0
+    # TODO: 接入 NLP 管道, 通过分析新华社/人民日报/FOMC 声明生成动态评分
+    geo_score = cross_metrics.get("geopolitical_score")
+    if geo_score is None:
+        geo_score = 5.0  # 中性默认，无地缘冲击
+    signals["geopolitical"] = {
+        "raw": geo_score,
+        "z_score": (geo_score - 5.0) / 2.5,  # 以5为均值、2.5为标准差
+        "direction": "negative" if geo_score > 5.0 else "neutral",
+    }
     
     # 全球PMI（通道5备用数据）
     if "global_pmi" in cross_metrics:
@@ -569,8 +573,8 @@ def _check_transmission_channels(
             direction = "positive" if global_growth_z > 0 else ("negative" if global_growth_z < 0 else "neutral")
 
         elif channel_id == 6:  # 地缘政治→风险溢价
-            # 地缘政治事件评分（从外部传入）
-            geopolitical_score = cross_signals.get("geopolitical", {}).get("raw", 0)
+            # 地缘评分由框架内部生成 (NLP + 事件追踪), 数据层不提供
+            geopolitical_score = cross_signals.get("geopolitical", {}).get("raw", 5.0)
             triggered = geopolitical_score > 5.0  # 框架：评分超过阈值
             strength = geopolitical_score / 10.0 if triggered else 0
             direction = "negative" if triggered else "neutral"
