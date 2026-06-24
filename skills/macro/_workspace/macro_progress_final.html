@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>宏观分析框架 — 进度同步报告</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:#f3f4f6;color:#1f2937;line-height:1.6}
+.container{max-width:1400px;margin:0 auto;padding:16px 24px}
+h1{font-size:1.4em;color:#111827}
+h2{font-size:1.1em;color:#374151;margin:18px 0 8px;border-bottom:2px solid #e5e7eb;padding-bottom:4px}
+h3{font-size:1em;color:#4b5563;margin:12px 0 4px}
+table{border-collapse:collapse;width:100%}
+th,td{border:1px solid #e5e7eb;padding:4px 8px;text-align:center}
+th{background:#f9fafb;font-weight:600;font-size:0.85em}
+tr:nth-child(even){background:#fafafa}
+.card{background:#fff;border-radius:8px;padding:14px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.meta{font-size:.72em;color:#9ca3af}
+.note{font-size:0.78em;color:#6b7280;margin-top:4px;line-height:1.5}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.75em;font-weight:600}
+.badge-green{background:#d1fae5;color:#065f46}
+.badge-yellow{background:#fef3c7;color:#92400e}
+.badge-red{background:#fee2e2;color:#991b1b}
+details{background:#fff;border-radius:6px;padding:6px 10px;margin:3px 0;border:1px solid #e5e7eb}
+summary{cursor:pointer;font-weight:500;font-size:0.9em}
+pre{margin:0}
+</style></head>
+<body>
+<div class="container">
+
+<div style="background:linear-gradient(135deg,#1e3a5f,#3b82f6);color:#fff;border-radius:10px;padding:20px 24px;margin-bottom:16px">
+    <h1 style="color:#fff;margin:0">宏观分析框架 — 进度同步报告</h1>
+    <p style="margin:6px 0 0;opacity:0.9;font-size:0.9em">
+        生成时间: 2026-06-14 20:03 | 
+        测试时点: 5个 (2026-06-01, 2026-03-01, 2025-06-01, 2021-06-01, 2016-06-01) |
+        成功: 5/5
+    </p>
+</div>
+
+<div class="card">
+    <h2>一、多时点宏观结论对比</h2>
+    <p class="note">框架基于实时数据(akshare中国+FRED美国)输出结论，而非mock数据。随历史时点变化说明结论驱动自真实数据。</p>
+    <table>
+        <thead><tr><th>时点</th><th>日期</th><th>倾向</th><th>置信度</th><th>配置简要</th></tr></thead>
+        <tbody><tr>
+        <td style="font-weight:600">T+1Y</td>
+        <td style="font-size:0.85em;color:#666">2026-06-01</td>
+        <td style="color:#9ca3af;font-weight:700;font-size:1.1em">neutral</td>
+        <td><b>85.0%</b></td>
+        <td style="max-width:300px;font-size:0.78em;text-align:left">A股 配置21% | 中债 配置33% | 南华工业 配置11% | 黄金 配置12% | 美股 配置23%</td>
+    </tr><tr>
+        <td style="font-weight:600">T+1Q</td>
+        <td style="font-size:0.85em;color:#666">2026-03-01</td>
+        <td style="color:#9ca3af;font-weight:700;font-size:1.1em">neutral</td>
+        <td><b>85.0%</b></td>
+        <td style="max-width:300px;font-size:0.78em;text-align:left">A股 配置23% | 中债 配置35% | 南华工业 配置12% | 黄金 配置13% | 美股 配置17%</td>
+    </tr><tr>
+        <td style="font-weight:600">T-1Y</td>
+        <td style="font-size:0.85em;color:#666">2025-06-01</td>
+        <td style="color:#9ca3af;font-weight:700;font-size:1.1em">neutral</td>
+        <td><b>85.0%</b></td>
+        <td style="max-width:300px;font-size:0.78em;text-align:left">A股 配置23% | 中债 配置35% | 南华工业 配置12% | 黄金 配置13% | 美股 配置17%</td>
+    </tr><tr>
+        <td style="font-weight:600">T-5Y</td>
+        <td style="font-size:0.85em;color:#666">2021-06-01</td>
+        <td style="color:#ef4444;font-weight:700;font-size:1.1em">bearish</td>
+        <td><b>85.0%</b></td>
+        <td style="max-width:300px;font-size:0.78em;text-align:left">A股 配置15% | 中债 配置39% | 南华工业 配置20% | 黄金 配置8% | 美股 配置18%</td>
+    </tr><tr>
+        <td style="font-weight:600">T-10Y</td>
+        <td style="font-size:0.85em;color:#666">2016-06-01</td>
+        <td style="color:#ef4444;font-weight:700;font-size:1.1em">bearish</td>
+        <td><b>85.0%</b></td>
+        <td style="max-width:300px;font-size:0.78em;text-align:left">A股 配置19% | 中债 配置42% | 南华工业 配置15% | 黄金 配置10% | 美股 配置13%</td>
+    </tr></tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>二、数据覆盖统计</h2>
+    <table>
+        <thead><tr><th>时点</th><th>日期</th><th>总字段</th><th>实时数据</th><th>兜底/估算</th><th>覆盖率</th></tr></thead>
+        <tbody><tr>
+        <td>T+1Y</td><td style="font-size:0.85em">2026-06-01</td>
+        <td><b>97</b></td><td style="color:#059669">73</td>
+        <td style="color:#d97706">25</td><td><b>75%</b></td>
+    </tr><tr>
+        <td>T+1Q</td><td style="font-size:0.85em">2026-03-01</td>
+        <td><b>91</b></td><td style="color:#059669">67</td>
+        <td style="color:#d97706">25</td><td><b>74%</b></td>
+    </tr><tr>
+        <td>T-1Y</td><td style="font-size:0.85em">2025-06-01</td>
+        <td><b>90</b></td><td style="color:#059669">67</td>
+        <td style="color:#d97706">24</td><td><b>74%</b></td>
+    </tr><tr>
+        <td>T-5Y</td><td style="font-size:0.85em">2021-06-01</td>
+        <td><b>87</b></td><td style="color:#059669">65</td>
+        <td style="color:#d97706">23</td><td><b>75%</b></td>
+    </tr><tr>
+        <td>T-10Y</td><td style="font-size:0.85em">2016-06-01</td>
+        <td><b>93</b></td><td style="color:#059669">71</td>
+        <td style="color:#d97706">23</td><td><b>76%</b></td>
+    </tr></tbody>
+    </table>
+    <p class="note">
+        <span class="badge badge-green">实时数据</span> = FRED + akshare 真实API数据
+        <span class="badge badge-yellow">兜底/估算</span> = 历史均值、近似计算、默认值
+    </p>
+</div>
+
+<div class="card">
+    <h2>三、关键字段 4 时点对比</h2>
+    <p class="note">绿色=真实数据源, 黄色=兜底/估算。右列说明兜底字段的具体处理逻辑。</p>
+    <table style="font-size:0.8em">
+        <thead><tr><th style="min-width:120px">字段</th><th>T+1Y<br><small>06-01</small></th><th>T+1Q<br><small>03-01</small></th><th>T-1Y<br><small>06-01</small></th><th>T-5Y<br><small>06-01</small></th><th>T-10Y<br><small>06-01</small></th><th style="min-width:180px">兜底处理逻辑</th></tr></thead>
+        <tbody><tr style="background:#e5e7eb"><td colspan="8" style="font-weight:700;text-align:left;padding:4px 8px">中国</td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">官方PMI <code style="color:#9ca3af;font-size:0.65em">nbs_manufacturing_pmi</code></td><td style="#d1fae5;font-size:0.78em" title="akshare">50.0</td><td style="#d1fae5;font-size:0.78em" title="akshare">50.4</td><td style="#d1fae5;font-size:0.78em" title="akshare">49.7</td><td style="#d1fae5;font-size:0.78em" title="akshare">50.9</td><td style="#d1fae5;font-size:0.78em" title="akshare">53.0</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">中国CPI <code style="color:#9ca3af;font-size:0.65em">cpi_yoy_cn</code></td><td style="#d1fae5;font-size:0.78em" title="akshare">0.40</td><td style="#d1fae5;font-size:0.78em" title="akshare">0.40</td><td style="#d1fae5;font-size:0.78em" title="akshare">-0.40</td><td style="#d1fae5;font-size:0.78em" title="akshare">-0.50</td><td style="#d1fae5;font-size:0.78em" title="akshare">-0.40</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">中国PPI <code style="color:#9ca3af;font-size:0.65em">ppi_yoy_cn</code></td><td style="#d1fae5;font-size:0.78em" title="akshare">-3.60</td><td style="#d1fae5;font-size:0.78em" title="akshare">-3.60</td><td style="#d1fae5;font-size:0.78em" title="akshare">-2.50</td><td style="#d1fae5;font-size:0.78em" title="akshare">4.40</td><td style="#d1fae5;font-size:0.78em" title="akshare">-4.30</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">M1 <code style="color:#9ca3af;font-size:0.65em">m1_yoy_cn</code></td><td style="#d1fae5;font-size:0.78em" title="akshare">5.50</td><td style="#d1fae5;font-size:0.78em" title="akshare">5.10</td><td style="#d1fae5;font-size:0.78em" title="akshare">4.60</td><td style="#d1fae5;font-size:0.78em" title="akshare">5.50</td><td style="#d1fae5;font-size:0.78em" title="akshare">20.5</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">M2 <code style="color:#9ca3af;font-size:0.65em">m2_yoy_cn</code></td><td style="#d1fae5;font-size:0.78em" title="akshare">8.60</td><td style="#d1fae5;font-size:0.78em" title="akshare">8.50</td><td style="#d1fae5;font-size:0.78em" title="akshare">8.30</td><td style="#d1fae5;font-size:0.78em" title="akshare">8.60</td><td style="#d1fae5;font-size:0.78em" title="akshare">18.9</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">新增社融 <code style="color:#9ca3af;font-size:0.65em">social_financing_new</code></td><td style="#d1fae5;font-size:0.78em" title="akshare">6,245</td><td style="#d1fae5;font-size:0.78em" title="akshare">52,240</td><td style="#d1fae5;font-size:0.78em" title="akshare">42,251</td><td style="#d1fae5;font-size:0.78em" title="akshare">37,017</td><td style="#d1fae5;font-size:0.78em" title="akshare">16,479</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">LPR1Y <code style="color:#9ca3af;font-size:0.65em">lpr_1y</code></td><td style="#d1fae5;font-size:0.78em" title="akshare">3.00</td><td style="#d1fae5;font-size:0.78em" title="akshare">3.00</td><td style="#d1fae5;font-size:0.78em" title="akshare">3.00</td><td style="#d1fae5;font-size:0.78em" title="akshare">3.85</td><td style="#d1fae5;font-size:0.78em" title="akshare">3.00</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">10Y国债 <code style="color:#9ca3af;font-size:0.65em">cn_10y_yield</code></td><td style="#d1fae5;font-size:0.78em" title="akshare">4.06</td><td style="#d1fae5;font-size:0.78em" title="akshare">4.06</td><td style="#d1fae5;font-size:0.78em" title="akshare">4.06</td><td style="#d1fae5;font-size:0.78em" title="akshare">4.06</td><td style="#d1fae5;font-size:0.78em" title="akshare">3.12</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">沪深300 <code style="color:#9ca3af;font-size:0.65em">csi300_index</code></td><td style="#d1fae5;font-size:0.78em" title="akshare">4,844</td><td style="#d1fae5;font-size:0.78em" title="akshare">4,711</td><td style="#d1fae5;font-size:0.78em" title="akshare">3,840</td><td style="#d1fae5;font-size:0.78em" title="akshare">5,342</td><td style="#d1fae5;font-size:0.78em" title="akshare">4,749</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">沪深ERP <code style="color:#9ca3af;font-size:0.65em">csi300_erp</code></td><td style="#fef3c7;font-size:0.78em" title="computed_approx">3.94</td><td style="#fef3c7;font-size:0.78em" title="computed_approx">3.94</td><td style="#fef3c7;font-size:0.78em" title="computed_approx">3.94</td><td style="#fef3c7;font-size:0.78em" title="computed_approx">3.94</td><td style="#fef3c7;font-size:0.78em" title="computed_approx">4.88</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr style="background:#e5e7eb"><td colspan="8" style="font-weight:700;text-align:left;padding:4px 8px">美国</td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">ISM制造PMI <code style="color:#9ca3af;font-size:0.65em">ism_manufacturing_pmi</code></td><td style="#d1fae5;font-size:0.78em" title="akshare">48.7</td><td style="#d1fae5;font-size:0.78em" title="akshare">48.7</td><td style="#d1fae5;font-size:0.78em" title="akshare">48.7</td><td style="#d1fae5;font-size:0.78em" title="akshare">61.2</td><td style="#d1fae5;font-size:0.78em" title="akshare">51.3</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">非农(万) <code style="color:#9ca3af;font-size:0.65em">nonfarm_payrolls</code></td><td style="#d1fae5;font-size:0.78em" title="fred">172.0</td><td style="#d1fae5;font-size:0.78em" title="fred">214.0</td><td style="#d1fae5;font-size:0.78em" title="fred">-20.0</td><td style="#d1fae5;font-size:0.78em" title="fred">755.0</td><td style="#d1fae5;font-size:0.78em" title="fred">247.0</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">失业率 <code style="color:#9ca3af;font-size:0.65em">us_unemployment_rate</code></td><td style="#d1fae5;font-size:0.78em" title="fred">4.30</td><td style="#d1fae5;font-size:0.78em" title="fred">4.30</td><td style="#d1fae5;font-size:0.78em" title="fred">4.10</td><td style="#d1fae5;font-size:0.78em" title="fred">5.90</td><td style="#d1fae5;font-size:0.78em" title="fred">4.90</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">联邦基金利率 <code style="color:#9ca3af;font-size:0.65em">ffr</code></td><td style="#d1fae5;font-size:0.78em" title="fred">3.63</td><td style="#d1fae5;font-size:0.78em" title="fred">3.64</td><td style="#d1fae5;font-size:0.78em" title="fred">4.33</td><td style="#d1fae5;font-size:0.78em" title="fred">0.08</td><td style="#d1fae5;font-size:0.78em" title="fred">0.38</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">10Y美债 <code style="color:#9ca3af;font-size:0.65em">us_10y_yield</code></td><td style="#d1fae5;font-size:0.78em" title="fred">4.47</td><td style="#d1fae5;font-size:0.78em" title="fred">3.97</td><td style="#d1fae5;font-size:0.78em" title="fred">4.41</td><td style="#d1fae5;font-size:0.78em" title="fred">1.62</td><td style="#d1fae5;font-size:0.78em" title="fred">1.85</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">CPI同比 <code style="color:#9ca3af;font-size:0.65em">cpi_yoy</code></td><td style="#d1fae5;font-size:0.78em" title="fred_computed">4.17</td><td style="#d1fae5;font-size:0.78em" title="fred_computed">3.29</td><td style="#d1fae5;font-size:0.78em" title="fred_computed">2.68</td><td style="#d1fae5;font-size:0.78em" title="fred_computed">5.30</td><td style="#d1fae5;font-size:0.78em" title="fred_computed">1.08</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">核心PCE同比 <code style="color:#9ca3af;font-size:0.65em">core_pce_yoy</code></td><td style="#d1fae5;font-size:0.78em" title="fred_computed">3.29</td><td style="#d1fae5;font-size:0.78em" title="fred_computed">3.24</td><td style="#d1fae5;font-size:0.78em" title="fred_computed">2.81</td><td style="#d1fae5;font-size:0.78em" title="fred_computed">3.86</td><td style="#d1fae5;font-size:0.78em" title="fred_computed">1.55</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">标普ERP <code style="color:#9ca3af;font-size:0.65em">sp500_erp</code></td><td style="#fef3c7;font-size:0.78em" title="computed_approx">0.53</td><td style="#fef3c7;font-size:0.78em" title="computed_approx">1.03</td><td style="#fef3c7;font-size:0.78em" title="computed_approx">0.59</td><td style="#fef3c7;font-size:0.78em" title="computed_approx">3.38</td><td style="#fef3c7;font-size:0.78em" title="computed_approx">3.15</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">美元指数 <code style="color:#9ca3af;font-size:0.65em">dxy_broad</code></td><td style="#d1fae5;font-size:0.78em" title="fred">119.2</td><td style="#d1fae5;font-size:0.78em" title="fred">117.8</td><td style="#d1fae5;font-size:0.78em" title="fred">121.8</td><td style="#d1fae5;font-size:0.78em" title="fred">110.5</td><td style="#d1fae5;font-size:0.78em" title="fred">112.5</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr style="background:#e5e7eb"><td colspan="8" style="font-weight:700;text-align:left;padding:4px 8px">跨国</td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">USD/CNH <code style="color:#9ca3af;font-size:0.65em">usd_cnh</code></td><td style="#fef3c7;font-size:0.78em" title="fallback">7.20</td><td style="#fef3c7;font-size:0.78em" title="fallback">7.20</td><td style="#fef3c7;font-size:0.78em" title="fallback">7.20</td><td style="#fef3c7;font-size:0.78em" title="fallback">7.20</td><td style="#fef3c7;font-size:0.78em" title="fallback">7.20</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px">取7.2(近期波动中枢)</td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">欧元区PMI <code style="color:#9ca3af;font-size:0.65em">euro_pmi</code></td><td style="#fef3c7;font-size:0.78em" title="fallback">50.0</td><td style="#fef3c7;font-size:0.78em" title="fallback">50.0</td><td style="#d1fae5;font-size:0.78em" title="akshare">48.4</td><td style="#d1fae5;font-size:0.78em" title="akshare">63.1</td><td style="#d1fae5;font-size:0.78em" title="akshare">50.7</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">全球PMI <code style="color:#9ca3af;font-size:0.65em">global_pmi</code></td><td style="#fef3c7;font-size:0.78em" title="computed_proxy">49.6</td><td style="#fef3c7;font-size:0.78em" title="computed_proxy">49.7</td><td style="#fef3c7;font-size:0.78em" title="computed_proxy">49.2</td><td style="#fef3c7;font-size:0.78em" title="computed_proxy">56.2</td><td style="#fef3c7;font-size:0.78em" title="computed_proxy">51.4</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">WTI <code style="color:#9ca3af;font-size:0.65em">wti_price</code></td><td style="#fef3c7;font-size:0.78em" title="fallback">80.0</td><td style="#fef3c7;font-size:0.78em" title="fallback">80.0</td><td style="#fef3c7;font-size:0.78em" title="fallback">80.0</td><td style="#fef3c7;font-size:0.78em" title="fallback">80.0</td><td style="#fef3c7;font-size:0.78em" title="fallback">80.0</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px">取80(近期中枢)</td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">贸易顺差 <code style="color:#9ca3af;font-size:0.65em">trade_surplus_cn</code></td><td style="#fef3c7;font-size:0.78em" title="fallback">50.0</td><td style="#fef3c7;font-size:0.78em" title="fallback">50.0</td><td style="#fef3c7;font-size:0.78em" title="fallback">50.0</td><td style="#d1fae5;font-size:0.78em" title="akshare">428.6</td><td style="#d1fae5;font-size:0.78em" title="akshare">982.4</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr><tr><td style="font-weight:600;font-size:0.8em;text-align:left;padding:3px 6px">CFTC头寸 <code style="color:#9ca3af;font-size:0.65em">cftc_net_position_pct</code></td><td style="#d1fae5;font-size:0.78em" title="akshare">70,954</td><td style="#d1fae5;font-size:0.78em" title="akshare">-290,311</td><td style="#d1fae5;font-size:0.78em" title="akshare">-114,327</td><td style="#d1fae5;font-size:0.78em" title="akshare">-135,784</td><td style="#d1fae5;font-size:0.78em" title="akshare">111,252</td><td style="font-size:0.65em;color:#6b7280;text-align:left;max-width:180px"></td></tr></tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>四、兜底字段处理逻辑明细</h2>
+    <table style="font-size:0.85em">
+        <thead><tr><th style="min-width:150px">字段</th><th>处理逻辑</th></tr></thead>
+        <tbody><tr>
+        <td style="font-weight:600;font-size:0.8em">买方看空比例 <code style="color:#9ca3af;font-size:0.65em">buy_side_bearish_pct</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">无调查数据 → 取20%</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">中国经济意外指数 <code style="color:#9ca3af;font-size:0.65em">china_surprise_index</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">无Bloomberg → 取0</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">AA企业债3Y <code style="color:#9ca3af;font-size:0.65em">cn_aa_3y_yield</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">无直接源 → 取10Y国债+280bps(近年均值)</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">CDIC 3Y <code style="color:#9ca3af;font-size:0.65em">cn_cdic_3y_yield</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">无直接源 → 取10Y国债+250bps</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">玉米 <code style="color:#9ca3af;font-size:0.65em">corn_price</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">取500美分(近期中枢)</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">信用脉冲 <code style="color:#9ca3af;font-size:0.65em">credit_pulse</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">无BIS → 取0</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">沪深300期货 <code style="color:#9ca3af;font-size:0.65em">csi300_futures_price</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">取4000(近期中枢)</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">沪深300 PB <code style="color:#9ca3af;font-size:0.65em">csi300_pb</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">取1.4(历史中位PB)</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">沪深300 PE <code style="color:#9ca3af;font-size:0.65em">csi300_pe</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">取12.5(历史中位PE)</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">FF期货隐含利率 <code style="color:#9ca3af;font-size:0.65em">ff_futures_implied_rate</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">用当前FFR近似</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">恒生指数 <code style="color:#9ca3af;font-size:0.65em">hsi_index</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">取22000(近期中枢)</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">OMO净投放 <code style="color:#9ca3af;font-size:0.65em">omo_net_injection</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">akshare macro_china_gksccz → 无数据则0</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">海外资金流(美) <code style="color:#9ca3af;font-size:0.65em">overseas_flow_us</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">无EPFR → 取0</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">人民币REER <code style="color:#9ca3af;font-size:0.65em">rmb_reer</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">无BIS REER → 取100基准</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">卖方看空比例 <code style="color:#9ca3af;font-size:0.65em">sell_side_bearish_pct</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">无调查数据 → 取30%</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">大豆 <code style="color:#9ca3af;font-size:0.65em">soybean_price</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">取1200美分(近期中枢)</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">专项债进度 <code style="color:#9ca3af;font-size:0.65em">special_bond</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">akshare bond_local_government_issue_cninfo → 年初归零(YTD为0)</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">美国经济意外指数 <code style="color:#9ca3af;font-size:0.65em">us_surprise_index</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">无Bloomberg → 取0</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">USD/CNH <code style="color:#9ca3af;font-size:0.65em">usd_cnh</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">取7.2(近期波动中枢)</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">USD/CNH 1Y远期 <code style="color:#9ca3af;font-size:0.65em">usd_cnh_1y_forward</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">无远期曲线 → 取0</td>
+    </tr><tr>
+        <td style="font-weight:600;font-size:0.8em">WTI原油 <code style="color:#9ca3af;font-size:0.65em">wti_price</code></td>
+        <td style="text-align:left;font-size:0.78em;color:#4b5563">取80(近期中枢)</td>
+    </tr></tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>五、数据源概况</h2>
+    <table style="font-size:0.82em">
+        <thead><tr><th>来源</th><th>实施方式</th><th>覆盖字段</th><th>状态</th></tr></thead>
+        <tbody>
+            <tr><td><b>FRED API</b></td><td style="text-align:left">fredapi库,令牌桶限速120req/min,支持历史日期截断</td><td>~26美国宏观+~8计算衍生</td><td><span class="badge badge-green">✅ 已实现</span></td></tr>
+            <tr><td><b>akshare</b></td><td style="text-align:left">免费开源,超时30s保护,逐字段独立异常</td><td>~22中国+4美国/全球</td><td><span class="badge badge-green">✅ 已实现</span></td></tr>
+            <tr><td><b>akshare期货</b></td><td style="text-align:left">CFFEX沪深300期货</td><td>1(远期价格)</td><td><span class="badge badge-green">✅ 已实现</span></td></tr>
+            <tr><td><b>近均值兜底</b></td><td style="text-align:left">无实时数据时用近年历史均值/中位</td><td>~10(PE/PB/WTI/大豆/恒生等)</td><td><span class="badge badge-yellow">兜底</span></td></tr>
+            <tr><td><b>线性估算</b></td><td style="text-align:left">从已有数据线性推导</td><td>~5(ERP/全球PMI/价差等)</td><td><span class="badge badge-yellow">估算</span></td></tr>
+            <tr><td><b>默认/基准值</b></td><td style="text-align:left">无可靠源,取中性基准值</td><td>~10(意外指数/资金流/REER等)</td><td><span class="badge badge-red">无源</span></td></tr>
+            <tr><td><b>akshare缺失函数</b></td><td style="text-align:left">akshare版本更新后6个API函数已移除: macro_china_market_equilibrator, caixin PMI, futures_index_hist, index_nh_hist, index_value_hist_funddb, macro_china_mlf_rate —已有fallback兜底</td><td>~8</td><td><span class="badge badge-yellow">待适配</span></td></tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>六、安全改进：FRED Token</h2>
+    <p class="note">
+        ✅ FRED API token 已从硬编码移除，改为 <b>.env</b> 文件 + <b>python-dotenv</b> 加载。<br>
+        ✅ .env 已加入 .gitignore，不会进入代码仓库。<br>
+        ✅ .env.example 模板文件已创建，供协作者参考。
+    </p>
+</div>
+
+<div style="text-align:center;font-size:0.7em;color:#9ca3af;margin-top:20px;padding:12px">
+    AI Renaissance · Macro Analysis Framework · 进度同步报告 · 2026-06-14 20:03:35
+</div>
+
+</div></body></html>
