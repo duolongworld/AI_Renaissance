@@ -1,7 +1,7 @@
 """
 A股行业板块景气数据源
 
-通过 AKShare 采集行业板块情绪指标，供舆情 Agent 调用。
+通过 HTTP 直连东方财富公开 API 采集行业板块情绪指标，供舆情 Agent 调用。
 对应的分析层 Skill 见 skills/news/industry_sentiment_tracker/SKILL.md
 
 设计原则：
@@ -9,21 +9,46 @@ A股行业板块景气数据源
   - 每个指标独立 try/except，单个指标失败不影响整体评分
   - 行业解析失败时返回 status=error，不阻塞后续个股分析
   - 整体采集控制在 15 秒内完成
+  - HTTP 直连替代 AkShare，绕过代理阻断 + 指数退避重试
 """
 
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 import math
+import time
 
 from loguru import logger
 
 try:
-    import akshare as ak
+    import requests
+    HAS_REQUESTS = True
+except ImportError:
+    HAS_REQUESTS = False
+
+try:
     import pandas as pd
     import numpy as np
-    AKSHARE_AVAILABLE = True
+    HAS_PANDAS = True
 except ImportError:
-    AKSHARE_AVAILABLE = False
+    HAS_PANDAS = False
+
+
+# ── 东方财富 API 配置 ────────────────────────────
+_EASTMONEY_API_HOST = "https://push2.eastmoney.com/api/qt/clist/get"
+_EASTMONEY_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json, text/plain, */*",
+    "Referer": "https://data.eastmoney.com/",
+}
+_API_TIMEOUT = 15
+_MAX_RETRIES = 3
+_RETRY_BACKOFF = 2.0  # 秒
+
+# 公用 API token
+_EASTMONEY_UT = "bd1d9ddb04089700cf9c27f6f7426281"
 
 
 # 情绪评分权重配置（与 SKILL.md 对齐）
@@ -54,7 +79,47 @@ class IndustrySentimentDataSource:
         self.name = "行业板块景气数据源"
         self._board_cache = None  # 缓存行业板块列表
         self._fund_flow_cache = None  # 缓存行业资金流
-        logger.info(f"[数据源] {self.name} 初始化完成 (akshare={'可用' if AKSHARE_AVAILABLE else '不可用'})")
+        self._session = None
+        status = "HTTP直连" if HAS_REQUESTS else "不可用(缺少requests)"
+        logger.info(f"[数据源] {self.name} 初始化完成 ({status})")
+
+    def _get_session(self):
+        """获取可复用的 requests.Session（绕过系统代理）"""
+        if self._session is None and HAS_REQUESTS:
+            self._session = requests.Session()
+            self._session.trust_env = False  # 绕过代理
+        return self._session
+
+    # ── HTTP 底层：指数退避重试 ────────────────────
+
+    @staticmethod
+    def _fetch_eastmoney(params: dict, timeout: int = _API_TIMEOUT) -> Optional[dict]:
+        """调用东方财富 API，自动重试"""
+        last_error = None
+        session = requests.Session()
+        session.trust_env = False
+
+        for attempt in range(1, _MAX_RETRIES + 1):
+            try:
+                resp = session.get(
+                    _EASTMONEY_API_HOST,
+                    params=params,
+                    headers=_EASTMONEY_HEADERS,
+                    timeout=timeout,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                if data and data.get("data") is not None:
+                    return data["data"]
+                return None
+            except Exception as e:
+                last_error = e
+                if attempt < _MAX_RETRIES:
+                    wait = _RETRY_BACKOFF * attempt
+                    logger.debug(f"[Industry] API重试 {attempt}/{_MAX_RETRIES}, 等待{wait}s: {e}")
+                    time.sleep(wait)
+        logger.warning(f"[Industry] API调用失败(重试{_MAX_RETRIES}次): {last_error}")
+        return None
 
     def get_industry_sentiment(self, stock_code: str) -> Dict[str, Any]:
         """
@@ -66,8 +131,8 @@ class IndustrySentimentDataSource:
         Returns:
             行业景气数据字典
         """
-        if not AKSHARE_AVAILABLE:
-            return self._fallback_result("akshare 未安装，无法采集行业数据")
+        if not HAS_REQUESTS or not HAS_PANDAS:
+            return self._fallback_result("缺少 requests/pandas 依赖，无法采集行业数据")
 
         code = stock_code.strip().upper()
         for prefix in ("SH", "SZ", "BJ"):
@@ -185,18 +250,16 @@ class IndustrySentimentDataSource:
             if boards is None or boards.empty:
                 return None
 
-            # 板块名列（第2列）
-            board_col = boards.columns[1]
+            name_col = boards.columns[1]
             # 先试热门板块（按成交额排序，取前30）
-            vol_col = boards.columns[6]  # 成交额列
-            top_boards = boards.nlargest(30, vol_col)
+            vol_col_idx = list(boards.columns).index("成交额") if "成交额" in boards.columns else 6
+            top_boards = boards.nlargest(30, boards.columns[vol_col_idx])
 
             for _, row in top_boards.iterrows():
-                board_name = str(row[board_col])
+                board_name = str(row[name_col])
                 try:
-                    cons = ak.stock_board_industry_cons_em(symbol=board_name)
+                    cons = self._fetch_board_constituents(board_name)
                     if cons is not None and not cons.empty:
-                        # 代码列（第2列）
                         code_col = cons.columns[1]
                         if stock_code in cons[code_col].astype(str).tolist():
                             logger.info(f"[{self.name}] 在板块 '{board_name}' 中找到 {stock_code}")
@@ -205,13 +268,13 @@ class IndustrySentimentDataSource:
                     continue
 
             # 如果前30没找到，再试全部（但限制前80）
-            all_names = boards[board_col].tolist()
-            checked = set(top_boards[board_col].tolist())
+            all_names = boards[name_col].tolist()
+            checked = set(top_boards[name_col].tolist())
             for name in all_names[:80]:
                 if name in checked:
                     continue
                 try:
-                    cons = ak.stock_board_industry_cons_em(symbol=name)
+                    cons = self._fetch_board_constituents(name)
                     if cons is not None and not cons.empty:
                         code_col = cons.columns[1]
                         if stock_code in cons[code_col].astype(str).tolist():
@@ -225,11 +288,36 @@ class IndustrySentimentDataSource:
             return None
 
     def _load_board_list(self):
-        """加载并缓存行业板块列表"""
+        """加载并缓存行业板块列表（HTTP 直连替代 AkShare）"""
         if self._board_cache is not None:
             return self._board_cache
         try:
-            df = ak.stock_board_industry_name_em()
+            data = self._fetch_eastmoney({
+                "pn": "1", "pz": "200", "po": "1", "np": "1",
+                "ut": _EASTMONEY_UT, "fltt": "2", "invt": "2",
+                "fid": "f3", "fs": "m:90+t:2",
+                "fields": "f2,f3,f4,f12,f14,f20,f104,f105,f152,f16,f128,f136",
+            })
+            if data is None or not data.get("diff"):
+                return None
+
+            rows = []
+            for item in data["diff"]:
+                rows.append({
+                    "序号": len(rows) + 1,
+                    "板块名称": item.get("f14", ""),
+                    "板块代码": item.get("f12", ""),
+                    "最新价": self._safe_float(item.get("f2")),
+                    "涨跌幅": self._safe_float(item.get("f3")),
+                    "总市值": self._safe_float(item.get("f20")),
+                    "成交额": self._safe_float(item.get("f16")),
+                    "换手率": self._safe_float(item.get("f152")),
+                    "上涨家数": int(self._safe_float(item.get("f104")) or 0),
+                    "下跌家数": int(self._safe_float(item.get("f105")) or 0),
+                    "领涨股票": item.get("f128", ""),
+                    "领涨涨幅": self._safe_float(item.get("f136")),
+                })
+            df = pd.DataFrame(rows)
             self._board_cache = df
             return df
         except Exception as e:
@@ -237,6 +325,62 @@ class IndustrySentimentDataSource:
             return None
 
     # ── 数据采集 ──────────────────────────────────
+
+    def _fetch_board_constituents(self, board_name: str) -> Optional[pd.DataFrame]:
+        """
+        获取行业板块成分股列表（HTTP 直连替代 AkShare）
+        通过板块名称查找对应板块代码，再查询成分股
+        """
+        try:
+            # 1. 从缓存的板块列表找到板块代码
+            boards = self._load_board_list()
+            if boards is None or boards.empty:
+                return None
+            name_col = boards.columns[1]
+            matching = boards[boards[name_col] == board_name]
+            if matching.empty:
+                logger.warning(f"[{self.name}] 未找到板块: {board_name}")
+                return None
+            board_code = str(matching.iloc[0]["板块代码"])
+
+            # 2. 查询成分股
+            data = self._fetch_eastmoney({
+                "pn": "1", "pz": "500", "po": "1", "np": "1",
+                "ut": _EASTMONEY_UT, "fltt": "2", "invt": "2",
+                "fid": "f3", "fs": f"b:{board_code}",
+                "fields": "f2,f3,f4,f5,f6,f12,f14,f20",
+            })
+            if data is None or not data.get("diff"):
+                return None
+
+            rows = []
+            for item in data["diff"]:
+                rows.append({
+                    "序号": len(rows) + 1,
+                    "代码": item.get("f12", ""),
+                    "名称": item.get("f14", ""),
+                    "最新价": self._safe_float(item.get("f2")),
+                    "涨跌幅": self._safe_float(item.get("f3")),
+                    "涨跌额": self._safe_float(item.get("f4")),
+                    "成交量": self._safe_float(item.get("f5")),
+                    "成交额": self._safe_float(item.get("f6")),
+                    "总市值": self._safe_float(item.get("f20")),
+                })
+            return pd.DataFrame(rows)
+        except Exception as e:
+            logger.warning(f"[{self.name}] 成分股查询失败({board_name}): {e}")
+            return None
+
+    @staticmethod
+    def _safe_float(val) -> Optional[float]:
+        """安全转换为 float，处理 None/不可解析的值"""
+        if val is None:
+            return None
+        try:
+            v = float(val)
+            return None if math.isnan(v) or math.isinf(v) else v
+        except (ValueError, TypeError):
+            return None
 
     def _get_board_data(self, industry_name: str) -> Optional[Dict]:
         """从板块列表获取涨跌停和涨跌幅数据"""
@@ -249,11 +393,13 @@ class IndustrySentimentDataSource:
             if row.empty:
                 return None
             row = row.iloc[0]
+            up_count = int(row["上涨家数"]) if not self._is_nan(row["上涨家数"]) else 0
+            down_count = int(row["下跌家数"]) if not self._is_nan(row["下跌家数"]) else 0
             return {
-                "limit_up": int(row.iloc[8]) if not self._is_nan(row.iloc[8]) else 0,
-                "limit_down": int(row.iloc[9]) if not self._is_nan(row.iloc[9]) else 0,
-                "change_pct": float(row.iloc[4]) if not self._is_nan(row.iloc[4]) else 0,
-                "turnover_rate": float(row.iloc[7]) if not self._is_nan(row.iloc[7]) else 0,
+                "limit_up": up_count,
+                "limit_down": down_count,
+                "change_pct": float(row["涨跌幅"]) if not self._is_nan(row["涨跌幅"]) else 0,
+                "turnover_rate": float(row["换手率"]) if not self._is_nan(row["换手率"]) else 0,
             }
         except Exception as e:
             logger.warning(f"[{self.name}] 板块数据获取失败: {e}")
@@ -262,12 +408,10 @@ class IndustrySentimentDataSource:
     def _get_industry_breadth(self, industry_name: str) -> Optional[float]:
         """获取板块内上涨家数占比"""
         try:
-            cons = ak.stock_board_industry_cons_em(symbol=industry_name)
+            cons = self._fetch_board_constituents(industry_name)
             if cons is None or cons.empty:
                 return None
-            # 涨跌幅列（第5列或名为'涨跌幅'）
-            change_col = cons.columns[4]
-            changes = pd.to_numeric(cons[change_col], errors='coerce')
+            changes = pd.to_numeric(cons["涨跌幅"], errors='coerce')
             changes = changes.dropna()
             if len(changes) == 0:
                 return None
@@ -284,19 +428,16 @@ class IndustrySentimentDataSource:
             df = self._load_fund_flow()
             if df is None or df.empty:
                 return None
-            name_col = df.columns[1]  # 行业名称列
+            name_col = "板块名称"
             row = df[df[name_col] == industry_name]
             if row.empty:
-                # 模糊匹配
                 for idx, r in df.iterrows():
                     if industry_name in str(r[name_col]) or str(r[name_col]) in industry_name:
                         row = df.iloc[[idx]]
                         break
             if row.empty:
                 return None
-            # 主力净流入列（第3列，通常为"今日主力净流入-净额"）
-            fund_col = df.columns[2]
-            val = float(row.iloc[0][fund_col])
+            val = float(row.iloc[0]["主力净流入-净额"])
             if np.isnan(val) or np.isinf(val):
                 return None
             return val / 1e8  # 转为亿元
@@ -305,11 +446,28 @@ class IndustrySentimentDataSource:
             return None
 
     def _load_fund_flow(self):
-        """加载并缓存行业资金流排名"""
+        """加载并缓存行业资金流排名（HTTP 直连替代 AkShare）"""
         if self._fund_flow_cache is not None:
             return self._fund_flow_cache
         try:
-            df = ak.stock_sector_fund_flow_rank(indicator="今日", sector_type="行业资金流")
+            data = self._fetch_eastmoney({
+                "pn": "1", "pz": "200", "po": "1", "np": "1",
+                "ut": _EASTMONEY_UT, "fltt": "2", "invt": "2",
+                "fid": "f62", "fs": "m:90+t:2",
+                "fields": "f2,f3,f4,f12,f14,f62,f66,f69,f72,f75,f78,f81,f84,f87",
+            })
+            if data is None or not data.get("diff"):
+                return None
+
+            rows = []
+            for item in data["diff"]:
+                rows.append({
+                    "序号": len(rows) + 1,
+                    "板块名称": item.get("f14", ""),
+                    "主力净流入-净额": self._safe_float(item.get("f62")),
+                    "涨跌幅": self._safe_float(item.get("f3")),
+                })
+            df = pd.DataFrame(rows)
             self._fund_flow_cache = df
             return df
         except Exception as e:
@@ -322,17 +480,14 @@ class IndustrySentimentDataSource:
             boards = self._load_board_list()
             if boards is None or boards.empty:
                 return None
-            # 换手率列（第8列）
-            turnover_col = boards.columns[7]
-            all_turnovers = pd.to_numeric(boards[turnover_col], errors='coerce').dropna()
+            all_turnovers = pd.to_numeric(boards["换手率"], errors='coerce').dropna()
             name_col = boards.columns[1]
             row = boards[boards[name_col] == industry_name]
             if row.empty:
                 return None
-            current_turnover = float(row.iloc[0][turnover_col])
+            current_turnover = float(row.iloc[0]["换手率"])
             if np.isnan(current_turnover):
                 return None
-            # Z-score
             mean_t = all_turnovers.mean()
             std_t = all_turnovers.std()
             if std_t == 0 or np.isnan(std_t):
@@ -349,16 +504,14 @@ class IndustrySentimentDataSource:
             boards = self._load_board_list()
             if boards is None or boards.empty:
                 return None
-            change_col = boards.columns[4]  # 涨跌幅列
-            all_changes = pd.to_numeric(boards[change_col], errors='coerce').dropna()
+            all_changes = pd.to_numeric(boards["涨跌幅"], errors='coerce').dropna()
             name_col = boards.columns[1]
             row = boards[boards[name_col] == industry_name]
             if row.empty:
                 return None
-            current_change = float(row.iloc[0][change_col])
+            current_change = float(row.iloc[0]["涨跌幅"])
             if np.isnan(current_change):
                 return None
-            # 百分位排名
             rank_pct = (all_changes < current_change).sum() / len(all_changes)
             return float(rank_pct)
         except Exception as e:
