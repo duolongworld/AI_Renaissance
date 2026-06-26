@@ -72,3 +72,6 @@ Thumbs.db
 
 # Tests
 .pytest_cache/
+
+# FinancialAgent 回测本地审计数据
+output/financial_backtest/

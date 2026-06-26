@@ -558,6 +558,95 @@ def classify_business_stage(data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def commercial_inflection_from_metrics(data: dict[str, Any], stage_context: dict[str, Any]) -> dict[str, Any]:
+    """Judge whether a high-R&D loss maker is showing a commercial inflection."""
+
+    def item(name: str, status: str, metrics: list[str], note: str) -> dict[str, Any]:
+        return {"item": name, "status": status, "metrics": metrics, "note": note}
+
+    if stage_context.get("stage") != "rd_commercialization":
+        return {
+            "status": "not_applicable",
+            "score": 0,
+            "passed_items": [],
+            "borderline_items": [],
+            "failed_items": [],
+            "details": [],
+            "summary": "非高研发商业化阶段，不启用商业化拐点规则。",
+        }
+
+    revenue_growth = data.get("revenue_growth")
+    revenue_qoq = data.get("revenue_qoq")
+    cash_collection = ratio(data.get("cash_received_from_sales"), data.get("revenue"))
+    receivable_growth = data.get("receivable_growth")
+    contract_liability_qoq = data.get("contract_liability_qoq")
+    cash_buffer_qoq = data.get("cash_and_equivalents_qoq")
+    operating_cash_flow_qoq = data.get("operating_cash_flow_qoq")
+
+    details: list[dict[str, Any]] = []
+
+    if revenue_growth is not None and revenue_qoq is not None and revenue_growth >= 0.15 and revenue_qoq >= 0:
+        details.append(item("revenue_momentum", "pass", ["revenue_growth", "revenue_qoq"], "营收同比和单季环比均改善。"))
+    elif revenue_growth is not None and revenue_qoq is not None and revenue_growth >= 0.30 and revenue_qoq >= -0.05:
+        details.append(item("revenue_momentum", "borderline", ["revenue_growth", "revenue_qoq"], "营收同比强增长，单季环比仅小幅回落。"))
+    else:
+        details.append(item("revenue_momentum", "fail", ["revenue_growth", "revenue_qoq"], "营收同比或单季环比未达到拐点确认线。"))
+
+    receivable_controlled = (
+        receivable_growth is not None
+        and revenue_growth is not None
+        and receivable_growth <= revenue_growth
+    )
+    if cash_collection is not None and cash_collection >= 0.9:
+        details.append(item("cash_collection", "pass", ["cash_collection_ratio"], "销售收现率达到收入现金兑现要求。"))
+    elif cash_collection is not None and cash_collection >= 0.8 and receivable_controlled:
+        details.append(item("cash_collection", "borderline", ["cash_collection_ratio", "receivable_growth", "revenue_growth"], "销售收现率接近达标，且应收未明显跑赢收入。"))
+    else:
+        details.append(item("cash_collection", "fail", ["cash_collection_ratio"], "销售收现率不足或缺少应收受控验证。"))
+
+    if contract_liability_qoq is not None and contract_liability_qoq > 0:
+        details.append(item("contract_liability", "pass", ["contract_liability_qoq"], "合同负债环比改善。"))
+    elif contract_liability_qoq is not None and contract_liability_qoq >= -0.05 and cash_collection is not None and cash_collection >= 1.0:
+        details.append(item("contract_liability", "borderline", ["contract_liability_qoq", "cash_collection_ratio"], "合同负债小幅回落，但销售收现较强。"))
+    else:
+        details.append(item("contract_liability", "fail", ["contract_liability_qoq"], "合同负债环比未体现订单前瞻改善。"))
+
+    if cash_buffer_qoq is not None and cash_buffer_qoq >= -0.20:
+        details.append(item("cash_buffer", "pass", ["cash_and_equivalents_qoq"], "货币资金环比未明显恶化。"))
+    elif cash_buffer_qoq is not None and cash_buffer_qoq >= -0.30 and operating_cash_flow_qoq is not None and operating_cash_flow_qoq > 0:
+        details.append(item("cash_buffer", "borderline", ["cash_and_equivalents_qoq", "operating_cash_flow_qoq"], "货币资金小幅承压，但经营现金流环比改善。"))
+    else:
+        details.append(item("cash_buffer", "fail", ["cash_and_equivalents_qoq", "operating_cash_flow_qoq"], "现金缓冲明显恶化或缺少现金流改善验证。"))
+
+    passed_items = [entry["item"] for entry in details if entry["status"] == "pass"]
+    borderline_items = [entry["item"] for entry in details if entry["status"] == "borderline"]
+    failed_items = [entry["item"] for entry in details if entry["status"] == "fail"]
+    required_not_failed = all(
+        entry["status"] in {"pass", "borderline"} for entry in details
+    )
+    status = (
+        "pass"
+        if "revenue_momentum" in passed_items
+        and len(passed_items) >= 3
+        and required_not_failed
+        else "watch"
+    )
+
+    return {
+        "status": status,
+        "score": len(passed_items),
+        "passed_items": passed_items,
+        "borderline_items": borderline_items,
+        "failed_items": failed_items,
+        "details": details,
+        "summary": (
+            "营收、收现、合同负债和现金缓冲共同支持商业化拐点。"
+            if status == "pass"
+            else "商业化拐点证据不足，维持观察。"
+        ),
+    }
+
+
 def evaluate_steps(data: dict[str, Any], tracker: DataTracker, stage_context: dict[str, Any]) -> dict[str, str]:
     period = data.get("period", "unknown")
     source_name = data.get("source_name", "unknown source")
@@ -963,23 +1052,41 @@ def conclusion_support_from_steps(step_results: dict[str, str], direction: str) 
     return round(min(0.9, max(0.0, support_score)), 4)
 
 
-def choose_direction(step_results: dict[str, str], tracker: DataTracker) -> tuple[str, str, bool]:
+def choose_direction(
+    step_results: dict[str, str],
+    tracker: DataTracker,
+    commercial_inflection: dict[str, Any] | None = None,
+) -> tuple[str, str, bool]:
     pass_count = sum(1 for value in step_results.values() if value == "pass")
     fail_count = sum(1 for value in step_results.values() if value == "fail")
     high_flags = sum(1 for flag in tracker.red_flags if flag["level"] == "high")
 
     if high_flags or fail_count >= 2 or pass_count <= 3:
         return "bearish", "high", True
+    if commercial_inflection and commercial_inflection.get("status") == "pass":
+        return "bullish", "medium", False
     if pass_count >= 6 and not tracker.red_flags:
         return "bullish", "low", False
     return "neutral", "medium", False
 
 
-def build_reasoning(data: dict[str, Any], step_results: dict[str, str], tracker: DataTracker, stage_context: dict[str, Any]) -> str:
+def build_reasoning(
+    data: dict[str, Any],
+    step_results: dict[str, str],
+    tracker: DataTracker,
+    stage_context: dict[str, Any],
+    commercial_inflection: dict[str, Any] | None = None,
+) -> str:
     if data.get("summary"):
         return data["summary"]
 
     pass_count = sum(value == "pass" for value in step_results.values())
+    if commercial_inflection and commercial_inflection.get("status") == "pass":
+        return (
+            f"识别为高研发商业化过渡期，七步链通过 {pass_count} 项，红色预警 {len(tracker.red_flags)} 项。"
+            "营收同比/环比改善、销售收现率达标、合同负债环比改善且现金缓冲未明显恶化，"
+            "判定为商业化拐点观察偏多。"
+        )
     if stage_context.get("stage") == "rd_commercialization":
         return (
             f"识别为高研发商业化过渡期，七步链通过 {pass_count} 项，红色预警 {len(tracker.red_flags)} 项。"
@@ -989,10 +1096,16 @@ def build_reasoning(data: dict[str, Any], step_results: dict[str, str], tracker:
     return f"七步链通过 {pass_count} 项，红色预警 {len(tracker.red_flags)} 项。"
 
 
-def build_signal_list(step_results: dict[str, str], stage_context: dict[str, Any]) -> list[str]:
+def build_signal_list(
+    step_results: dict[str, str],
+    stage_context: dict[str, Any],
+    commercial_inflection: dict[str, Any] | None = None,
+) -> list[str]:
     signals = []
     if stage_context.get("stage") == "rd_commercialization":
         signals.append("business_stage: rd_commercialization")
+    if commercial_inflection and commercial_inflection.get("status") in {"pass", "watch"}:
+        signals.append(f"commercial_inflection: {commercial_inflection['status']}")
 
     signals.extend(
         f"{name}: {status}"
@@ -1011,10 +1124,11 @@ def build_signal(raw_data: dict[str, Any]) -> dict[str, Any]:
     stage_context = classify_business_stage(data)
     step_results = evaluate_steps(data, tracker, stage_context)
     additional_checks, data_gaps, iteration_plan = evaluate_additional_checks(data, tracker)
+    commercial_inflection = commercial_inflection_from_metrics(data, stage_context)
     if missing_core_tables:
         tracker.add_red_flag("high", "三表缺失", "利润表、资产负债表、现金流量表任一缺失时必须降置信")
 
-    direction, risk_level, needs_review = choose_direction(step_results, tracker)
+    direction, risk_level, needs_review = choose_direction(step_results, tracker, commercial_inflection)
     confidence = confidence_from_evidence(step_results, tracker, missing_core_tables, data, direction)
     unknown_count = sum(1 for value in step_results.values() if value == "unknown")
     insufficient_key_metrics = not tracker.evidence or unknown_count >= 4
@@ -1037,8 +1151,8 @@ def build_signal(raw_data: dict[str, Any]) -> dict[str, Any]:
         confidence["cap"] = min(confidence["cap"], 0.4)
         confidence["reason"] = "金融行业不适用本 Skill，强制降置信并转人工复核"
 
-    reasoning = build_reasoning(data, step_results, tracker, stage_context)
-    signals = build_signal_list(step_results, stage_context)
+    reasoning = build_reasoning(data, step_results, tracker, stage_context, commercial_inflection)
+    signals = build_signal_list(step_results, stage_context, commercial_inflection)
 
     return {
         "direction": direction,
@@ -1059,6 +1173,7 @@ def build_signal(raw_data: dict[str, Any]) -> dict[str, Any]:
             "risk_level": risk_level,
             "company_name": data.get("company_name", "unknown"),
             "business_stage": stage_context,
+            "commercial_inflection": commercial_inflection,
             "additional_checks": additional_checks,
             "single_quarter_metrics": data.get("single_quarter_metrics", {}),
             "step_results": step_results,

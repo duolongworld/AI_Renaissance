@@ -63,6 +63,7 @@ Data interface Skills:
 - `docs/ANALYSIS_SKILL_TEMPLATE.md`: expert analysis Skill template.
 - `docs/DATA_SKILL_TEMPLATE.md`: data interface Skill template.
 - `docs/AGENT_MATRIX.md`: navigation for Agents, Skills, and data sources; inspect code for current implementation status.
+- `docs/FINANCIAL_AGENT_ROADMAP.md`: phased priorities, execution plan, and acceptance criteria for FinancialAgent iteration.
 - `docs/TEAM.md`: ownership boundaries.
 
 When architecture boundaries change, update the relevant docs together instead of only changing code.
