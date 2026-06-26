@@ -46,6 +46,7 @@ Orchestrator Agent（编排，开发2组）
 | signal_type | `financial` |
 | Skill 目录 | `skills/financial/` |
 | 核心能力 | 七步验证链（看现金→看需求→看业绩→看产能→看扩张→看扩张风险→看利率敏感度） |
+| 判断流程 | `skills/financial/financial_report_analysis/SKILL.md` 的“财务方向判断流程” |
 | 迭代路线 | `docs/FINANCIAL_AGENT_ROADMAP.md` |
 
 **已有 Skill：**
