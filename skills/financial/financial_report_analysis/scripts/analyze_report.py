@@ -571,10 +571,12 @@ def commercial_inflection_from_metrics(data: dict[str, Any], stage_context: dict
             "passed_items": [],
             "borderline_items": [],
             "failed_items": [],
+            "protection_flags": [],
             "details": [],
             "summary": "非高研发商业化阶段，不启用商业化拐点规则。",
         }
 
+    net_profit_margin = ratio(data.get("net_profit_parent"), data.get("revenue"))
     revenue_growth = data.get("revenue_growth")
     revenue_qoq = data.get("revenue_qoq")
     cash_collection = ratio(data.get("cash_received_from_sales"), data.get("revenue"))
@@ -584,6 +586,8 @@ def commercial_inflection_from_metrics(data: dict[str, Any], stage_context: dict
     operating_cash_flow_qoq = data.get("operating_cash_flow_qoq")
 
     details: list[dict[str, Any]] = []
+    protection_flags: list[str] = []
+    blocking_protection_flags: list[str] = []
 
     if revenue_growth is not None and revenue_qoq is not None and revenue_growth >= 0.15 and revenue_qoq >= 0:
         details.append(item("revenue_momentum", "pass", ["revenue_growth", "revenue_qoq"], "营收同比和单季环比均改善。"))
@@ -621,6 +625,24 @@ def commercial_inflection_from_metrics(data: dict[str, Any], stage_context: dict
     passed_items = [entry["item"] for entry in details if entry["status"] == "pass"]
     borderline_items = [entry["item"] for entry in details if entry["status"] == "borderline"]
     failed_items = [entry["item"] for entry in details if entry["status"] == "fail"]
+    thin_profit = net_profit_margin is not None and net_profit_margin < 0.03
+    if "contract_liability" in borderline_items and thin_profit:
+        protection_flags.append("contract_liability_borderline_with_thin_profit")
+        blocking_protection_flags.append("contract_liability_borderline_with_thin_profit")
+    if operating_cash_flow_qoq is not None and operating_cash_flow_qoq <= -1.0:
+        protection_flags.append("operating_cash_flow_qoq_collapse")
+    if (
+        receivable_growth is not None
+        and revenue_growth is not None
+        and receivable_growth > max(revenue_growth * 1.5, revenue_growth + 0.5)
+    ):
+        protection_flags.append("receivable_growth_outpaces_revenue")
+    if (
+        "operating_cash_flow_qoq_collapse" in protection_flags
+        and "receivable_growth_outpaces_revenue" in protection_flags
+    ):
+        blocking_protection_flags.append("cashflow_and_receivable_pressure")
+
     required_not_failed = all(
         entry["status"] in {"pass", "borderline"} for entry in details
     )
@@ -629,6 +651,7 @@ def commercial_inflection_from_metrics(data: dict[str, Any], stage_context: dict
         if "revenue_momentum" in passed_items
         and len(passed_items) >= 3
         and required_not_failed
+        and not blocking_protection_flags
         else "watch"
     )
 
@@ -638,6 +661,8 @@ def commercial_inflection_from_metrics(data: dict[str, Any], stage_context: dict
         "passed_items": passed_items,
         "borderline_items": borderline_items,
         "failed_items": failed_items,
+        "protection_flags": protection_flags,
+        "blocking_protection_flags": blocking_protection_flags,
         "details": details,
         "summary": (
             "营收、收现、合同负债和现金缓冲共同支持商业化拐点。"
@@ -645,6 +670,15 @@ def commercial_inflection_from_metrics(data: dict[str, Any], stage_context: dict
             else "商业化拐点证据不足，维持观察。"
         ),
     }
+
+
+def has_non_core_direction_gap(step_results: dict[str, str]) -> bool:
+    """Return whether missing non-core fields should affect confidence, not direction."""
+    non_core_steps = {"capex"}
+    return any(
+        step in non_core_steps and status == "unknown"
+        for step, status in step_results.items()
+    )
 
 
 def evaluate_steps(data: dict[str, Any], tracker: DataTracker, stage_context: dict[str, Any]) -> dict[str, str]:
@@ -1058,15 +1092,21 @@ def choose_direction(
     commercial_inflection: dict[str, Any] | None = None,
 ) -> tuple[str, str, bool]:
     pass_count = sum(1 for value in step_results.values() if value == "pass")
+    watch_count = sum(1 for value in step_results.values() if value == "watch")
     fail_count = sum(1 for value in step_results.values() if value == "fail")
     high_flags = sum(1 for flag in tracker.red_flags if flag["level"] == "high")
+    non_core_gap = has_non_core_direction_gap(step_results)
 
     if high_flags or fail_count >= 2 or pass_count <= 3:
         return "bearish", "high", True
+    if commercial_inflection and commercial_inflection.get("blocking_protection_flags"):
+        return "neutral", "medium", False
     if commercial_inflection and commercial_inflection.get("status") == "pass":
         return "bullish", "medium", False
     if pass_count >= 6 and not tracker.red_flags:
         return "bullish", "low", False
+    if non_core_gap and pass_count >= 5 and watch_count <= 1 and not tracker.red_flags:
+        return "bullish", "medium", False
     return "neutral", "medium", False
 
 
@@ -1082,18 +1122,24 @@ def build_reasoning(
 
     pass_count = sum(value == "pass" for value in step_results.values())
     if commercial_inflection and commercial_inflection.get("status") == "pass":
-        return (
+        reasoning = (
             f"识别为高研发商业化过渡期，七步链通过 {pass_count} 项，红色预警 {len(tracker.red_flags)} 项。"
             "营收同比/环比改善、销售收现率达标、合同负债环比改善且现金缓冲未明显恶化，"
             "判定为商业化拐点观察偏多。"
         )
+        if has_non_core_direction_gap(step_results):
+            reasoning += " 折旧摊销等非核心数据缺口仅影响置信度，不直接改变方向判断。"
+        return reasoning
     if stage_context.get("stage") == "rd_commercialization":
         return (
             f"识别为高研发商业化过渡期，七步链通过 {pass_count} 项，红色预警 {len(tracker.red_flags)} 项。"
             "营收、合同负债和销售收现显示订单兑现加速，但亏损与经营现金流仍需验证收敛。"
         )
 
-    return f"七步链通过 {pass_count} 项，红色预警 {len(tracker.red_flags)} 项。"
+    reasoning = f"七步链通过 {pass_count} 项，红色预警 {len(tracker.red_flags)} 项。"
+    if has_non_core_direction_gap(step_results):
+        reasoning += " 折旧摊销等非核心数据缺口仅影响置信度，不直接改变方向判断。"
+    return reasoning
 
 
 def build_signal_list(
@@ -1130,6 +1176,9 @@ def build_signal(raw_data: dict[str, Any]) -> dict[str, Any]:
 
     direction, risk_level, needs_review = choose_direction(step_results, tracker, commercial_inflection)
     confidence = confidence_from_evidence(step_results, tracker, missing_core_tables, data, direction)
+    if has_non_core_direction_gap(step_results):
+        confidence["final_confidence"] = max(0.0, round(confidence["final_confidence"] - 0.03, 2))
+        confidence["reason"] += "；折旧摊销等非核心数据缺口小幅降低置信度"
     unknown_count = sum(1 for value in step_results.values() if value == "unknown")
     insufficient_key_metrics = not tracker.evidence or unknown_count >= 4
     if insufficient_key_metrics:

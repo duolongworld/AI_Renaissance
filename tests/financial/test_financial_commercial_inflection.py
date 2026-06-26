@@ -55,3 +55,69 @@ def test_rd_commercialization_inflection_requires_cash_buffer_not_clearly_worse(
     assert result["direction"] == "neutral"
     assert result["meta"]["commercial_inflection"]["status"] == "watch"
     assert "cash_buffer" in result["meta"]["commercial_inflection"]["failed_items"]
+
+
+def test_rd_commercialization_inflection_blocks_borderline_orders_when_profit_margin_is_thin():
+    result = build_signal(
+        _rd_commercialization_payload(
+            net_profit_parent=20.0,
+            operating_cash_flow=30.0,
+            cash_received_from_sales=1100.0,
+            contract_liability_qoq=-0.001,
+        )
+    )
+
+    assert result["direction"] == "neutral"
+    inflection = result["meta"]["commercial_inflection"]
+    assert inflection["status"] == "watch"
+    assert "contract_liability_borderline_with_thin_profit" in inflection["protection_flags"]
+
+
+def test_rd_commercialization_inflection_blocks_severe_cashflow_or_receivable_pressure():
+    result = build_signal(
+        _rd_commercialization_payload(
+            revenue_growth=0.52,
+            revenue_qoq=0.80,
+            contract_liability_qoq=0.18,
+            cash_and_equivalents_qoq=0.56,
+            operating_cash_flow_qoq=-8.0,
+            receivable_growth=1.78,
+        )
+    )
+
+    assert result["direction"] == "neutral"
+    inflection = result["meta"]["commercial_inflection"]
+    assert inflection["status"] == "watch"
+    assert "operating_cash_flow_qoq_collapse" in inflection["protection_flags"]
+    assert "receivable_growth_outpaces_revenue" in inflection["protection_flags"]
+
+
+def test_non_core_depreciation_gap_does_not_directly_block_direction_when_core_chain_is_strong():
+    result = build_signal(
+        {
+            "ticker": "TEST",
+            "company_name": "非核心缺口测试公司",
+            "period": "2026-03-31",
+            "source_type": "data_source",
+            "source_name": "测试数据源",
+            "income_statement_present": True,
+            "balance_sheet_present": True,
+            "cash_flow_statement_present": True,
+            "net_profit_parent": 120.0,
+            "revenue": 1000.0,
+            "revenue_growth": 0.25,
+            "operating_cost": 600.0,
+            "operating_cash_flow": 125.0,
+            "cash_received_from_sales": 980.0,
+            "contract_liability_growth": 0.10,
+            "receivable_growth": 0.10,
+            "finance_expense": 15.0,
+            "operating_profit": 100.0,
+            "goodwill": 0.0,
+            "equity_parent": 1000.0,
+        }
+    )
+
+    assert result["meta"]["step_results"]["capex"] == "unknown"
+    assert result["direction"] == "bullish"
+    assert "非核心数据缺口" in result["reasoning"]
