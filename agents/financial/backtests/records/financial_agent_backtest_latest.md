@@ -1,6 +1,17 @@
 # FinancialAgent 全样本回测报告
 
-生成时间：2026-06-26T09:28:12
+生成时间：2026-06-26T22:45:39
+
+## 回测记录
+
+| 字段 | 内容 |
+| --- | --- |
+| 日期 | 2026-06-26 |
+| 财务 Agent 版本 | 0.2.0 |
+| 回测执行人 | 简简简水粽 |
+| 回测样本池 | agents/financial/backtests/sample_pool_v1.csv |
+| 回测周期 | 2024Q1 至 2025Q4 信号，2024Q2 至 2026Q1 验证 |
+| 回测结果报告 | agents/financial/backtests/records/financial_agent_backtest_latest.md |
 
 ## 核心结果
 
@@ -25,7 +36,7 @@
 - **覆盖率口径**：高置信 Signal 数量 / 可评估样本数
 - **预测边界**：所有预测均由 FinancialAgent.analyze() 生成，未调用其他专家智能体。
 - **数据来源**：FinancialAgent 配置的东方财富数据源，经固定历史报告期缓存复用。
-- **本地缓存位置**：/Users/jianliyi/05_AI项目/AI_Renaissance/output/financial_backtest/financial_statements_cache_v1.json
+- **本地缓存位置**：output/financial_backtest/financial_statements_cache_v1.json
 
 ### 口径限制
 

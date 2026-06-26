@@ -13,14 +13,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable
 
-from agents.financial import FinancialAgent
+from agents.financial import FINANCIAL_AGENT_VERSION, FinancialAgent
 from data_sources import EastMoneyDataSource
 
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_POOL_PATH = Path(__file__).with_name("sample_pool_v1.csv")
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "output" / "financial_backtest"
-DEFAULT_REPORT_PATH = REPO_ROOT / "docs" / "reports" / "financial_agent_backtest.md"
+DEFAULT_REPORT_PATH = Path(__file__).resolve().parent / "records" / "financial_agent_backtest_latest.md"
+DEFAULT_EXECUTED_BY = "简简简水粽"
 SIGNAL_DATES = [
     "2024-03-31",
     "2024-06-30",
@@ -31,6 +32,14 @@ SIGNAL_DATES = [
     "2025-09-30",
     "2025-12-31",
 ]
+
+
+def repo_relative(path: Path) -> str:
+    resolved = path.resolve()
+    try:
+        return str(resolved.relative_to(REPO_ROOT.resolve()))
+    except ValueError:
+        return str(path)
 ALL_DATA_DATES = [
     "2023-03-31",
     "2023-06-30",
@@ -554,6 +563,9 @@ def build_report(
     *,
     cache_path: Path,
     label_threshold: float,
+    pool_path: Path = DEFAULT_POOL_PATH,
+    report_path: Path = DEFAULT_REPORT_PATH,
+    executed_by: str = DEFAULT_EXECUTED_BY,
 ) -> dict[str, Any]:
     misses = []
     for record in records:
@@ -564,12 +576,23 @@ def build_report(
             miss["miss_cause"] = cause
             misses.append(miss)
 
+    generated_at = datetime.now().isoformat(timespec="seconds")
+    signal_window = "2024Q1 至 2025Q4"
+    result_window = "2024Q2 至 2026Q1"
     return {
-        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "generated_at": generated_at,
+        "backtest_record": {
+            "backtest_date": generated_at[:10],
+            "financial_agent_version": FINANCIAL_AGENT_VERSION,
+            "executed_by": executed_by,
+            "sample_pool": repo_relative(pool_path),
+            "backtest_period": f"{signal_window} 信号，{result_window} 验证",
+            "result_report": repo_relative(report_path),
+        },
         "methodology": {
             "prediction_target": "下一季度单季归母净利润同比方向",
-            "signal_window": "2024Q1 至 2025Q4",
-            "result_window": "2024Q2 至 2026Q1",
+            "signal_window": signal_window,
+            "result_window": result_window,
             "label_formula": (
                 "变化额＝下一季度单季归母净利润－去年同期单季归母净利润；"
                 "标准化基数取去年同期单季归母净利润绝对值、下一季度单季营收的 1% 和 1 三者最大值；"
@@ -579,7 +602,7 @@ def build_report(
             "coverage_metric": "高置信 Signal 数量 / 可评估样本数",
             "prediction_boundary": "所有预测均由 FinancialAgent.analyze() 生成，未调用其他专家智能体。",
             "data_source": "FinancialAgent 配置的东方财富数据源，经固定历史报告期缓存复用。",
-            "cache_path": str(cache_path),
+            "cache_path": repo_relative(cache_path),
         },
         "sample_pool": pool,
         "metrics": {**calculate_metrics(records), **company_equal_metrics(records)},
@@ -714,6 +737,7 @@ def miss_summary_rows(misses: list[dict[str, Any]]) -> list[tuple[Any, ...]]:
 def render_markdown_report(report: dict[str, Any]) -> str:
     metrics = report["metrics"]
     methodology = report["methodology"]
+    backtest_record = report.get("backtest_record", {})
     sample_pool = report["sample_pool"]
     misses = report["misses"]
     confusion = report["confusion_matrix"]
@@ -728,6 +752,14 @@ def render_markdown_report(report: dict[str, Any]) -> str:
         "prediction_boundary": "预测边界",
         "data_source": "数据来源",
         "cache_path": "本地缓存位置",
+    }
+    record_labels = {
+        "backtest_date": "日期",
+        "financial_agent_version": "财务 Agent 版本",
+        "executed_by": "回测执行人",
+        "sample_pool": "回测样本池",
+        "backtest_period": "回测周期",
+        "result_report": "回测结果报告",
     }
 
     sample_table = markdown_table(
@@ -768,6 +800,13 @@ def render_markdown_report(report: dict[str, Any]) -> str:
         f"- **{methodology_labels.get(key, key)}**：{value}"
         for key, value in methodology.items()
     )
+    record_table = markdown_table(
+        ["字段", "内容"],
+        (
+            (label, backtest_record.get(key, ""))
+            for key, label in record_labels.items()
+        ),
+    )
     recommendations = "\n".join(
         f"{index}. {item}"
         for index, item in enumerate(report["iteration_recommendations"], start=1)
@@ -789,6 +828,10 @@ def render_markdown_report(report: dict[str, Any]) -> str:
     return f"""# FinancialAgent 全样本回测报告
 
 生成时间：{report["generated_at"]}
+
+## 回测记录
+
+{record_table}
 
 ## 核心结果
 
@@ -880,6 +923,8 @@ def main() -> None:
         records,
         cache_path=cache_path,
         label_threshold=args.label_threshold,
+        pool_path=args.pool,
+        report_path=args.report,
     )
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     json_path = args.output_dir / f"financial_agent_backtest_{stamp}.json"

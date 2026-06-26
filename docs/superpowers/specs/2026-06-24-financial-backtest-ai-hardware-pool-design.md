@@ -98,7 +98,7 @@
 
 机器可读清单位于：
 
-`skills/financial/financial_report_analysis/backtest/sample_pool_v1.csv`
+`agents/financial/backtests/sample_pool_v1.csv`
 
 ### 5.1 芯片设计与计算
 

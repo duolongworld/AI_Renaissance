@@ -50,6 +50,7 @@ data_sources/data/
 *.db
 *.sqlite
 *.csv
+!agents/financial/backtests/sample_pool_v1.csv
 *.xlsx
 
 # Industry skill generated artifacts

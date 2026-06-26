@@ -1,8 +1,11 @@
+from pathlib import Path
 from types import SimpleNamespace
 
-from skills.financial.financial_report_analysis.backtest.run_backtest import (
+from agents.financial import FINANCIAL_AGENT_VERSION
+from agents.financial.backtests.run_backtest import (
     ALL_DATA_DATES,
     actual_direction,
+    build_report,
     calculate_metrics,
     render_markdown_report,
     run_financial_agent,
@@ -12,6 +15,31 @@ from skills.financial.financial_report_analysis.backtest.run_backtest import (
 
 def test_required_data_dates_include_q1_needed_to_derive_prior_year_q2():
     assert "2023-03-31" in ALL_DATA_DATES
+
+
+def test_backtest_assets_are_outside_runtime_skill_directory():
+    assert not Path("skills/financial/financial_report_analysis/backtest").exists()
+    assert Path("agents/financial/backtests/sample_pool_v1.csv").exists()
+    assert Path("agents/financial/backtests/run_backtest.py").exists()
+
+
+def test_build_report_records_shareable_backtest_metadata():
+    report = build_report(
+        [{"company_name": "样本公司", "ticker": "000001.SZ", "subsector_id": "1"}],
+        [],
+        cache_path=Path("output/financial_backtest/financial_statements_cache_v1.json"),
+        label_threshold=0.10,
+        report_path=Path("agents/financial/backtests/records/financial_agent_backtest_latest.md"),
+    )
+
+    record = report["backtest_record"]
+
+    assert record["backtest_date"] == report["generated_at"][:10]
+    assert record["financial_agent_version"] == FINANCIAL_AGENT_VERSION
+    assert record["executed_by"] == "简简简水粽"
+    assert record["sample_pool"] == "agents/financial/backtests/sample_pool_v1.csv"
+    assert record["backtest_period"] == "2024Q1 至 2025Q4 信号，2024Q2 至 2026Q1 验证"
+    assert record["result_report"] == "agents/financial/backtests/records/financial_agent_backtest_latest.md"
 
 
 def test_actual_direction_treats_loss_narrowing_as_bullish():

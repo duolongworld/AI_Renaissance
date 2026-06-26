@@ -1,13 +1,21 @@
-# 回测口径
+# 财务 Agent 回测
 
-本目录定义回测口径，并提供固定样本池的可执行基线回测。
+本目录存放财务 Agent 的回测资产，不属于 `financial_report_analysis` 运行时 Skill。
+
+目录职责：
+
+- `run_backtest.py`：固定样本池回测执行器。
+- `sample_pool_v1.csv`：第一版固定样本池。
+- `records/`：回测记录和 Markdown 结果报告。
+- `iteration_logs/`：基于回测结论形成的后续迭代记录。
+- `output/financial_backtest/`：本地逐样本 JSON 审计数据和三表缓存，继续不提交 Git。
 
 ## 执行
 
 从仓库根目录运行：
 
 ```bash
-.venv/bin/python -m skills.financial.financial_report_analysis.backtest.run_backtest
+.venv/bin/python -m agents.financial.backtests.run_backtest
 ```
 
 执行器会：
@@ -16,8 +24,21 @@
 - 缓存 51 家公司所需历史三表；
 - 对每个公司、每个信号季度调用 `FinancialAgent.analyze()`；
 - 按下一季度单季归母净利润同比方向生成真实标签；
-- 将 Markdown 回测报告写入 `docs/reports/financial_agent_backtest.md`；
+- 将 Markdown 回测报告写入 `agents/financial/backtests/records/financial_agent_backtest_latest.md`；
 - 将逐样本 JSON 审计数据和三表缓存写入 `output/financial_backtest/`，不提交 Git。
+
+## 回测记录字段
+
+每次共享给组员的回测记录至少包含：
+
+- 日期；
+- 财务 Agent 版本；
+- 回测执行人；
+- 回测样本池；
+- 回测周期；
+- 回测结果报告。
+
+当前默认执行人为“简简简水粽”。财务 Agent 版本来自 `agents.financial.FINANCIAL_AGENT_VERSION`。
 
 当前历史数据来自执行日可见的东方财富结构化报表，不是公告日冻结的
 历史快照。报告会显式披露这一限制；在历史快照层建立前，本结果应视为

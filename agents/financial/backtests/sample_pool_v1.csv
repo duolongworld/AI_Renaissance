@@ -1,0 +1,52 @@
+pool_version,subsector_id,subsector,company_name,ticker,region_bucket,listing_market,anchor_stage,filing_source,adapter_status
+v1,01,AI GPU/加速器,寒武纪,688256.SH,domestic,SSE,research_validation,cninfo,existing_a_share
+v1,01,AI GPU/加速器,景嘉微,300474.SZ,domestic,SZSE,research_validation,cninfo,existing_a_share
+v1,02,DCU/服务器CPU,海光信息,688041.SH,domestic,SSE,scale_profit,cninfo,existing_a_share
+v1,02,DCU/服务器CPU,龙芯中科,688047.SH,domestic,SSE,research_validation,cninfo,existing_a_share
+v1,03,边缘AI SoC,瑞芯微,603893.SH,domestic,SSE,research_validation,cninfo,existing_a_share
+v1,03,边缘AI SoC,全志科技,300458.SZ,domestic,SZSE,research_validation,cninfo,existing_a_share
+v1,04,AI ASIC/IP,芯原股份,688521.SH,domestic,SSE,research_validation,cninfo,existing_a_share
+v1,04,AI ASIC/IP,国芯科技,688262.SH,domestic,SSE,research_validation,cninfo,existing_a_share
+v1,05,内存接口/CXL,澜起科技,688008.SH,domestic,SSE,scale_profit,cninfo,existing_a_share
+v1,05,内存接口/CXL,聚辰股份,688123.SH,domestic,SSE,mature_cyclical,cninfo,existing_a_share
+v1,06,晶圆代工,中芯国际,688981.SH,domestic,SSE,commercialization_ramp,cninfo,existing_a_share
+v1,06,晶圆代工,华虹公司,688347.SH,domestic,SSE,scale_profit,cninfo,existing_a_share
+v1,07,刻蚀/沉积设备,中微公司,688012.SH,domestic,SSE,research_validation,cninfo,existing_a_share
+v1,07,刻蚀/沉积设备,拓荆科技,688072.SH,domestic,SSE,commercialization_ramp,cninfo,existing_a_share
+v1,08,综合半导体设备,北方华创,002371.SZ,domestic,SZSE,commercialization_ramp,cninfo,existing_a_share
+v1,08,综合半导体设备,盛美上海,688082.SH,domestic,SSE,scale_profit,cninfo,existing_a_share
+v1,09,半导体材料,安集科技,688019.SH,domestic,SSE,research_validation,cninfo,existing_a_share
+v1,09,半导体材料,江丰电子,300666.SZ,domestic,SZSE,research_validation,cninfo,existing_a_share
+v1,10,先进封装,长电科技,600584.SH,domestic,SSE,scale_profit,cninfo,existing_a_share
+v1,10,先进封装,通富微电,002156.SZ,domestic,SZSE,commercialization_ramp,cninfo,existing_a_share
+v1,11,检测/量测与测试设备,长川科技,300604.SZ,domestic,SZSE,research_validation,cninfo,existing_a_share
+v1,11,检测/量测与测试设备,华峰测控,688200.SH,domestic,SSE,scale_profit,cninfo,existing_a_share
+v1,12,存储芯片/模组,江波龙,301308.SZ,domestic,SZSE,commercialization_ramp,cninfo,existing_a_share
+v1,12,存储芯片/模组,佰维存储,688525.SH,domestic,SSE,commercialization_ramp,cninfo,existing_a_share
+v1,13,IC载板,深南电路,002916.SZ,domestic,SZSE,scale_profit,cninfo,existing_a_share
+v1,13,IC载板,兴森科技,002436.SZ,domestic,SZSE,commercialization_ramp,cninfo,existing_a_share
+v1,14,CCL/高速基材,生益科技,600183.SH,domestic,SSE,scale_profit,cninfo,existing_a_share
+v1,14,CCL/高速基材,南亚新材,688519.SH,domestic,SSE,research_validation,cninfo,existing_a_share
+v1,15,高速PCB/HDI,沪电股份,002463.SZ,domestic,SZSE,scale_profit,cninfo,existing_a_share
+v1,15,高速PCB/HDI,胜宏科技,300476.SZ,domestic,SZSE,commercialization_ramp,cninfo,existing_a_share
+v1,16,高速光模块,中际旭创,300308.SZ,domestic,SZSE,scale_profit,cninfo,existing_a_share
+v1,16,高速光模块,新易盛,300502.SZ,domestic,SZSE,scale_profit,cninfo,existing_a_share
+v1,17,光器件/光芯片,天孚通信,300394.SZ,domestic,SZSE,commercialization_ramp,cninfo,existing_a_share
+v1,17,光器件/光芯片,光迅科技,002281.SZ,domestic,SZSE,commercialization_ramp,cninfo,existing_a_share
+v1,18,光纤光缆,长飞光纤,601869.SH,domestic,SSE,mature_cyclical,cninfo,existing_a_share
+v1,18,光纤光缆,亨通光电,600487.SH,domestic,SSE,mature_cyclical,cninfo,existing_a_share
+v1,19,数据中心交换机,锐捷网络,301165.SZ,domestic,SZSE,commercialization_ramp,cninfo,existing_a_share
+v1,19,数据中心交换机,紫光股份,000938.SZ,domestic,SZSE,mature_cyclical,cninfo,existing_a_share
+v1,20,高速连接器/铜缆,立讯精密,002475.SZ,domestic,SZSE,scale_profit,cninfo,existing_a_share
+v1,20,高速连接器/铜缆,中航光电,002179.SZ,domestic,SZSE,scale_profit,cninfo,existing_a_share
+v1,21,AI服务器ODM,工业富联,601138.SH,domestic,SSE,scale_profit,cninfo,existing_a_share
+v1,21,AI服务器ODM,华勤技术,603296.SH,domestic,SSE,scale_profit,cninfo,existing_a_share
+v1,22,服务器/ICT系统,浪潮信息,000977.SZ,domestic,SZSE,mature_cyclical,cninfo,existing_a_share
+v1,22,服务器/ICT系统,中科曙光,603019.SH,domestic,SSE,mature_cyclical,cninfo,existing_a_share
+v1,23,散热与液冷,英维克,002837.SZ,domestic,SZSE,commercialization_ramp,cninfo,existing_a_share
+v1,23,散热与液冷,申菱环境,301018.SZ,domestic,SZSE,commercialization_ramp,cninfo,existing_a_share
+v1,24,数据中心电源/UPS,科华数据,002335.SZ,domestic,SZSE,commercialization_ramp,cninfo,existing_a_share
+v1,24,数据中心电源/UPS,科士达,002518.SZ,domestic,SZSE,commercialization_ramp,cninfo,existing_a_share
+v1,25,机器人核心部件,汇川技术,300124.SZ,domestic,SZSE,scale_profit,cninfo,existing_a_share
+v1,25,机器人核心部件,绿的谐波,688017.SH,domestic,SSE,commercialization_ramp,cninfo,existing_a_share
+v1,26,光模块自动化/封装设备,罗博特科,300757.SZ,domestic,SZSE,commercialization_ramp,cninfo,existing_a_share
