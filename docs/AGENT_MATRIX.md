@@ -46,6 +46,8 @@ Orchestrator Agent（编排，开发2组）
 | signal_type | `financial` |
 | Skill 目录 | `skills/financial/` |
 | 核心能力 | 七步验证链（看现金→看需求→看业绩→看产能→看扩张→看扩张风险→看利率敏感度） |
+| 判断流程 | `skills/financial/financial_report_analysis/SKILL.md` 的“财务方向判断流程” |
+| 迭代路线 | `docs/FINANCIAL_AGENT_ROADMAP.md` |
 
 **已有 Skill：**
 
@@ -63,6 +65,8 @@ Orchestrator Agent（编排，开发2组）
 | 合同负债趋势 | 先行指标 | P1 |
 | 资本开支信号 | 扩张周期 | P1 |
 | 负债风险评估 | 有息负债/杠杆率 | P1 |
+
+> 上表保留能力方向导航。实际实施顺序以 `docs/FINANCIAL_AGENT_ROADMAP.md` 为准：先完成真实回测和关键数据闭环，再决定是否拆分新的运行时 Skill。
 
 ---
 

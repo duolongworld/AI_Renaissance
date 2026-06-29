@@ -50,6 +50,7 @@ data_sources/data/
 *.db
 *.sqlite
 *.csv
+!agents/financial/backtests/sample_pool_v1.csv
 *.xlsx
 
 # Industry skill generated artifacts
@@ -72,3 +73,6 @@ Thumbs.db
 
 # Tests
 .pytest_cache/
+
+# FinancialAgent 回测本地审计数据
+output/financial_backtest/

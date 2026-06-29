@@ -15,6 +15,9 @@ from data_sources import EastMoneyDataSource
 from skills.financial.financial_report_analysis.scripts.analyze_report import build_signal
 
 
+FINANCIAL_AGENT_VERSION = "0.2.0"
+
+
 class FinancialAgent(BaseAgent):
     """
     财务分析 Agent（专家1组）
@@ -24,6 +27,7 @@ class FinancialAgent(BaseAgent):
     """
 
     signal_type = "financial"
+    version = FINANCIAL_AGENT_VERSION
 
     def __init__(self, config: Optional[dict] = None):
         super().__init__(name="财务分析Agent", config=config or {})
@@ -53,6 +57,7 @@ class FinancialAgent(BaseAgent):
             signal = Signal.from_dict(build_signal(normalized_data))
             signal.source = self.name
             signal.signal_type = self.signal_type
+            signal.meta["financial_agent_version"] = self.version
             if not signal.stock_code or signal.stock_code == "unknown":
                 signal.stock_code = stock_code
             return signal
