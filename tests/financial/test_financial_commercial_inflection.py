@@ -39,6 +39,16 @@ def _rd_commercialization_payload(**overrides):
     return payload
 
 
+def _with_single_quarter_cashflow(payload, *, current_cashflow, previous_cashflow):
+    payload = dict(payload)
+    payload["operating_cash_flow"] = current_cashflow
+    payload["single_quarter_metrics"] = {
+        "current_quarter": {"operating_cash_flow": current_cashflow},
+        "previous_quarter": {"operating_cash_flow": previous_cashflow},
+    }
+    return payload
+
+
 def test_rd_commercialization_inflection_turns_loss_maker_bullish_when_core_metrics_improve():
     result = build_signal(_rd_commercialization_payload())
 
@@ -90,6 +100,69 @@ def test_rd_commercialization_inflection_blocks_severe_cashflow_or_receivable_pr
     assert inflection["status"] == "watch"
     assert "operating_cash_flow_qoq_collapse" in inflection["protection_flags"]
     assert "receivable_growth_outpaces_revenue" in inflection["protection_flags"]
+
+
+def test_rd_commercialization_inflection_does_not_block_when_cashflow_turns_positive():
+    result = build_signal(
+        _with_single_quarter_cashflow(
+            _rd_commercialization_payload(operating_cash_flow_qoq=-2.0),
+            current_cashflow=80.0,
+            previous_cashflow=-100.0,
+        )
+    )
+
+    assert result["direction"] == "bullish"
+    inflection = result["meta"]["commercial_inflection"]
+    assert inflection["status"] == "pass"
+    assert "operating_cash_flow_qoq_collapse" not in inflection["protection_flags"]
+
+
+def test_rd_commercialization_inflection_blocks_when_cashflow_turns_negative():
+    result = build_signal(
+        _with_single_quarter_cashflow(
+            _rd_commercialization_payload(operating_cash_flow_qoq=-2.0),
+            current_cashflow=-50.0,
+            previous_cashflow=100.0,
+        )
+    )
+
+    assert result["direction"] == "neutral"
+    inflection = result["meta"]["commercial_inflection"]
+    assert inflection["status"] == "watch"
+    assert "operating_cash_flow_qoq_collapse" in inflection["protection_flags"]
+    assert "operating_cash_flow_qoq_collapse" in inflection["blocking_protection_flags"]
+
+
+def test_rd_commercialization_inflection_blocks_when_negative_cash_outflow_expands():
+    result = build_signal(
+        _with_single_quarter_cashflow(
+            _rd_commercialization_payload(operating_cash_flow_qoq=-1.0),
+            current_cashflow=-180.0,
+            previous_cashflow=-100.0,
+        )
+    )
+
+    assert result["direction"] == "neutral"
+    inflection = result["meta"]["commercial_inflection"]
+    assert inflection["status"] == "watch"
+    assert "operating_cash_flow_qoq_collapse" in inflection["protection_flags"]
+    assert "operating_cash_flow_qoq_collapse" in inflection["blocking_protection_flags"]
+
+
+def test_rd_commercialization_inflection_blocks_when_receivables_only_outpace_revenue():
+    result = build_signal(
+        _with_single_quarter_cashflow(
+            _rd_commercialization_payload(receivable_growth=0.90),
+            current_cashflow=120.0,
+            previous_cashflow=80.0,
+        )
+    )
+
+    assert result["direction"] == "neutral"
+    inflection = result["meta"]["commercial_inflection"]
+    assert inflection["status"] == "watch"
+    assert "receivable_growth_outpaces_revenue" in inflection["protection_flags"]
+    assert "receivable_growth_outpaces_revenue" in inflection["blocking_protection_flags"]
 
 
 def test_non_core_depreciation_gap_does_not_directly_block_direction_when_core_chain_is_strong():

@@ -411,6 +411,7 @@ def load_or_fetch_statements(
     cache_path: Path,
     *,
     max_workers: int,
+    require_cache: bool = False,
 ) -> dict[str, Any]:
     if cache_path.exists():
         statements = json.loads(cache_path.read_text(encoding="utf-8"))
@@ -425,6 +426,12 @@ def load_or_fetch_statements(
     ]
     if not missing:
         return statements
+    if require_cache:
+        preview = "、".join(f"{ticker}:{report_date}" for ticker, report_date in missing[:5])
+        raise ValueError(
+            "离线缓存不完整，无法在 require-cache 模式下运行回测；"
+            f"缺失 {len(missing)} 个公司报告期三表，示例：{preview}"
+        )
 
     source = EastMoneyDataSource()
     cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -622,6 +629,11 @@ def build_report(
         "limitations": [
             "当前东方财富历史接口返回的是执行日可见的历史报表数据，不是每个公告日冻结的历史快照；"
             "本报告是可复现基线，但不能完全排除财务重述带来的未来数据泄漏。",
+            "当前仓库提交样本池、执行器和版本化 Markdown 报告，不提交完整历史三表输入快照；"
+            "默认执行器在缓存缺失时会拉取线上数据，严格复现需使用同一份本地缓存并开启 require-cache 模式，"
+            "或后续单独建设固定历史输入快照。",
+            "当前结果是 draft 阶段基线记录，高置信准确率尚未达到 70% 最小可用版本目标，"
+            "不表示财务 Agent 已进入稳定可用版。",
             "FinancialAgent 当前仅使用结构化三表及其可计算字段；订单、产品线、产能利用率、"
             "前五大客户/供应商和关联方等增强数据缺失时，会在数据缺口中披露。",
             "连续季度样本存在公司内相关性；本报告披露公司等权和公司-季度等权结果，"
@@ -900,6 +912,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--cache", type=Path)
     parser.add_argument("--max-workers", type=int, default=8)
     parser.add_argument("--label-threshold", type=float, default=0.10)
+    parser.add_argument(
+        "--require-cache",
+        action="store_true",
+        help="只使用本地缓存；缓存缺失或不完整时直接失败，不拉取线上数据。",
+    )
     return parser.parse_args()
 
 
@@ -912,6 +929,7 @@ def main() -> None:
         pool,
         cache_path,
         max_workers=max(1, args.max_workers),
+        require_cache=args.require_cache,
     )
     records = execute_backtest(
         pool,

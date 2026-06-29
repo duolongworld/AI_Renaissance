@@ -564,6 +564,38 @@ def commercial_inflection_from_metrics(data: dict[str, Any], stage_context: dict
     def item(name: str, status: str, metrics: list[str], note: str) -> dict[str, Any]:
         return {"item": name, "status": status, "metrics": metrics, "note": note}
 
+    def single_quarter_operating_cash_flow() -> tuple[float | None, float | None]:
+        single_quarter = data.get("single_quarter_metrics")
+        if not isinstance(single_quarter, dict):
+            return None, None
+        current_quarter = single_quarter.get("current_quarter")
+        previous_quarter = single_quarter.get("previous_quarter")
+        if not isinstance(current_quarter, dict) or not isinstance(previous_quarter, dict):
+            return None, None
+        return (
+            current_quarter.get("operating_cash_flow"),
+            previous_quarter.get("operating_cash_flow"),
+        )
+
+    def has_true_operating_cash_flow_deterioration() -> bool:
+        current_cashflow, previous_cashflow = single_quarter_operating_cash_flow()
+        if current_cashflow is not None and previous_cashflow is not None:
+            if current_cashflow < 0 <= previous_cashflow:
+                return True
+            if (
+                current_cashflow < 0
+                and previous_cashflow < 0
+                and abs(current_cashflow) > abs(previous_cashflow) * 1.5
+            ):
+                return True
+            return False
+        current_cashflow = data.get("operating_cash_flow")
+        if current_cashflow is not None:
+            if current_cashflow >= 0:
+                return False
+            return operating_cash_flow_qoq is not None and operating_cash_flow_qoq <= -1.0
+        return operating_cash_flow_qoq is not None and operating_cash_flow_qoq <= -1.0
+
     if stage_context.get("stage") != "rd_commercialization":
         return {
             "status": "not_applicable",
@@ -629,14 +661,16 @@ def commercial_inflection_from_metrics(data: dict[str, Any], stage_context: dict
     if "contract_liability" in borderline_items and thin_profit:
         protection_flags.append("contract_liability_borderline_with_thin_profit")
         blocking_protection_flags.append("contract_liability_borderline_with_thin_profit")
-    if operating_cash_flow_qoq is not None and operating_cash_flow_qoq <= -1.0:
+    if has_true_operating_cash_flow_deterioration():
         protection_flags.append("operating_cash_flow_qoq_collapse")
+        blocking_protection_flags.append("operating_cash_flow_qoq_collapse")
     if (
         receivable_growth is not None
         and revenue_growth is not None
         and receivable_growth > max(revenue_growth * 1.5, revenue_growth + 0.5)
     ):
         protection_flags.append("receivable_growth_outpaces_revenue")
+        blocking_protection_flags.append("receivable_growth_outpaces_revenue")
     if (
         "operating_cash_flow_qoq_collapse" in protection_flags
         and "receivable_growth_outpaces_revenue" in protection_flags

@@ -18,14 +18,22 @@
 .venv/bin/python -m agents.financial.backtests.run_backtest
 ```
 
+如果只允许使用本地缓存，运行：
+
+```bash
+.venv/bin/python -m agents.financial.backtests.run_backtest --require-cache
+```
+
 执行器会：
 
 - 固定读取 `sample_pool_v1.csv`；
-- 缓存 51 家公司所需历史三表；
+- 读取或缓存 51 家公司所需历史三表；
 - 对每个公司、每个信号季度调用 `FinancialAgent.analyze()`；
 - 按下一季度单季归母净利润同比方向生成真实标签；
 - 将 Markdown 回测报告写入 `agents/financial/backtests/records/financial_agent_backtest_latest.md`；
 - 将逐样本 JSON 审计数据和三表缓存写入 `output/financial_backtest/`，不提交 Git。
+
+默认执行方式是 live fetch 工具：当本地缓存不存在或不完整时，会从东方财富数据源拉取缺失报告期。`--require-cache` 是离线复现模式：缓存缺失或不完整时直接失败，不请求线上数据。
 
 ## 回测记录字段
 
@@ -42,7 +50,10 @@
 
 当前历史数据来自执行日可见的东方财富结构化报表，不是公告日冻结的
 历史快照。报告会显式披露这一限制；在历史快照层建立前，本结果应视为
-基线回测，不能完全排除财务重述造成的未来数据泄漏。
+基线回测，不能完全排除财务重述造成的未来数据泄漏。当前仓库只提交
+样本池、执行器和版本化报告，不提交完整历史三表快照；如需严格复现某次
+回测，应使用同一份本地缓存运行 `--require-cache`，或后续单独建设固定
+历史输入快照。
 
 Markdown 报告遵循以下展示规则：
 
@@ -56,6 +67,8 @@ Markdown 报告遵循以下展示规则：
 主指标：置信度大于 0.7 的财务 Signal 对下一季度归母净利润同比方向的判断准确率。
 
 最小可用版本目标：不低于 70%。
+
+当前记录仍是 draft 阶段基线，不表示财务 Agent 已达到最小可用版本目标。
 
 ## 覆盖率护栏
 

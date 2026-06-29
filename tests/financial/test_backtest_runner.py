@@ -1,12 +1,15 @@
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from agents.financial import FINANCIAL_AGENT_VERSION
 from agents.financial.backtests.run_backtest import (
     ALL_DATA_DATES,
     actual_direction,
     build_report,
     calculate_metrics,
+    load_or_fetch_statements,
     render_markdown_report,
     run_financial_agent,
     standalone_quarter_value,
@@ -40,6 +43,19 @@ def test_build_report_records_shareable_backtest_metadata():
     assert record["sample_pool"] == "agents/financial/backtests/sample_pool_v1.csv"
     assert record["backtest_period"] == "2024Q1 至 2025Q4 信号，2024Q2 至 2026Q1 验证"
     assert record["result_report"] == "agents/financial/backtests/records/financial_agent_backtest_latest.md"
+
+
+def test_load_or_fetch_statements_require_cache_mode_fails_when_cache_is_incomplete(tmp_path):
+    cache_path = tmp_path / "missing_cache.json"
+    pool = [{"ticker": "000001.SZ"}]
+
+    with pytest.raises(ValueError, match="离线"):
+        load_or_fetch_statements(
+            pool,
+            cache_path,
+            max_workers=1,
+            require_cache=True,
+        )
 
 
 def test_actual_direction_treats_loss_narrowing_as_bullish():
