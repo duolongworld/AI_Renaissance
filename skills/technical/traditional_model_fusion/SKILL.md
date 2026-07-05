@@ -1,5 +1,6 @@
 ---
 name: traditional-model-fusion
+domain: technical
 description: 对个股、指数、ETF 或 OHLCV CSV 运行专家二组“四模型传统技术指标融合”分析。使用本工程的 fusion_traditional_models Python 程序只生成可复核 JSON 结果，再由大模型读取 JSON 并按中文模板生成融合结果解读报告。适用于用户要求测试股票、输出融合信号、解释四模型结果、生成技术面融合结果解读报告的场景。
 ---
 

@@ -21,6 +21,22 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Check whitespace
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          if [ -n "$BASE_REF" ]; then
+            git fetch --no-tags --prune origin "$BASE_REF"
+            git diff --check FETCH_HEAD...HEAD
+          elif [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+            git diff --check "$BEFORE_SHA" HEAD
+          else
+            git diff --check HEAD^ HEAD
+          fi
 
       - name: Set up Python
         uses: actions/setup-python@v6

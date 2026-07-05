@@ -1,5 +1,6 @@
 ---
 name: industrial_sentinel
+domain: industry
 description: |
   产业链中观分析框架。三维度独立展示：产业链景气度、产业链拐点、产业链生命周期。
   基于项目数据层注入的财报数据与行业数据，输出可溯源的结构化分析。
