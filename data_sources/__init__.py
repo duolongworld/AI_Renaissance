@@ -13,6 +13,7 @@ from .eastmoney_guba import EastMoneyGubaDataSource
 from .market_sentiment import MarketSentimentDataSource
 from .industry_sentiment import IndustrySentimentDataSource
 from .community_sentiment import CommunitySentimentDataSource
+from .tushare_source import TushareDataSource
 from .keywords import BULLISH_KEYWORDS, BEARISH_KEYWORDS, calc_sentiment_ratio
 
 __all__ = [
@@ -24,6 +25,7 @@ __all__ = [
     "MarketSentimentDataSource",
     "IndustrySentimentDataSource",
     "CommunitySentimentDataSource",
+    "TushareDataSource",
     "BULLISH_KEYWORDS",
     "BEARISH_KEYWORDS",
     "calc_sentiment_ratio",
