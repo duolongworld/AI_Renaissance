@@ -355,3 +355,5 @@ AIRenaissance/
 ---
 
 > **AI Renaissance — Trend as Leverage, Signal as Pulse, Cognition as Wealth.**
+
+Claude Desktop 本地开发流程测试
