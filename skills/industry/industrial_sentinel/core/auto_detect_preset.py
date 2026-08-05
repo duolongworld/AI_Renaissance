@@ -21,7 +21,7 @@ def _normalize_a_stock_code(code: str) -> str:
     """将纯数字 A 股代码补全为 'CODE.EXCHANGE' 格式。
 
     规则：
-      - 已有 .SH/.SZ/.BJ/.HK 后缀 → 原样返回
+      - 已有 .SH/.SZ/.BJ/.HK/.US 后缀 → 原样返回
       - 688xxx       → .SH (科创板)
       - 600/601/603/605xxx → .SH (上海主板)
       - 000-003xxx   → .SZ (深圳主板/中小板)
@@ -32,7 +32,7 @@ def _normalize_a_stock_code(code: str) -> str:
     code = code.strip().upper()
     if not code:
         return code
-    if any(code.endswith(sfx) for sfx in (".SH", ".SZ", ".BJ", ".HK")):
+    if any(code.endswith(sfx) for sfx in (".SH", ".SZ", ".BJ", ".HK", ".US")):
         return code
 
     # 尝试按前缀规则补全
@@ -75,7 +75,7 @@ def _lookup_code(code: str, mapping: dict) -> Optional[str]:
 def _is_stock_code(s: str) -> bool:
     """判断输入是否为股票代码（而非名称）。"""
     s = s.strip()
-    if any(s.endswith(sfx) for sfx in (".SH", ".SZ", ".BJ", ".HK")):
+    if any(s.upper().endswith(sfx) for sfx in (".SH", ".SZ", ".BJ", ".HK", ".US")):
         return True
     digits = "".join(c for c in s if c.isdigit())
     return len(digits) >= 6
@@ -84,6 +84,7 @@ def _is_stock_code(s: str) -> bool:
 STOCK_NAME_TO_CODE = {
     "中芯国际": "688981.SH", "中微公司": "688012.SH", "北方华创": "002371.SZ",
     "澜起科技": "688008.SH", "寒武纪": "688256.SH", "海光信息": "688041.SH",
+    "卓胜微": "300782.SZ",
     "芯原股份": "688521.SH", "通富微电": "002156.SZ", "长电科技": "600584.SH",
     "华虹半导体": "688347.SH", "沪硅产业": "688126.SH", "江丰电子": "300666.SZ",
     "深南电路": "002916.SZ", "生益科技": "600183.SH", "东山精密": "002384.SZ",
@@ -106,7 +107,8 @@ STOCK_NAME_TO_CODE = {
     "绿的谐波": "688017.SH", "拓普集团": "601689.SH", "三花智控": "002050.SZ",
     "双环传动": "002472.SZ", "鸣志电器": "603728.SH", "柯力传感": "603662.SH",
     "奥比中光": "688322.SH", "石头科技": "688169.SH",
-    "云南锗业": "002428.SZ", "罗博特科": "300757.SZ", "菲利华": "300395.SZ",
+    "云南锗业": "002428.SZ", "三安光电": "600703.SH", "AXTI": "AXTI.US",
+    "罗博特科": "300757.SZ", "菲利华": "300395.SZ",
     "东田微": "301116.SZ", "永鼎股份": "600105.SH", "模塑科技": "000700.SZ",
     "埃斯顿": "002747.SZ", "步科股份": "688160.SH", "中大力德": "002896.SZ",
     "佰维存储": "688525.SH", "东芯股份": "688110.SH",
@@ -128,6 +130,13 @@ def _resolve_input(stock_code: str) -> str:
         if s_clean in name or name in s_clean:
             return code
     return _normalize_a_stock_code(s.upper())
+
+
+def resolve_stock_identity(value: str) -> tuple[str, str]:
+    """Return the canonical local stock code and best-known Chinese name."""
+    code = _resolve_input(value)
+    reverse_names = {stock_code: name for name, stock_code in STOCK_NAME_TO_CODE.items()}
+    return code, reverse_names.get(code, value)
 
 
 # 导入名称关键词 → preset 路由映射
@@ -157,6 +166,7 @@ LOCAL_PRESET_ROUTING_MAP = {
     "688126.SH": "ai-chip",            # 沪硅产业
     "300666.SZ": "ai-chip",            # 江丰电子
     "603019.SH": "ai-chip",            # 中科曙光
+    "300782.SZ": "ai-chip",            # 卓胜微（射频前端/模拟芯片，P0 先归入 ai-chip）
 
     # ── L2 存储 (2) ──
     "688525.SH": "storage",            # 佰维存储
@@ -169,6 +179,8 @@ LOCAL_PRESET_ROUTING_MAP = {
     "002281.SZ": "optical-module",     # 光迅科技
     "688313.SH": "optical-module",     # 仕佳光子
     "002428.SZ": "optical-module",     # 云南锗业
+    "600703.SH": "optical-module",     # 三安光电（化合物半导体/光通信相关）
+    "AXTI.US": "optical-module",       # AXT（化合物半导体衬底）
     "688205.SH": "optical-module",     # 德科立
     "688498.SH": "optical-module",     # 源杰科技
     "688048.SH": "optical-module",     # 长光华芯

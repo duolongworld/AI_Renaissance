@@ -1,0 +1,128 @@
+{
+  "schema_version": "industry-fundamental-evidence/0.1",
+  "collection_mode": "curated_web",
+  "fetched_at": "2026-07-14T10:30:00+08:00",
+  "fixed_queries": [
+    {
+      "query_id": "caict_mobile_shipments_monthly",
+      "query": "site:caict.ac.cn 中国手机市场运行分析报告 2026年5月 出货量",
+      "purpose": "RF前端终端需求温度计及5G结构背景"
+    },
+    {
+      "query_id": "wsts_analog_market_forecast",
+      "query": "site:wsts.org Spring 2026 semiconductor forecast Analog 2025 2026",
+      "purpose": "模拟芯片市场中轴验证"
+    }
+  ],
+  "preflight": {
+    "status": "passed",
+    "reference_date": "2026-07-14",
+    "checks": [
+      {"name": "time_anchor_fixed", "passed": true},
+      {"name": "query_list_fixed_before_collection", "passed": true},
+      {"name": "official_primary_sources_only", "passed": true},
+      {"name": "profile_and_peer_group_bound", "passed": true},
+      {"name": "comparison_operands_present", "passed": true}
+    ]
+  },
+  "profiles": {
+    "rf_frontend_analog_meso": {
+      "target_peer_group": "rf_frontend_analog",
+      "as_of_date": "2026-06-25",
+      "industry_signals": {
+        "industry_end_demand_growth": 16.5,
+        "industry_market_growth": 10.2,
+        "industry_5g_shipment_share": 94.9
+      },
+      "evidence": [
+        {
+          "evidence_id": "caict_2026_05_mobile_shipments_yoy",
+          "fact_key": "rf_end_demand_growth_acceleration",
+          "fact_type": "industry_statistic",
+          "field_path": "industry_signals.industry_end_demand_growth",
+          "scope": "industry",
+          "company_code": "INDUSTRY:CN_MOBILE_PHONE",
+          "report_period": "2026-05-31",
+          "previous_report_period": "2026-04-30",
+          "report_periods": ["2026-05-31", "2026-04-30"],
+          "as_of_date": "2026-06-25",
+          "fetched_at": "2026-07-14T10:30:00+08:00",
+          "provider": "CAICT",
+          "source_type": "official_industry_statistics",
+          "source_level": "L1",
+          "source_title": "China Mobile Phone Market Analysis Report – May 2026",
+          "source_url": "https://gma.caict.ac.cn/en/plat/news/caict-release-china-mobile-phone-market-analysis-report-may-2026",
+          "comparison_source_url": "https://gma.caict.ac.cn/plat/news/caict-release-china-mobile-phone-market-analysis-report-april-2026",
+          "query_ref": "caict_mobile_shipments_monthly",
+          "raw_fields": ["may_total_shipments_yoy_pct", "april_total_shipments_yoy_pct"],
+          "raw_values": {"may_total_shipments_yoy_pct": 16.5, "april_total_shipments_yoy_pct": 2.8},
+          "comparison_operands": {"current": 16.5, "previous": 2.8},
+          "derivation_method": "比较信通院连续两个月国内手机总出货量同比增速；只判断终端需求加速度。",
+          "aggregation_method": "official_monthly_total",
+          "limitation": "手机总出货量是射频前端下游需求代理，不等同于射频前端收入或订单。"
+        },
+        {
+          "evidence_id": "wsts_2026_spring_analog_growth",
+          "fact_key": "analog_semiconductor_market_growth",
+          "fact_type": "industry_forecast",
+          "field_path": "industry_signals.industry_market_growth",
+          "scope": "industry",
+          "company_code": "INDUSTRY:GLOBAL_ANALOG_SEMICONDUCTOR",
+          "report_period": "2026-12-31",
+          "previous_report_period": "2025-12-31",
+          "report_periods": ["2026-12-31", "2025-12-31"],
+          "as_of_date": "2026-06-02",
+          "fetched_at": "2026-07-14T10:30:00+08:00",
+          "provider": "WSTS",
+          "source_type": "official_industry_association_forecast",
+          "source_level": "L1",
+          "source_title": "WSTS Semiconductor Market Forecast Spring 2026",
+          "source_url": "https://www.wsts.org/esraCMS/extension/media/f/WST/7618/WSTS_FC-Release-2026-May.pdf",
+          "query_ref": "wsts_analog_market_forecast",
+          "raw_fields": ["analog_growth_2026_forecast_pct", "analog_growth_2025_pct", "analog_market_2026_usd_bn", "analog_market_2025_usd_bn"],
+          "raw_values": {"analog_growth_2026_forecast_pct": 10.2, "analog_growth_2025_pct": 8.7, "analog_market_2026_usd_bn": 95.358, "analog_market_2025_usd_bn": 86.519},
+          "comparison_operands": {"current": 10.2, "previous": 8.7},
+          "derivation_method": "比较WSTS春季预测表中2026年与2025年Analog品类市场增速。",
+          "aggregation_method": "official_global_product_category",
+          "limitation": "Analog品类宽于射频前端，且2026年为预测值；只能作为中轴交叉验证。"
+        },
+        {
+          "evidence_id": "caict_2026_03_05_5g_share",
+          "fact_key": "mobile_5g_shipment_mix",
+          "fact_type": "industry_statistic",
+          "field_path": "industry_signals.industry_5g_shipment_share",
+          "scope": "industry",
+          "company_code": "INDUSTRY:CN_MOBILE_PHONE",
+          "report_period": "2026-05-31",
+          "previous_report_period": "2026-04-30",
+          "report_periods": ["2026-05-31", "2026-04-30", "2026-03-31"],
+          "as_of_date": "2026-06-25",
+          "fetched_at": "2026-07-14T10:30:00+08:00",
+          "provider": "CAICT",
+          "source_type": "official_industry_statistics",
+          "source_level": "L1",
+          "source_title": "China Mobile Phone Market Analysis Reports – March to May 2026",
+          "source_url": "https://gma.caict.ac.cn/en/plat/news/caict-release-china-mobile-phone-market-analysis-report-may-2026",
+          "comparison_source_url": "https://gma.caict.ac.cn/plat/news/caict-release-china-mobile-phone-market-analysis-report-april-2026",
+          "supporting_source_urls": [
+            "https://gma.caict.ac.cn/en/plat/news/caict-release-china-mobile-phone-market-analysis-report-march-2026",
+            "https://gma.caict.ac.cn/plat/news/caict-release-china-mobile-phone-market-analysis-report-april-2026"
+          ],
+          "query_ref": "caict_mobile_shipments_monthly",
+          "raw_fields": ["may_5g_share_pct", "april_5g_share_pct", "march_5g_share_pct"],
+          "raw_values": {"may_5g_share_pct": 94.9, "april_5g_share_pct": 96.1, "march_5g_share_pct": 93.0},
+          "comparison_operands": {"current": 94.9, "previous": 96.1},
+          "derivation_method": "记录连续三个月5G手机出货占比，仅作为技术结构背景。",
+          "aggregation_method": "official_monthly_total",
+          "limitation": "5G出货占比已处高位且月度波动，不能代替射频前端产业生命周期判定。"
+        }
+      ],
+      "needs_data": [
+        {
+          "field_path": "industry_signals.rf_frontend_revenue_or_orders",
+          "reason": "尚缺射频前端精确口径的行业收入、订单或库存序列；当前使用手机终端需求与Analog大类交叉验证，需人工关注代理口径。"
+        }
+      ]
+    }
+  }
+}

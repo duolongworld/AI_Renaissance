@@ -16,8 +16,9 @@ import logging
 import re
 import sys
 from datetime import datetime
+from html import escape
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Mapping, Optional
 
 # ── 日志 ──
 logging.basicConfig(
@@ -151,19 +152,20 @@ def _first_present(source: Dict[str, Any], keys: List[str]) -> Any:
 
 
 def _build_system_a_signals(real_data: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    """构造 System A 输入：行业级信号优先，同业篮子其次，扁平字段仅兼容兜底。"""
+    """构造 System A 输入：只接受已通过准入的行业或同业代理信号。
+
+    ``company_signals`` / ``real_signals`` 属于 System B。即使行业数据
+    完全缺失，也禁止把单家公司财务回退成行业信号。
+    """
     if not real_data:
         return {}
 
     industry = real_data.get("industry_signals") or {}
     peer = real_data.get("peer_basket_signals") or {}
-    flat_signals = real_data.get("real_signals") or {}
     if not isinstance(industry, dict):
         industry = {"qualitative_signals": industry}
     if not isinstance(peer, dict):
         peer = {}
-    if not isinstance(flat_signals, dict):
-        flat_signals = {}
 
     result: Dict[str, Any] = {}
     scopes: Dict[str, str] = {}
@@ -193,23 +195,15 @@ def _build_system_a_signals(real_data: Optional[Dict[str, Any]]) -> Dict[str, An
 
     put("revenue_growth", peer, ["revenue_growth_median", "peer_revenue_growth_median"], "peer_basket")
     put("gross_margin", peer, ["gross_margin_median", "peer_gross_margin_median"], "peer_basket")
+    put("order_backlog", peer, ["contract_liability_growth_qoq_median", "contract_liability_growth_yoy_median", "contract_liability_growth_median"], "peer_basket")
     put("inventory_days", peer, ["inventory_days_median", "peer_inventory_days_median"], "peer_basket")
-    put("capex_plan", peer, ["capex_trend", "capex_growth_median"], "peer_basket")
+    put("capex_plan", peer, ["capex_trend", "capex_growth_median", "construction_in_progress_growth_median"], "peer_basket")
 
     for key in ("inflection_signals", "lifecycle_signals", "qualitative_signals"):
         value = industry.get(key)
         if value:
             result[key] = value
             scopes[key] = "industry"
-
-    core_fields = ["revenue_growth", "order_backlog", "capacity_utilization", "price_yoy", "inventory_days", "capex_plan"]
-    if not any(result.get(field) is not None for field in core_fields):
-        for key, value in flat_signals.items():
-            if value not in (None, "", "数据缺失", "待补充"):
-                result[key] = value
-                scopes[key] = "flat_company_fallback"
-        if flat_signals:
-            result["_system_a_warning"] = "System A 使用扁平 real_signals 兼容路径；建议补充 industry_signals 或 peer_basket_signals。"
 
     result["_signal_scope"] = scopes
     return result
@@ -754,7 +748,507 @@ def _build_chain_cards(preset_data, chain_position: str, industry_name: str) -> 
     return "\n".join(html_parts)
 
 # ═══════════════════════════════════════════════════════════════
-# Step 6: HTML 生成
+# Structured System A → System B → A×B report renderer
+# ═══════════════════════════════════════════════════════════════
+
+_STRUCTURED_REPORT_CSS = """
+*{box-sizing:border-box}:root{--ink:#152235;--muted:#65758a;--paper:#f3f6f8;--panel:#fff;--line:#d9e1e8;--blue:#1d5f8a;--cyan:#0f7b83;--amber:#b46a17;--red:#a83f4a;--wash:#eaf1f5;--mono:"SFMono-Regular",Consolas,monospace}
+html{scroll-behavior:smooth;overflow-x:hidden}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.65 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;overflow-wrap:anywhere}a{color:var(--blue)}a:focus-visible,summary:focus-visible{outline:3px solid #f0a647;outline-offset:3px}.wrap{max-width:1180px;margin:auto;padding:24px 28px 64px}.hero{position:relative;overflow:hidden;padding:34px;border-radius:22px;color:#fff;background:linear-gradient(125deg,#112f49,#175a70 58%,#0b7774);box-shadow:0 18px 44px rgba(28,62,84,.17)}.hero:after{content:"";position:absolute;right:-70px;top:-110px;width:330px;height:330px;border:50px solid rgba(255,255,255,.08);border-radius:50%}.hero>*{position:relative;z-index:1}.hero h1{margin:8px 0;font-size:clamp(30px,5vw,54px);line-height:1.06;letter-spacing:-.045em}.hero p{max-width:760px;margin:0;color:#d7e7ee}.meta-line{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}.tag{display:inline-flex;padding:4px 9px;border-radius:999px;background:#e6edf2;color:#40566a;font:700 11px/1.4 var(--mono)}.hero .tag{background:rgba(255,255,255,.14);color:#fff}.section{margin-top:18px;padding:24px 26px;background:var(--panel);border:1px solid var(--line);border-radius:17px}.section h2{margin:0 0 14px;font-size:20px;letter-spacing:-.02em}.section h3{margin:0 0 8px;font-size:14px}.kicker{font:700 11px/1.3 var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}.thesis{font-size:19px;line-height:1.55;max-width:900px;margin:0}.chain,.dashboard,.cards,.two{display:grid;gap:12px}.chain{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}.chain-card,.card,.mini{border:1px solid var(--line);border-radius:12px;padding:15px;background:#fbfcfd}.chain-card dl,.mini dl{display:grid;grid-template-columns:92px 1fr;gap:5px 9px;margin:10px 0 0}.chain-card dt,.mini dt{color:var(--muted)}.chain-card dd,.mini dd{margin:0}.dashboard{grid-template-columns:1fr 1fr}.dial{position:relative;min-height:190px;padding:18px;border:1px solid var(--line);border-radius:15px;background:linear-gradient(180deg,#fbfdfe,#f4f8fa);overflow:hidden}.dial:after{content:"";position:absolute;width:130px;height:130px;right:-26px;bottom:-44px;border:22px solid var(--accent,var(--blue));border-radius:50%;opacity:.16}.dial strong{display:block;margin:22px 0 7px;font-size:30px;letter-spacing:-.04em}.dial.a1{--accent:var(--blue)}.dial.a2{--accent:var(--amber)}.lifecycle{margin-top:10px;padding:10px 13px;border-left:4px solid var(--cyan);background:#edf7f7}.cards{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}.card strong{display:block;margin:5px 0}.two{grid-template-columns:1fr 1fr}.callout{padding:16px 18px;border-left:5px solid var(--amber);background:#fff7e9;border-radius:9px}.risk{border-left-color:var(--red);background:#fff1f3}.clean{margin:0;padding-left:19px}.clean li+li{margin-top:7px}.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}table{width:100%;border-collapse:collapse;min-width:720px}th,td{padding:10px 11px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}th{background:#edf3f6;color:#536779;font:700 11px var(--mono)}tr:last-child td{border-bottom:0}.mobile-ledger{display:none}.muted{color:var(--muted)}.status{font-weight:750}.footer{padding:25px 2px;color:var(--muted);font-size:12px}
+@media(max-width:700px){.wrap{padding:12px 11px 42px}.hero{padding:25px 20px;border-radius:17px}.section{padding:19px 17px}.dashboard,.two{grid-template-columns:1fr}.dial{min-height:150px}.chain,.cards{grid-template-columns:1fr}.table-wrap{display:none}.mobile-ledger{display:grid;gap:9px}.mobile-ledger .mini dl{grid-template-columns:80px 1fr}.thesis{font-size:17px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+@media print{body{background:#fff}.wrap{max-width:none;padding:0}.hero,.section{box-shadow:none;break-inside:avoid}}
+"""
+
+
+def _safe_report_value(value: Any) -> str:
+    if value in (None, "", [], {}):
+        return "待补"
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False, default=str)
+    return str(value)
+
+
+def _legacy_report_payload(
+    stock_info: Mapping[str, Any],
+    real_data: Optional[Mapping[str, Any]],
+    lifecycle: Mapping[str, Any],
+    inflection: Mapping[str, Any],
+    system_b: Mapping[str, Any],
+    chain_summary: Optional[List[Mapping[str, Any]]] = None,
+    *,
+    framework_only: bool = False,
+) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    """Adapt the legacy CLI values to the structured report contract.
+
+    ``run_pipeline`` predates the packet runtime and still computes a few
+    values directly.  The report renderer, however, deliberately has one
+    self-contained input contract.  Keeping this adapter local to the CLI
+    lets both the framework-degraded and data-backed paths use the same
+    renderer without making the legacy template a second report source.
+    """
+    data = dict(real_data or {})
+    product_map = [
+        dict(item)
+        for item in data.get("product_industry_map") or []
+        if isinstance(item, Mapping)
+    ]
+    evidence = [
+        dict(item)
+        for item in data.get("evidence") or []
+        if isinstance(item, Mapping)
+    ]
+    # Some older JSON fixtures only expose ``industry_data`` rows.  Preserve
+    # those facts as evidence rather than silently dropping them from the new
+    # report's traceability ledger.
+    for index, row in enumerate(data.get("industry_data") or [], 1):
+        if not isinstance(row, Mapping):
+            continue
+        field = str(
+            row.get("field_path")
+            or row.get("indicator")
+            or row.get("metric")
+            or f"industry_data.{index}"
+        )
+        evidence.append(
+            {
+                "field_path": field,
+                "scope": "industry",
+                "value": row.get("value") or row.get("raw_value"),
+                "report_period": row.get("report_period") or row.get("date"),
+                "as_of_date": row.get("as_of_date") or row.get("date"),
+                "source_type": row.get("source_type") or "industry_data",
+                "source_title": row.get("source_title") or row.get("source") or "来源待补",
+            }
+        )
+
+    target = {
+        "stock_code": stock_info.get("stock_code"),
+        "stock_name": stock_info.get("stock_name"),
+        "industry": stock_info.get("industry") or "产业单元待补",
+        "sub_sector": stock_info.get("sub_industry") or "",
+        "preset": stock_info.get("preset") or "generic",
+        "input_type": "stock_code",
+    }
+    as_of_date = (
+        data.get("as_of_date")
+        or data.get("generated_at")
+        or datetime.now().strftime("%Y-%m-%d")
+    )
+    packet: Dict[str, Any] = {
+        "schema_version": "industry-data/0.2",
+        "target": target,
+        "industry_signals": dict(data.get("industry_signals") or {}),
+        "peer_basket_signals": dict(data.get("peer_basket_signals") or {}),
+        "peer_basket_meta": dict(data.get("peer_basket_meta") or {}),
+        "company_signals": dict(data.get("company_signals") or data.get("real_signals") or {}),
+        "product_industry_map": product_map,
+        "valuation_context": dict(data.get("valuation_context") or {}),
+        "market_context": dict(data.get("market_context") or {}),
+        "evidence": evidence,
+        "needs_data": list(data.get("needs_data") or []),
+        "as_of_date": as_of_date,
+        "source_mode": "framework_only" if framework_only else str(data.get("source_mode") or "project"),
+        "chain_summary": [dict(item) for item in (chain_summary or []) if isinstance(item, Mapping)],
+    }
+    if framework_only:
+        packet["framework_only"] = True
+
+    admitted_system_a = dict(data.get("system_a") or {})
+    system_a_usable = bool(admitted_system_a.get("usable")) and not framework_only
+
+    def admitted_dimension(name: str) -> Dict[str, Any]:
+        value = admitted_system_a.get(name)
+        if system_a_usable and isinstance(value, Mapping) and value.get("label"):
+            return dict(value)
+        return {"state": "undetermined", "label": "待判定", "evidence_refs": []}
+
+    system_a = {
+        "readiness": (
+            admitted_system_a.get("readiness")
+            if system_a_usable
+            else "framework_only"
+        ),
+        "usable": system_a_usable,
+        "prosperity": admitted_dimension("prosperity"),
+        "inflection": admitted_dimension("inflection"),
+        "lifecycle": admitted_dimension("lifecycle"),
+    }
+    business_exposure = product_map
+    valuation = dict(data.get("valuation_context") or {})
+    stock_code = str(target.get("stock_code") or "").upper()
+    stock_name = str(target.get("stock_name") or "")
+    try:
+        from core.auto_detect_preset import _is_stock_code, resolve_stock_identity
+
+        resolved_code, _ = resolve_stock_identity(stock_code or stock_name)
+        recognized_company = _is_stock_code(stock_code) or _is_stock_code(resolved_code)
+    except (ImportError, ValueError, TypeError):
+        # Fail closed to the legacy A-share form if the local identity helper
+        # cannot be loaded; company facts below can still select System B.
+        recognized_company = bool(
+            re.fullmatch(r"(?:SH|SZ|BJ)?\d{6}(?:\.(?:SH|SZ|BJ))?", stock_code)
+        )
+    company_branch = bool(
+        recognized_company
+        or packet["company_signals"]
+        or product_map
+    )
+    system_b_output = {
+        "stock_type": system_b.get("type") or system_b.get("stock_type") or "未判定",
+        "core_contradiction": system_b.get("description") or "公司级财务输入待补。",
+        "business_exposure": business_exposure,
+        "revenue_driver": valuation.get("revenue_driver") or "未取得分业务收入主线证据",
+        "profit_driver": valuation.get("profit_driver") or "未取得分业务利润主线证据",
+        "valuation_driver": valuation.get("valuation_driver") or "证据不足",
+        "risks": ["框架降级：缺少可验证的行业与公司数据。"] if framework_only else [],
+        "next_confirmation": valuation.get("next_confirmation") or "补充行业证据与分业务兑现数据。",
+    }
+    if not company_branch:
+        summary = "行业分支仅运行 System A；当前缺少通过准入的行业证据。"
+    elif framework_only:
+        summary = "资料状态：框架降级，System A 与 System B 均待补。"
+    elif business_exposure:
+        summary = (
+            f"产业景气为{system_a['prosperity']['label']}、拐点为{system_a['inflection']['label']}；"
+            f"已建立{len(business_exposure)}项产品—产业回指，仍需验证收入、利润与定价兑现。"
+        )
+    else:
+        summary = "行业判断已生成，但产品—产业回指与公司兑现证据仍待补。"
+    combined = {
+        "status": "insufficient_data" if framework_only else "partial",
+        "summary": summary,
+        "short_status": (
+            "行业分支 · System A 待补"
+            if not company_branch
+            else "框架降级 · 待补行业与公司证据"
+            if framework_only
+            else f"System A {system_a['prosperity']['label']} · {system_a['inflection']['label']}"
+        ),
+        "business_crosswalk": [],
+        "next_confirmation": system_b_output["next_confirmation"],
+        "invalidation": "补齐数据前不得形成方向性结论。" if framework_only else "核心行业指标反转或公司兑现未达预期。",
+    }
+    result = {
+        "direction": "neutral" if framework_only else "unknown",
+        "confidence": 0.2 if framework_only else 0.25,
+        "reasoning": summary,
+        "meta": {
+            "output_version": "0.3",
+            "readiness": "framework_only" if framework_only else "legacy",
+            "stock_name": target["stock_name"],
+            "stock_code": target["stock_code"],
+            "industry": target["industry"],
+            "source_mode": packet["source_mode"],
+            "as_of_date": as_of_date,
+            "evidence": evidence,
+            "needs_data": bool(framework_only or packet["needs_data"]),
+            "system_b_ready": bool(company_branch and not framework_only and packet["company_signals"]),
+            "company_branch": company_branch,
+            "product_industry_map": product_map,
+            "system_a": system_a,
+            "system_b": system_b_output,
+            "combined_conclusion": combined,
+            "chain_summary": packet["chain_summary"],
+            "report_quality": {
+                "content_map_checked": False,
+                "attempts": 0,
+                "quality_check_attempts": 0,
+                "refinement_attempts": 0,
+                "max_refinement_attempts": 1,
+                "issues_before": [],
+                "issues_after": [],
+                "unresolved": [],
+            },
+        },
+    }
+    return packet, result
+
+
+def _report_source(evidence: Mapping[str, Any]) -> str:
+    title = escape(str(
+        evidence.get("source_title")
+        or evidence.get("source_name")
+        or evidence.get("source_type")
+        or "来源待补"
+    ))
+    url = str(evidence.get("source_url") or "")
+    if url.startswith(("https://", "http://")):
+        return (
+            f'<a href="{escape(url, quote=True)}" target="_blank" '
+            f'rel="noopener noreferrer">{title}</a>'
+        )
+    return title
+
+
+def render_analysis_report(
+    packet: Mapping[str, Any],
+    skill_result: Mapping[str, Any],
+    generated_at: Optional[str] = None,
+) -> str:
+    """Render one concise, self-contained System A → System B → A×B report."""
+    packet = dict(packet or {})
+    result = dict(skill_result or {})
+    meta = dict(result.get("meta") or {})
+    target = dict(packet.get("target") or {})
+    system_a = dict(meta.get("system_a") or {})
+    prosperity = dict(system_a.get("prosperity") or meta.get("cyclical_phase") or {})
+    inflection = dict(system_a.get("inflection") or meta.get("inflection_state") or {})
+    lifecycle = dict(system_a.get("lifecycle") or meta.get("structural_lifecycle") or {})
+    system_b = dict(meta.get("system_b") or {})
+    combined = dict(meta.get("combined_conclusion") or {})
+    product_map = list(
+        meta.get("product_industry_map")
+        or packet.get("product_industry_map")
+        or []
+    )
+    evidence = [
+        dict(item)
+        for item in (meta.get("evidence") or packet.get("evidence") or [])
+        if isinstance(item, Mapping)
+    ]
+    trace_nodes = [
+        dict(item)
+        for item in dict(meta.get("reasoning_trace") or {}).get("nodes") or []
+        if isinstance(item, Mapping)
+    ]
+    admitted = [
+        item for item in trace_nodes
+        if item.get("admission_status") == "admitted"
+    ][:5]
+    company_branch = (
+        bool(meta.get("company_branch"))
+        if "company_branch" in meta
+        else bool(
+            meta.get("system_b_ready")
+            or product_map
+            or system_b.get("business_exposure")
+        )
+    )
+    source_mode = str(packet.get("source_mode") or meta.get("source_mode") or "")
+    data_route = (
+        "已有资料 + WEB"
+        if any(token in source_mode for token in ("web", "curated", "live"))
+        else "已有资料" if evidence else "资料不足"
+    )
+    generated = generated_at or datetime.now().isoformat(timespec="seconds")
+    name = (
+        target.get("stock_name")
+        or meta.get("stock_name")
+        or target.get("stock_code")
+        or "行业研究"
+    )
+    industry = target.get("industry") or meta.get("industry") or "产业单元待补"
+    # The first screen owns a short state/contradiction.  The full A×B
+    # transmission summary belongs to its dedicated section below; using it
+    # here as well creates a visible duplicate claim.
+    thesis = (
+        combined.get("short_status")
+        or system_b.get("core_contradiction")
+        or f"System A：{_safe_report_value(prosperity.get('label'))} · { _safe_report_value(inflection.get('label')) }"
+        or "资料不足，暂不形成方向性结论。"
+    )
+
+    chain_summary = list(meta.get("chain_summary") or packet.get("chain_summary") or [])
+    if product_map:
+        chain_html = "".join(
+            '<article class="chain-card" data-claim-id="map-{idx}">'
+            '<span class="kicker">{unit}</span><h3>{product}</h3><dl>'
+            '<dt>公司位置</dt><dd>{position}</dd>'
+            '<dt>直接客户</dt><dd>{customer}</dd>'
+            '<dt>进入系统</dt><dd>{system}</dd>'
+            '<dt>终端需求</dt><dd>{demand}</dd>'
+            '<dt>兑现状态</dt><dd>{status}</dd></dl></article>'.format(
+                idx=index,
+                unit=escape(_safe_report_value(item.get("industry_unit"))),
+                product=escape(_safe_report_value(item.get("product"))),
+                position=escape(_safe_report_value(item.get("company_position"))),
+                customer=escape(_safe_report_value(item.get("direct_customer"))),
+                system=escape(_safe_report_value(item.get("downstream_system"))),
+                demand=escape(_safe_report_value(item.get("end_demand"))),
+                status=escape(_safe_report_value(item.get("status"))),
+            )
+            for index, item in enumerate(product_map, 1)
+        )
+    elif chain_summary:
+        layer_labels = {"upstream": "上游", "midstream": "中游", "downstream": "下游"}
+        chain_html = "".join(
+            '<article class="chain-card" data-claim-id="chain-{idx}">'
+            '<span class="kicker">{layer}</span><h3>{node}</h3><dl>'
+            '<dt>关键参与者</dt><dd>{players}</dd>'
+            '<dt>利润池</dt><dd>{profit}</dd></dl></article>'.format(
+                idx=index,
+                layer=escape(layer_labels.get(str(item.get("layer") or ""), str(item.get("layer") or "产业链"))),
+                node=escape(_safe_report_value(item.get("node"))),
+                players=escape(_safe_report_value(", ".join(item.get("key_players") or []))),
+                profit=escape(_safe_report_value(item.get("profit_pool"))),
+            )
+            for index, item in enumerate(chain_summary, 1)
+            if isinstance(item, Mapping)
+        )
+    else:
+        chain_html = (
+            '<article class="chain-card"><span class="kicker">待补</span>'
+            '<h3>产品—产业地图尚未建立</h3><p class="muted">'
+            "需补产品功能、公司层级、直接客户、下游系统与终端需求。</p></article>"
+        )
+
+    signal_cards = "".join(
+        '<article class="card" data-claim-id="signal-{idx}">'
+        '<span class="kicker">{role}</span><strong>{indicator}</strong>'
+        '<span class="status">{observation}</span>'
+        '<p class="muted">{period} · {source}</p></article>'.format(
+            idx=index,
+            role=escape(str(item.get("role_name") or item.get("role") or "证据")),
+            indicator=escape(str(
+                item.get("indicator_id")
+                or item.get("field_path")
+                or "待补"
+            )),
+            observation=escape(str(item.get("observation") or "unknown")),
+            period=escape(str(
+                item.get("report_period")
+                or item.get("as_of_date")
+                or "日期待补"
+            )),
+            source=escape(str(
+                item.get("source_title")
+                or item.get("source_type")
+                or "来源待补"
+            )),
+        )
+        for index, item in enumerate(admitted, 1)
+    ) or (
+        '<article class="card"><strong>决定性行业证据待补</strong>'
+        '<p class="muted">当前只展示准入后的证据；公司材料不能替代行业证据。</p></article>'
+    )
+
+    unit_views = dict(
+        meta.get("system_a_by_industry_unit")
+        or meta.get("system_a_views")
+        or {}
+    )
+    unit_cards = "".join(
+        f'<article class="card" data-claim-id="unit-a-{index}">'
+        f'<span class="kicker">{escape(str(unit_name))}</span>'
+        f'<strong>{escape(_safe_report_value(dict(view.get("prosperity") or {}).get("label")))}</strong>'
+        f'<p class="muted">拐点：{escape(_safe_report_value(dict(view.get("inflection") or {}).get("label")))} · '
+        f'生命周期：{escape(_safe_report_value(dict(view.get("lifecycle") or {}).get("label")))}</p>'
+        f'<p class="muted">{escape(_safe_report_value(view.get("reason") or view.get("readiness")))}</p>'
+        '</article>'
+        for index, (unit_name, view) in enumerate(unit_views.items(), 1)
+        if isinstance(view, Mapping)
+    )
+    unit_section = (
+        f'<section class="section" id="industry-unit-system-a"><span class="kicker">System A · per industry unit</span>'
+        f'<h2>逐产业单元判断</h2><div class="cards">{unit_cards}</div></section>'
+        if unit_cards
+        else ""
+    )
+
+    table_rows: List[str] = []
+    mobile_rows: List[str] = []
+    for index, item in enumerate(evidence, 1):
+        field = str(
+            item.get("field_path")
+            or item.get("claim_or_metric")
+            or f"evidence-{index}"
+        )
+        period = (
+            item.get("report_period")
+            or item.get("period")
+            or item.get("as_of_date")
+            or "待补"
+        )
+        value = (
+            item.get("value")
+            if item.get("value") not in (None, "")
+            else item.get("raw_values")
+        )
+        scope = (
+            item.get("scope")
+            or (field.split(".", 1)[0] if "." in field else "unknown")
+        )
+        source = _report_source(item)
+        table_rows.append(
+            f"<tr><td><code>{escape(field)}</code></td>"
+            f"<td>{escape(_safe_report_value(period))}</td>"
+            f"<td>{escape(_safe_report_value(value))}</td>"
+            f"<td>{escape(_safe_report_value(scope))}</td><td>{source}</td></tr>"
+        )
+        mobile_rows.append(
+            f'<article class="mini"><strong>{escape(field)}</strong><dl>'
+            f'<dt>期间</dt><dd>{escape(_safe_report_value(period))}</dd>'
+            f'<dt>值/口径</dt><dd>{escape(_safe_report_value(value))}</dd>'
+            f'<dt>作用域</dt><dd>{escape(_safe_report_value(scope))}</dd>'
+            f"<dt>来源</dt><dd>{source}</dd></dl></article>"
+        )
+    if not table_rows:
+        table_rows.append(
+            '<tr><td colspan="5">待补：关键证据、来源定位与时效。</td></tr>'
+        )
+        mobile_rows.append(
+            '<article class="mini">待补：关键证据、来源定位与时效。</article>'
+        )
+
+    risks = list(dict.fromkeys(
+        list(system_b.get("risks") or [])
+        + list(meta.get("uncertainties") or [])
+    ))
+    risks_html = "".join(
+        f"<li>{escape(str(item))}</li>" for item in risks[:8]
+    ) or "<li>暂无已验证风险；不等于无风险。</li>"
+
+    company_html = ""
+    if company_branch:
+        exposure = list(system_b.get("business_exposure") or [])
+        exposure_html = "".join(
+            f'<article class="mini"><strong>'
+            f'{escape(_safe_report_value(item.get("product")))}</strong><p>'
+            f'{escape(_safe_report_value(item.get("industry_unit")))} · '
+            f'{escape(_safe_report_value(item.get("status")))}</p></article>'
+            for item in exposure
+        ) or (
+            '<article class="mini">待补产品—产业回指，'
+            "System B 不向 System A 反向填数。</article>"
+        )
+        crosswalk = list(combined.get("business_crosswalk") or [])
+        crosswalk_html = "".join(
+            f'<article class="mini" data-claim-id="crosswalk-{index}"><strong>'
+            f'{escape(_safe_report_value(item.get("industry_unit")))}</strong><p>'
+            f'{escape(_safe_report_value(item.get("product")))} · '
+            f'A景气：{escape(_safe_report_value(item.get("prosperity")))} · '
+            f'A拐点：{escape(_safe_report_value(item.get("inflection")))}</p><p>'
+            f'{escape(_safe_report_value(item.get("transmission_status")))}</p></article>'
+            for index, item in enumerate(crosswalk, 1)
+            if isinstance(item, Mapping)
+        ) or '<article class="mini">待补逐产业单元 A×B 回指。</article>'
+        company_html = f"""
+<section class="section" id="system-b"><span class="kicker">System B · Company</span><h2>公司暴露与兑现</h2><div class="two"><div><h3>{escape(_safe_report_value(system_b.get("stock_type")))}</h3><p>{escape(_safe_report_value(system_b.get("core_contradiction")))}</p></div><div class="cards">{exposure_html}</div></div></section>
+<section class="section" id="valuation-drivers"><span class="kicker">Revenue ≠ Profit ≠ Valuation</span><h2>三条主线</h2><div class="cards"><article class="card"><span class="kicker">收入</span><strong>{escape(_safe_report_value(system_b.get("revenue_driver")))}</strong></article><article class="card"><span class="kicker">利润</span><strong>{escape(_safe_report_value(system_b.get("profit_driver")))}</strong></article><article class="card"><span class="kicker">市值</span><strong>{escape(_safe_report_value(system_b.get("valuation_driver")))}</strong></article></div></section>
+<section class="section" id="combined-conclusion"><span class="kicker">A × B</span><h2>传导差与错配</h2><div class="cards">{crosswalk_html}</div><p class="thesis" style="margin-top:14px">{escape(_safe_report_value(combined.get("summary")))}</p><div class="two" style="margin-top:14px"><div class="callout"><h3>下一验证</h3>{escape(_safe_report_value(combined.get("next_confirmation")))}</div><div class="callout risk"><h3>失效条件</h3>{escape(_safe_report_value(combined.get("invalidation")))}</div></div></section>"""
+
+    peer_period = str(
+        dict(packet.get("peer_basket_meta") or {}).get("report_period")
+        or "待补"
+    )
+    return f"""<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{escape(str(name))} · 产业链分析</title><style>{_STRUCTURED_REPORT_CSS}</style></head>
+<body><main class="wrap">
+<header class="hero" id="report-header"><span class="kicker" style="color:#c9e1e8">Industrial Sentinel · {escape(data_route)}</span><h1>{escape(str(name))}</h1><p>{escape(str(industry))} · 先产业、后公司、再交叉</p><div class="meta-line"><span class="tag">截至 {escape(str(packet.get("as_of_date") or "待补"))}</span><span class="tag">报告期 {escape(peer_period)}</span><span class="tag">readiness {escape(str(meta.get("readiness") or "unknown"))}</span></div></header>
+<section class="section" id="industry-thesis" data-claim-id="thesis-1"><span class="kicker">Core thesis</span><h2>结论</h2><p class="thesis">{escape(str(thesis))}</p></section>
+<section class="section" id="chain-map"><span class="kicker">Product → Industry unit</span><h2>产业链结构 · 产品—产业地图</h2><div class="chain">{chain_html}</div></section>
+<section class="section" id="system-a"><span class="kicker">System A · Industry only</span><h2>产业景气与产业链拐点</h2><div class="dashboard"><article class="dial a1" id="prosperity-dashboard" data-claim-id="a1"><span class="kicker">A1 · 现在强不强</span><strong>{escape(_safe_report_value(prosperity.get("label")))}</strong><p class="muted">只由准入后的 industry / peer 证据驱动。</p></article><article class="dial a2" id="inflection-dashboard" data-claim-id="a2"><span class="kicker">A2 · 方向是否改变</span><strong>{escape(_safe_report_value(inflection.get("label")))}</strong><p class="muted">领先与确认信号分开，不与景气度机械加权。</p></article></div><div class="lifecycle">生命周期：<strong>{escape(_safe_report_value(lifecycle.get("label")))}</strong></div></section>
+{unit_section}
+<section class="section" id="industry-signals"><span class="kicker">Decision evidence</span><h2>决定性行业证据</h2><div class="cards">{signal_cards}</div></section>
+{company_html}
+<section class="section" id="risks"><span class="kicker">Counter evidence</span><h2>风险、反证与缺口</h2><div class="callout risk"><ul class="clean">{risks_html}</ul></div></section>
+<section class="section" id="evidence-ledger"><span class="kicker">Traceability</span><h2>证据账本</h2><div class="table-wrap"><table><thead><tr><th>字段/主张</th><th>期间</th><th>值/口径</th><th>作用域</th><th>来源</th></tr></thead><tbody>{''.join(table_rows)}</tbody></table></div><div class="mobile-ledger">{''.join(mobile_rows)}</div></section>
+<footer class="footer">生成时间 {escape(generated)} · 分析截至 {escape(str(packet.get("as_of_date") or "待补"))} · 最新报告期 {escape(peer_period)} · 不构成投资建议。</footer>
+</main></body></html>"""
+
+
+# ═══════════════════════════════════════════════════════════════
+# Step 6: Legacy template HTML 生成
 # ═══════════════════════════════════════════════════════════════
 
 def render_html_report(
@@ -1046,14 +1540,16 @@ def run_pipeline(stock_code: str, real_data: Optional[Dict[str, Any]] = None, ge
 
         # 生成降级 HTML（仅在独立 CLI 模式下生成）
         if generate_html:
-            html = render_html_report(
-                stock_info=stock_info,
-                lifecycle=lifecycle,
-                inflection=inflection,
-                system_b=system_b,
-                industry_data=[],
-                chain_html=_chain_summary_to_html(chain_summary),
+            packet, result = _legacy_report_payload(
+                stock_info,
+                None,
+                lifecycle,
+                inflection,
+                system_b,
+                chain_summary,
+                framework_only=True,
             )
+            html = render_analysis_report(packet, result)
             REPORTS_DIR.mkdir(parents=True, exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             safe_code = re.sub(r"[^A-Za-z0-9]", "_", stock_code)
@@ -1156,14 +1652,16 @@ def run_pipeline(stock_code: str, real_data: Optional[Dict[str, Any]] = None, ge
 
     # Step 7: 生成 HTML（仅在独立 CLI 模式下生成，Agent 集成模式跳过）
     if generate_html:
-        html = render_html_report(
-            stock_info=stock_info,
-            lifecycle=lifecycle,
-            inflection=inflection,
-            system_b=system_b,
-            industry_data=industry_data,
-            chain_html=chain_html,
+        packet, result = _legacy_report_payload(
+            stock_info,
+            real_data,
+            lifecycle,
+            inflection,
+            system_b,
+            real_data.get("chain_summary") if isinstance(real_data, dict) else None,
+            framework_only=False,
         )
+        html = render_analysis_report(packet, result)
 
         # 保存
         REPORTS_DIR.mkdir(parents=True, exist_ok=True)

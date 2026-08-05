@@ -2,6 +2,84 @@ chain_name: optical-module-communication
 industry_name: 光模块/光通信
 tags: [光通信, 光模块, 光芯片, AI算力, 数据中心]
 
+methodology_profile:
+  version: "optical-module/0.1"
+  default_peer_group: optical_module_makers
+  stock_routes:
+    "300308.SZ": {peer_group: optical_module_makers, route_mode: preset_static, scenario: normal_business}
+    "300502.SZ": {peer_group: optical_module_makers, route_mode: preset_static, scenario: normal_business}
+  methodology_defaults: &optical_peer_financial_baseline
+    indicators:
+      barometer:
+        - {id: peer_contract_liability_growth_compat, field_path: peer_basket_signals.contract_liability_growth_median, scope: peer_basket, required: true, periods: 2, comparison: reported_period_change, source_levels: [L1]}
+        - {id: peer_contract_liability_growth_yoy, field_path: peer_basket_signals.contract_liability_growth_yoy_median, scope: peer_basket, required: false, periods: 2, comparison: same_period_yoy, source_levels: [L1]}
+        - {id: industry_order_growth, field_path: industry_signals.industry_order_growth, scope: industry, required: false, periods: 2, comparison: reported_growth, source_levels: [L1, L2], freshness_days: 90}
+      mid_axis:
+        - {id: peer_revenue_growth, field_path: peer_basket_signals.revenue_growth_median, scope: peer_basket, required: true, periods: 2, comparison: same_period_yoy, source_levels: [L1]}
+        - {id: peer_gross_margin_change, field_path: peer_basket_signals.gross_margin_change_median, scope: peer_basket, required: true, periods: 2, comparison: same_period_yoy, source_levels: [L1]}
+        - {id: industry_market_growth, field_path: industry_signals.industry_market_growth, scope: industry, required: false, periods: 2, comparison: reported_growth, source_levels: [L1, L2], freshness_days: 90}
+        - {id: industry_capacity_utilization, field_path: industry_signals.industry_capacity_utilization, scope: industry, required: false, periods: 2, comparison: level_and_trend, source_levels: [L1, L2], freshness_days: 90}
+        - {id: industry_price_yoy, field_path: industry_signals.industry_price_yoy, scope: industry, required: false, periods: 2, comparison: same_period_yoy, source_levels: [L1, L2], freshness_days: 90}
+      ebb_warning:
+        - {id: peer_inventory_days_change, field_path: peer_basket_signals.inventory_days_change_median, scope: peer_basket, required: false, periods: 2, comparison: same_period_yoy, source_levels: [L1]}
+        - {id: industry_inventory_change, field_path: industry_signals.industry_inventory_change, scope: industry, required: false, periods: 2, comparison: reported_change, source_levels: [L1, L2], freshness_days: 90}
+      structural:
+        - {id: industry_penetration_rate, field_path: industry_signals.industry_penetration_rate, scope: industry, required: false, periods: 3, comparison: long_horizon_trend, source_levels: [L1, L2], freshness_days: 450}
+    observation_windows: {minimum_periods: 2, default_freshness_days: 180}
+    thresholds: {minimum_peer_sample: 3, minimum_coverage_ratio: 0.6667, minimum_agreement_ratio: 0.6667}
+    minimum_decision_sets:
+      peer_proxy_ready: {required_indicator_ids: [peer_contract_liability_growth_compat, peer_revenue_growth], required_roles: [barometer, mid_axis]}
+      industry_ready: {required_indicator_ids: [industry_order_growth, industry_market_growth], required_roles: [barometer, mid_axis]}
+    state_transition_rules:
+      cyclical_phase:
+        fallback: undetermined
+        rules:
+          - {state: overheat, all: [{role: barometer, direction: improving, min_count: 1}, {role: mid_axis, direction: improving, min_count: 1}, {role: ebb_warning, direction: deteriorating, min_count: 1}]}
+          - {state: expansion, all: [{role: barometer, direction: improving, min_count: 1}, {role: mid_axis, direction: improving, min_count: 1}]}
+          - {state: recovery, all: [{role: barometer, direction: improving, min_count: 1}]}
+          - {state: contraction, all: [{role: mid_axis, direction: deteriorating, min_count: 1}]}
+          - {state: contraction, all: [{role: barometer, direction: deteriorating, min_count: 1}]}
+      inflection_state:
+        fallback: undetermined
+        rules:
+          - {state: confirmed, all: [{role: barometer, direction: improving, min_count: 1}, {role: mid_axis, direction: improving, min_count: 1}]}
+          - {state: downtrend_confirmed, all: [{role: barometer, direction: deteriorating, min_count: 1}, {role: mid_axis, direction: deteriorating, min_count: 1}]}
+          - {state: late, all: [{role: barometer, direction: deteriorating, min_count: 1}, {role: mid_axis, direction: improving, min_count: 1}]}
+          - {state: early, all: [{role: barometer, direction: improving, min_count: 1}]}
+      structural_lifecycle:
+        indicator_id: industry_penetration_rate
+        fallback: undetermined
+        bands:
+          - {state: introduction, max_exclusive: 10}
+          - {state: growth, min_inclusive: 10, max_exclusive: 40}
+          - {state: maturity, min_inclusive: 40}
+      signal_direction:
+        fallback: neutral
+        rules:
+          - {direction: bullish, all: [{conclusion: inflection_state, states: [early, confirmed]}, {conclusion: cyclical_phase, states: [recovery, expansion]}]}
+          - {direction: bearish, all: [{conclusion: inflection_state, states: [late, downtrend_confirmed]}]}
+          - {direction: bearish, all: [{conclusion: cyclical_phase, states: [contraction]}]}
+    source_citations: [OECD Composite Leading Indicators methodology, JPMorgan cyclical indicators framework]
+  peer_groups:
+    optical_module_makers:
+      name: 光模块制造商
+      peer_candidates: ["300308.SZ", "300502.SZ", "300394.SZ", "002281.SZ", "688205.SH"]
+      peer_scope_ladder: [optical_module_makers, optical_module_related]
+      methodology_profile:
+        <<: *optical_peer_financial_baseline
+        version: "optical-module-makers/0.1"
+        profile_id: optical_module_makers_meso
+        reference_series: {id: optical_module_shipments, description: 800G与1.6T光模块出货及订单兑现}
+    optical_module_related:
+      name: 光模块相关器件与设备
+      peer_candidates: ["300308.SZ", "300502.SZ", "300394.SZ", "002281.SZ", "688205.SH", "688313.SH", "300620.SZ"]
+      peer_scope_ladder: [optical_module_related]
+      methodology_profile:
+        <<: *optical_peer_financial_baseline
+        version: "optical-module-related/0.1"
+        profile_id: optical_module_related_meso
+        reference_series: {id: optical_equipment_orders, description: 光模块器件与自动化设备订单及交付}
+
 upstream:
   nodes:
     - name: 磷化铟衬底

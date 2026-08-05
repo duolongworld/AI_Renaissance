@@ -12,14 +12,21 @@ Skill 域: skills/industry/
   （封装 IndustrySentiment + EastMoney，带缓存降级）
 """
 
+from copy import deepcopy
 from pathlib import Path
 from typing import Optional
 from agents.base import BaseAgent
 from agents.signal import Signal, neutral_signal
 
 try:
-    from skills.industry.industrial_sentinel.runtime import run_industrial_sentinel
+    from skills.industry.industrial_sentinel.runtime import (
+        analyze_industry,
+        prepare_industry_packet,
+        run_industrial_sentinel,
+    )
 except Exception:
+    analyze_industry = None
+    prepare_industry_packet = None
     run_industrial_sentinel = None
 
 # 项目共用复合数据源（data_sources/ 层封装，带缓存降级）
@@ -64,6 +71,7 @@ def _normalize_industry_input(raw_input: str) -> dict:
             _is_stock_code,
             _normalize_a_stock_code,
             _resolve_input,
+            STOCK_NAME_TO_CODE,
             auto_detect_preset,
             match_preset_by_industry,
         )
@@ -93,6 +101,10 @@ def _normalize_industry_input(raw_input: str) -> dict:
         normalized_code = _normalize_a_stock_code(value.upper())
         context["analysis_input"] = normalized_code
         context["data_source_input"] = normalized_code
+        context["stock_name"] = next(
+            (name for name, code in STOCK_NAME_TO_CODE.items() if code == normalized_code),
+            normalized_code,
+        )
         context["preset"] = auto_detect_preset(
             normalized_code,
             data_dir,
@@ -153,6 +165,61 @@ def _build_preset_only_industry_result(raw_input: str, preset: str) -> dict:
     }
 
 
+def _build_framework_packet(input_context: dict, industry_result: Optional[dict] = None) -> dict:
+    industry_result = industry_result or {}
+    return {
+        "schema_version": "industry-data/0.2",
+        "target": {
+            "stock_code": input_context.get("analysis_input") or input_context.get("raw_input") or "",
+            "stock_name": input_context.get("stock_name") or input_context.get("raw_input") or "",
+            "industry": industry_result.get("industry_name") or "",
+            "sub_sector": "",
+            "preset": input_context.get("preset") or industry_result.get("preset") or "generic",
+            "input_type": input_context.get("input_type") or "unknown",
+        },
+        "industry_signals": {},
+        "peer_basket_signals": {},
+        "peer_basket_meta": {},
+        "company_signals": {},
+        "market_context": {},
+        "evidence": [],
+        "needs_data": [
+            {
+                "field_path": "industry_signals",
+                "reason": "preset 只用于选择产业链框架，不代表真实行业景气度。",
+            }
+        ],
+        "as_of_date": "",
+        "source_mode": "framework_only",
+        "framework_only": True,
+    }
+
+
+def _enrich_packet_target(packet: dict, input_context: dict) -> dict:
+    enriched = dict(packet)
+    target = dict(enriched.get("target") or {})
+    target["stock_code"] = input_context.get("analysis_input") or target.get("stock_code") or ""
+    target["stock_name"] = input_context.get("stock_name") or target.get("stock_name") or target["stock_code"]
+    target["input_type"] = input_context.get("input_type") or target.get("input_type") or "stock_code"
+    if input_context.get("preset") and input_context.get("preset") != "generic":
+        target["preset"] = input_context["preset"]
+    enriched["target"] = target
+    return enriched
+
+
+def _strip_report_artifacts(value):
+    """Keep standalone HTML on the report path, never inside a project Signal."""
+    if isinstance(value, dict):
+        return {
+            key: _strip_report_artifacts(item)
+            for key, item in value.items()
+            if key not in {"html_report", "html_path", "rendered_html", "report_html"}
+        }
+    if isinstance(value, list):
+        return [_strip_report_artifacts(item) for item in value]
+    return value
+
+
 class IndustryAgent(BaseAgent):
     """行业景气 Agent（专家5组）"""
 
@@ -160,8 +227,9 @@ class IndustryAgent(BaseAgent):
 
     def __init__(self, config: Optional[dict] = None):
         super().__init__(name="行业景气Agent", config=config or {})
+        self.last_skill_result: Optional[dict] = None
+        self.last_data_packet: Optional[dict] = None
         self.load_skills_from_domain("industry")
-        self.load_skills_from_domain("data")
         # 复用数据源实例，避免每次 analyze 都新建
         self._data_source = (
             self.config.get("industrial_sentinel_data_source")
@@ -178,6 +246,10 @@ class IndustryAgent(BaseAgent):
                         or self.config.get("financial_data_source")
                     ),
                     cache_dir=self.config.get("industrial_sentinel_cache_dir"),
+                    industry_evidence_path=self.config.get("industry_evidence_path"),
+                    peer_financial_data_source=self.config.get("industry_peer_financial_data_source"),
+                    peer_codes=self.config.get("industry_peer_codes"),
+                    peer_fetch_workers=self.config.get("industry_peer_fetch_workers", 4),
                 )
             except Exception as e:
                 self.log(f"数据源初始化失败：{e}", level="warning")
@@ -191,6 +263,8 @@ class IndustryAgent(BaseAgent):
         4. 将返回的 dict 通过 Signal.from_dict() 包装为标准 Signal
         5. Signal.from_dict 异常时返回 neutral_signal 并标记 needs_human_review
         """
+        self.last_skill_result = None
+        self.last_data_packet = None
         input_context = _normalize_industry_input(stock_code)
         analysis_input = input_context["analysis_input"]
         self.log(
@@ -211,6 +285,7 @@ class IndustryAgent(BaseAgent):
         # ── Step 1: 从 data_sources 层获取数据（封装了缓存降级） ──
         industry_result = None
         financial_data = None
+        data_packet = None
         degradation_reasons = []
         data_source_meta = {}
 
@@ -237,6 +312,7 @@ class IndustryAgent(BaseAgent):
                 "signals": {},
                 "confidence": 0.0,
             }
+            data_packet = _build_framework_packet(input_context, industry_result)
             degradation_reasons.append(framework_only_reason)
             data_source_meta = {
                 "industry_from_cache": False,
@@ -260,6 +336,7 @@ class IndustryAgent(BaseAgent):
         if ds is not None and input_context["use_data_source"]:
             try:
                 data = ds.get_data(input_context["data_source_input"])
+                data_packet = data.get("packet")
                 industry_result = data.get("industry_result")
                 financial_data = data.get("financial_data")
                 degradation_reasons = data.get("degradation_reasons", [])
@@ -272,6 +349,7 @@ class IndustryAgent(BaseAgent):
                 }
                 if (
                     not industry_result
+                    and data_packet is None
                     and input_context.get("preset")
                     and input_context.get("preset") != "generic"
                 ):
@@ -287,13 +365,29 @@ class IndustryAgent(BaseAgent):
                     degradation_reasons.append(preset_reason)
                     data_source_meta["industry_status"] = "preset_only"
                     data_source_meta["degradation_reasons"] = degradation_reasons
-                if industry_result and industry_result.get("status") == "preset_only":
+                    if data_packet is not None:
+                        data_packet = dict(data_packet)
+                        data_packet.setdefault("target", {})["preset"] = input_context["preset"]
+                packet_has_system_a = bool(
+                    isinstance(data_packet, dict)
+                    and (
+                        data_packet.get("industry_signals")
+                        or data_packet.get("peer_basket_signals")
+                    )
+                )
+                packet_has_company = bool(
+                    isinstance(data_packet, dict)
+                    and data_packet.get("company_signals")
+                )
+                if packet_has_system_a:
+                    self.log("标准行业数据包获取成功")
+                elif industry_result and industry_result.get("status") == "preset_only":
                     self.log("行业情绪数据不可用，已降级到本地 preset 路由", level="warning")
                 elif industry_result:
                     self.log("行业情绪数据获取成功")
                 else:
                     self.log("行业情绪数据不可用", level="warning")
-                if financial_data:
+                if financial_data or packet_has_company:
                     self.log("财务数据获取成功")
                 else:
                     self.log("财务数据不可用", level="warning")
@@ -333,7 +427,24 @@ class IndustryAgent(BaseAgent):
         if degradation_reasons:
             config_with_hints["_degradation_reasons"] = degradation_reasons
         config_with_hints["_input_context"] = dict(input_context)
+        if self.config.get("analysis_reference_date"):
+            config_with_hints["reference_date"] = self.config["analysis_reference_date"]
         try:
+            if (
+                data_packet is not None
+                and input_context.get("use_data_source")
+                and prepare_industry_packet is not None
+            ):
+                data_packet = _enrich_packet_target(data_packet, input_context)
+                self.last_data_packet = deepcopy(data_packet)
+                normalized_packet, packet_config = prepare_industry_packet(
+                    analysis_input,
+                    packet=data_packet,
+                    context=config_with_hints,
+                )
+                industry_result = normalized_packet
+                financial_data = None
+                config_with_hints = packet_config
             result = run_industrial_sentinel(
                 analysis_input,
                 industry_result=industry_result,
@@ -352,7 +463,9 @@ class IndustryAgent(BaseAgent):
             )
 
         # ── Step 3: 构造 Signal（异常时返回 neutral_signal + needs_human_review） ──
-        raw_result = result
+        result = _strip_report_artifacts(result)
+        raw_result = deepcopy(result)
+        self.last_skill_result = deepcopy(result) if isinstance(result, dict) else None
         try:
             # 防御性预处理：先浅拷贝避免修改 caller 的 dict，再确保关键字段有效
             result = dict(result)
@@ -379,6 +492,9 @@ class IndustryAgent(BaseAgent):
         signal.meta.pop("html_report", None)
         signal.meta.pop("html_path", None)
         signal.meta["input_context"] = input_context
+        if isinstance(data_packet, dict):
+            data_source_meta["packet_schema_version"] = data_packet.get("schema_version")
+            data_source_meta["packet_source_mode"] = data_packet.get("source_mode")
         signal.meta["data_source"] = data_source_meta
 
         return signal
