@@ -1,0 +1,33 @@
+{
+  "schema_version": "industry-route-evidence/0.1",
+  "records": [
+    {
+      "evidence_id": "route_300757_ficontec_orders_2025ar",
+      "stock_code": "300757.SZ",
+      "stock_name": "罗博特科",
+      "trigger_type": "confirmed_order",
+      "order_status": "confirmed",
+      "business_scope": "optical_module_equipment",
+      "effective_preset": "optical-module",
+      "target_peer_group": "optical_module_related",
+      "scenario": "second_growth_curve",
+      "source_level": "L1",
+      "source_type": "company_annual_report",
+      "source_title": "罗博特科2025年年度报告",
+      "source_url": "https://static.cninfo.com.cn/finalpage/2026-03-31/1225059372.PDF",
+      "report_period": "2025-12-31",
+      "as_of_date": "2026-03-31",
+      "raw_fields": [
+        "pluggable_optical_module_same_group_orders_cny",
+        "optoelectronics_semiconductor_backlog_cny",
+        "acquisition_completed"
+      ],
+      "raw_values": {
+        "pluggable_optical_module_same_group_orders_cny": 600000000,
+        "optoelectronics_semiconductor_backlog_cny": 1105000000,
+        "acquisition_completed": true
+      },
+      "derivation_method": "公司2025年度报告披露的已确认订单、在手订单及收购完成事实，仅用于战略分支路由。"
+    }
+  ]
+}
