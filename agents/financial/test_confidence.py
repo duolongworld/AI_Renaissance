@@ -62,6 +62,7 @@ def test_financial_agent_fetches_extra_period_for_single_quarter_qoq():
     agent = FinancialAgent(
         config={
             "financial_data_source": data_source,
+            "include_report_supplement": False,
             "report_date": "2026-03-31",
         }
     )

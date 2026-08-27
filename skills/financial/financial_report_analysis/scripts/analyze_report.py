@@ -1259,6 +1259,7 @@ def build_signal(raw_data: dict[str, Any]) -> dict[str, Any]:
             "commercial_inflection": commercial_inflection,
             "additional_checks": additional_checks,
             "single_quarter_metrics": data.get("single_quarter_metrics", {}),
+            "financial_report_supplement": data.get("financial_report_supplement", {}),
             "step_results": step_results,
             "red_flags": tracker.red_flags,
             "key_findings": signals,

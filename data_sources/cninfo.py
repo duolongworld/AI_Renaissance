@@ -173,7 +173,7 @@ class CninfoDataSource:
             }
 
         try:
-            payload = json.loads(r.stdout)
+            payload = self._decode_json_output(r.stdout)
         except json.JSONDecodeError as e:
             return {
                 "status": "error",
@@ -191,3 +191,23 @@ class CninfoDataSource:
             "fetch_time": datetime.now().isoformat(timespec="seconds"),
             key: payload if (payload or as_list) else empty,
         }
+
+    @staticmethod
+    def _decode_json_output(raw: str) -> Any:
+        """Decode CLI JSON even when a dependency warning precedes stdout."""
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError as original_error:
+            decoder = json.JSONDecoder()
+            offset = 0
+            for line in raw.splitlines(keepends=True):
+                stripped = line.lstrip()
+                if stripped.startswith(("{", "[")):
+                    start = offset + len(line) - len(stripped)
+                    try:
+                        payload, _ = decoder.raw_decode(raw[start:])
+                        return payload
+                    except json.JSONDecodeError:
+                        pass
+                offset += len(line)
+            raise original_error

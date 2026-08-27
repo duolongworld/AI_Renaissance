@@ -218,6 +218,7 @@ Orchestrator Agent（编排，开发2组）
 | 数据源 | 目录 | 状态 |
 |--------|------|------|
 | 东方财富 API | `data_sources/eastmoney.py` | ✅ 财务数据已实现 |
+| 巨潮财报补充 | `data_sources/financial_report_supplement.py`、`skills/data/financial_report_supplement/` | ✅ 订单/产能/分部/产品线/折旧摊销已接入 FinancialAgent |
 | 东方财富股吧 | `data_sources/eastmoney_guba.py` | ✅ 股吧帖子抓取已实现 |
 | 股吧数据接口说明 | `skills/data/eastmoney_guba/` | ✅ 数据接口说明已成稿 |
 | Market OHLCV | `data_sources/market_ohlcv.py` | ✅ 统一 OHLCV 入口，支持 CSV / EastMoney / Tencent 兜底 |

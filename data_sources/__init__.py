@@ -9,6 +9,7 @@ from .base import DataSourceBase
 from .akshare import AkshareDataSource
 from .cninfo import CninfoDataSource
 from .eastmoney import EastMoneyDataSource
+from .financial_report_supplement import FinancialReportSupplementDataSource
 from .eastmoney_guba import EastMoneyGubaDataSource
 from .market_sentiment import MarketSentimentDataSource
 from .industry_sentiment import IndustrySentimentDataSource
@@ -20,6 +21,7 @@ __all__ = [
     "DataSourceBase",
     "AkshareDataSource",
     "EastMoneyDataSource",
+    "FinancialReportSupplementDataSource",
     "EastMoneyGubaDataSource",
     "MarketSentimentDataSource",
     "IndustrySentimentDataSource",
