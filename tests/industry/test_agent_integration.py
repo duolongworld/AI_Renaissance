@@ -134,6 +134,25 @@ def test_signal_direction_validation():
 class TestIndustryAgent:
     """IndustryAgent 全链路测试"""
 
+    @pytest.fixture(autouse=True)
+    def offline_data_source(self):
+        """单元测试不访问真实行情 provider。"""
+        source = MagicMock()
+        source.get_data.return_value = {
+            "industry_result": None,
+            "financial_data": None,
+            "industry_from_cache": False,
+            "financial_from_cache": False,
+            "industry_status": "missing",
+            "financial_status": "missing",
+            "degradation_reasons": ["offline unit test"],
+        }
+        with patch(
+            "agents.industry.agent.IndustrialSentinelDataSource",
+            return_value=source,
+        ):
+            yield source
+
     @pytest.fixture
     def mock_runtime_success(self):
         """Mock run_industrial_sentinel 返回完整成功信号"""

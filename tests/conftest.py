@@ -44,6 +44,20 @@ class FakeNewsSource:
         }
 
 
+class FakeIndustrySource:
+    def get_data(self, stock_code: str):
+        return {
+            "stock_code": stock_code,
+            "industry_result": None,
+            "financial_data": None,
+            "industry_from_cache": False,
+            "financial_from_cache": False,
+            "industry_status": "missing",
+            "financial_status": "missing",
+            "degradation_reasons": ["offline contract test"],
+        }
+
+
 @pytest.fixture
 def fake_news_source():
     return FakeNewsSource()
@@ -54,6 +68,8 @@ def offline_config(fake_news_source):
     def build(signal_type: str):
         if signal_type == "technical":
             return {"use_live_data": False, "allow_synthetic_ohlcv": True, "use_cninfo_company_data": False}
+        if signal_type == "industry":
+            return {"industrial_sentinel_data_source": FakeIndustrySource()}
         if signal_type != "news":
             return {}
 
