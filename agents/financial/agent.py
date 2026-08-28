@@ -11,11 +11,11 @@ from typing import Any, Optional
 
 from agents.base import BaseAgent
 from agents.signal import Signal, neutral_signal
-from data_sources import EastMoneyDataSource
+from data_sources import EastMoneyDataSource, FinancialReportSupplementDataSource
 from skills.financial.financial_report_analysis.scripts.analyze_report import build_signal
 
 
-FINANCIAL_AGENT_VERSION = "0.2.0"
+FINANCIAL_AGENT_VERSION = "0.3.0"
 
 
 class FinancialAgent(BaseAgent):
@@ -38,6 +38,14 @@ class FinancialAgent(BaseAgent):
             or self.config.get("data_source")
             or EastMoneyDataSource()
         )
+        self.include_report_supplement = self.config.get("include_report_supplement", True)
+        self.report_data_source = None
+        if self.include_report_supplement:
+            self.report_data_source = (
+                self.config.get("financial_report_data_source")
+                or FinancialReportSupplementDataSource()
+            )
+        self._resolved_report_dates: dict[str, str] = {}
 
     def analyze(self, stock_code: str) -> Signal:
         """
@@ -77,13 +85,16 @@ class FinancialAgent(BaseAgent):
 
     def _fetch_data(self, stock_code: str) -> dict[str, Any]:
         """通过数据层获取财务数据。"""
-        report_date = self._current_report_date()
+        report_date = self._current_report_date(stock_code)
         if not self.data_source:
             return {}
         try:
             current_data = self.data_source.get_financial_data(stock_code, report_date=report_date) or {}
         except TypeError:
             current_data = self.data_source.get_financial_data(stock_code) or {}
+
+        current_data = dict(current_data) if isinstance(current_data, dict) else {}
+        self._merge_report_supplement(current_data, stock_code, report_date)
 
         if self.config.get("include_previous_period", True):
             previous_report_date = self._previous_report_date(report_date)
@@ -111,10 +122,49 @@ class FinancialAgent(BaseAgent):
                             current_data["previous_previous_report_date"] = previous_previous_report_date
         return current_data
 
-    def _current_report_date(self) -> Optional[str]:
+    def _merge_report_supplement(
+        self,
+        current_data: dict[str, Any],
+        stock_code: str,
+        report_date: Optional[str],
+    ) -> None:
+        """Merge current-period CNINFO fields without overriding statement data."""
+        if not self.report_data_source or not report_date:
+            return
+        try:
+            supplement = self.report_data_source.get_financial_supplement(stock_code, report_date) or {}
+        except Exception as exc:
+            supplement = {
+                "status": "error",
+                "report_date": report_date,
+                "fields": {},
+                "error": f"财报原文补充数据获取失败: {type(exc).__name__}: {exc}",
+            }
+        current_data["financial_report_supplement"] = supplement
+        for field, value in (supplement.get("fields") or {}).items():
+            current_data.setdefault(field, value)
+
+    def _current_report_date(self, stock_code: Optional[str] = None) -> Optional[str]:
         report_date = self.config.get("report_date")
         if report_date:
             return report_date
+        cache_key = str(stock_code or "__default__").strip().upper()
+        if cache_key in self._resolved_report_dates:
+            return self._resolved_report_dates[cache_key]
+        if (
+            self.report_data_source
+            and self.config.get("prefer_cninfo_report_date", True)
+            and hasattr(self.report_data_source, "resolve_latest_report_date")
+        ):
+            try:
+                resolved = self.report_data_source.resolve_latest_report_date(
+                    stock_code or self.config.get("stock_code_for_report_resolution", "")
+                )
+            except Exception:
+                resolved = None
+            if resolved:
+                self._resolved_report_dates[cache_key] = resolved
+                return resolved
         if hasattr(self.data_source, "_get_latest_report_date"):
             return self.data_source._get_latest_report_date()
         return None
@@ -142,9 +192,14 @@ class FinancialAgent(BaseAgent):
         data = dict(raw_data or {})
         data.setdefault("ticker", stock_code)
         data.setdefault("company_name", data.get("stock_name") or data.get("name") or "unknown")
-        data.setdefault("period", self._current_report_date() or "unknown")
+        data.setdefault("period", self._current_report_date(stock_code) or "unknown")
         data.setdefault("source_type", "data_source")
         data.setdefault("source_name", getattr(self.data_source, "name", "unknown data source"))
+        supplement = data.get("financial_report_supplement")
+        if isinstance(supplement, dict) and supplement.get("fields"):
+            supplement_name = (supplement.get("source") or {}).get("source_name") or "CNINFO"
+            if supplement_name not in str(data["source_name"]):
+                data["source_name"] = f'{data["source_name"]} + {supplement_name}'
 
         balance = data.get("balance")
         income = data.get("income")
@@ -153,6 +208,6 @@ class FinancialAgent(BaseAgent):
         data.setdefault("income_statement_present", bool(income))
         data.setdefault("cash_flow_statement_present", bool(cashflow))
 
-        if not raw_data:
+        if not any((balance, income, cashflow)):
             data["summary"] = "未取得完整三张表数据，财务 Signal 降为中性并转人工复核。"
         return data

@@ -514,6 +514,7 @@ def execute_backtest(
     agent = FinancialAgent(
         config={
             "financial_data_source": data_source,
+            "include_report_supplement": False,
             "include_previous_period": True,
             "include_single_quarter_periods": True,
         }
