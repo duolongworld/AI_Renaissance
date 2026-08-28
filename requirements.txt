@@ -13,6 +13,7 @@ pdfplumber>=0.11.0
 
 # Utilities
 agentscope>=1.0.3,<2.0.0  # 1.x exposes agentscope.agent.AgentBase; 2.x removed it
+mcp==1.13.0  # AgentScope 1.x imports the MCP 1.x streamablehttp_client API
 python-dotenv>=1.0.0
 pyyaml>=6.0
 loguru>=0.7.0
