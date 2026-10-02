@@ -91,7 +91,7 @@ class CninfoDataSource:
             return self._cli_missing_response(stock_code)
 
         cmd = [
-            CLI_NAME, "fetch-report", stock_code,
+            self._cli_path, "fetch-report", stock_code,
             "--year", str(year), "--kind", kind,
         ]
         if force:
@@ -127,7 +127,7 @@ class CninfoDataSource:
             return self._cli_missing_response(stock_code)
 
         cmd = [
-            CLI_NAME, "fetch-stock", stock_code,
+            self._cli_path, "fetch-stock", stock_code,
             "--since", since, "--until", until, "--json",
         ]
         if download:
@@ -153,6 +153,12 @@ class CninfoDataSource:
                 " && cd use_cninfo && pip install -e ."
             ),
         }
+
+    @staticmethod
+    def _extract_json(stdout: str) -> str:
+        """CLI 可能把告警(如 fitz 弃用提示)打到 stdout，剥掉 JSON 起始符之前的文本。"""
+        starts = [i for i in (stdout.find("{"), stdout.find("[")) if i != -1]
+        return stdout[min(starts):] if starts else stdout
 
     def _run_json(
         self,
@@ -185,7 +191,7 @@ class CninfoDataSource:
             }
 
         try:
-            payload = json.loads(r.stdout)
+            payload = json.loads(self._extract_json(r.stdout))
         except json.JSONDecodeError as e:
             return {
                 "status": "error",
