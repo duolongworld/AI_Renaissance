@@ -18,9 +18,12 @@ PDF 全文,供财务/事件 Agent 调用。本模块只负责适配数据契约,
 """
 
 import json
+import os
 import shutil
 import subprocess
+import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
@@ -35,7 +38,7 @@ class CninfoDataSource:
 
     def __init__(self):
         self.name = "巨潮资讯网公告数据源"
-        self._cli_path = shutil.which(CLI_NAME)
+        self._cli_path = shutil.which(CLI_NAME) or self._cli_beside_interpreter()
         if self._cli_path:
             logger.info(f"[数据源] {self.name} 初始化完成 (cli={self._cli_path})")
         else:
@@ -43,6 +46,15 @@ class CninfoDataSource:
                 f"[数据源] {self.name} 未找到 `{CLI_NAME}` 命令,"
                 "请先安装 use_cninfo: https://github.com/rollysys/use_cninfo"
             )
+
+    @staticmethod
+    def _cli_beside_interpreter() -> Optional[str]:
+        """回退查找：pip 把入口脚本装在 sys.executable 同目录（如 .venv/bin/cninfo），
+        未激活 venv 运行时 shutil.which 搜不到它。"""
+        candidate = Path(sys.executable).parent / CLI_NAME
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+        return None
 
     # ------------------------------------------------------------------ public
 
