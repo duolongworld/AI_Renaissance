@@ -18,9 +18,12 @@ PDF 全文,供财务/事件 Agent 调用。本模块只负责适配数据契约,
 """
 
 import json
+import os
 import shutil
 import subprocess
+import sys
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
@@ -35,7 +38,7 @@ class CninfoDataSource:
 
     def __init__(self):
         self.name = "巨潮资讯网公告数据源"
-        self._cli_path = shutil.which(CLI_NAME)
+        self._cli_path = shutil.which(CLI_NAME) or self._cli_beside_interpreter()
         if self._cli_path:
             logger.info(f"[数据源] {self.name} 初始化完成 (cli={self._cli_path})")
         else:
@@ -43,6 +46,15 @@ class CninfoDataSource:
                 f"[数据源] {self.name} 未找到 `{CLI_NAME}` 命令,"
                 "请先安装 use_cninfo: https://github.com/rollysys/use_cninfo"
             )
+
+    @staticmethod
+    def _cli_beside_interpreter() -> Optional[str]:
+        """回退查找：pip 把入口脚本装在 sys.executable 同目录（如 .venv/bin/cninfo），
+        未激活 venv 运行时 shutil.which 搜不到它。"""
+        candidate = Path(sys.executable).parent / CLI_NAME
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+        return None
 
     # ------------------------------------------------------------------ public
 
@@ -79,7 +91,7 @@ class CninfoDataSource:
             return self._cli_missing_response(stock_code)
 
         cmd = [
-            CLI_NAME, "fetch-report", stock_code,
+            self._cli_path, "fetch-report", stock_code,
             "--year", str(year), "--kind", kind,
         ]
         if force:
@@ -115,7 +127,7 @@ class CninfoDataSource:
             return self._cli_missing_response(stock_code)
 
         cmd = [
-            CLI_NAME, "fetch-stock", stock_code,
+            self._cli_path, "fetch-stock", stock_code,
             "--since", since, "--until", until, "--json",
         ]
         if download:
@@ -141,6 +153,12 @@ class CninfoDataSource:
                 " && cd use_cninfo && pip install -e ."
             ),
         }
+
+    @staticmethod
+    def _extract_json(stdout: str) -> str:
+        """CLI 可能把告警(如 fitz 弃用提示)打到 stdout，剥掉 JSON 起始符之前的文本。"""
+        starts = [i for i in (stdout.find("{"), stdout.find("[")) if i != -1]
+        return stdout[min(starts):] if starts else stdout
 
     def _run_json(
         self,
@@ -173,7 +191,7 @@ class CninfoDataSource:
             }
 
         try:
-            payload = json.loads(r.stdout)
+            payload = json.loads(self._extract_json(r.stdout))
         except json.JSONDecodeError as e:
             return {
                 "status": "error",
